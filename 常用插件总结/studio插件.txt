@@ -1,0 +1,74 @@
+netstat -aon|findstr 5037 查找那些占用了adb
+
+
+studio 插件 
+
+.ignore
+
+GsonFormat 
+
+Android Parcelable code generator  
+
+ADB WIFI
+
+ADB idel
+
+
+genymotion
+
+
+Android Studio Prettify
+自动书写findViewById,
+
+Android Postfix Completion
+根据后缀快速完成代码
+
+SelectorChapek for Android 
+资源文件命名自动生成Selector文件。
+
+
+
+Android-DPI-Calculator
+DPI计算插件
+
+AndroidPixelDimenGenerator 
+Android Studio自动生成dimen.xml文件插件
+
+
+JsonOnlineViewer 
+ 在Android Studio中请求、调试接口
+
+
+Android Styler
+根据xml自动生成style代码的插件
+
+
+Android Drawable Importer
+这是一个非常强大的图片导入插件。它导入Android图标与Material图标的Drawable ，批量导入Drawable ，多源导入Drawable（即导入某张图片各种dpi对应的图片）
+
+
+PermissionsDispatcher plugin
+自动生成6.0权限的代码
+
+
+findBugs-IDEA
+
+findviewbyme
+
+generate kotlin data classes from json
+
+layoutCreator
+
+Material theme ui
+
+newDataClassAction
+
+Parcelable Code Generator (for kotlin )
+
+Translation
+
+
+
+
+
+
