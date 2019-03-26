@@ -1,0 +1,56 @@
+Get方法：
+	1> @Query :  Get方法请求参数都会以key=value的方式拼接在url后面
+		1. 使用Query 
+		2.使用实现Interceptor 接口  针对all
+
+	2> @QueryMap :Query参数比较多，那么可以通过@QueryMap方式将所有的参数集成在一个Map统一传递
+
+	3> Query集合 :一个key ,多个Value 
+
+	4>Query非必填 :没有就null
+	
+	5>@Path :如果请求的相对地址也是需要调用方传递，那么可以使用@Path注解(此时不是拼接)
+
+Post:
+
+	1> @Field : Post请求需要把请求参数放置在请求体中，而非拼接在url后面
+	(@FormUrlEncoded将会自动将请求参数的类型调整为application/x-www-form-urlencoded)
+
+	2> @FieldMap: 多个请求
+
+	3> @Body :对请求封装成bean 然后传入bean
+
+上传：   @Multipart    （ @Part MultipartBody.Part file1 ）
+
+
+添加自定义头部：
+		1>静态方法
+		（1）  @Headers({""""})
+		 (2)在实现interceptor里面 对request进行操作 addHeader() /header()
+		(header 会覆盖 ，addHeader允许重名)
+
+		2>动态方法
+		@Headers({""""}) 写在方法之中
+
+日志：
+	compile 'com.squareup.okhttp3:logging-interceptor:3.4.1'
+	
+
+ 	HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+      new OkHttpClient.Builder()
+           .addInterceptor(new CustomInterceptor())
+           .addInterceptor(logging)
+           .connectTimeout(DEFAULT_TIMEOUT, TimeUnit.SECONDS)
+           .build();
+	(level 有4种，NONE，BASIC，HEADERS，BODY )
+		
+完整URL:
+		@Url 直接访问完整URL
+		
+		
+请求还没有执行时 ，取消请求：  call.cancle()
+
+
+
+	

@@ -1,0 +1,24 @@
+一.自定义View的分类
+	1.继承View重写onDraw方法
+		一般就是想自己实现某些图形了，因为原生控件已经满足不了你了，很显然这需要绘制的方式
+		来完成，采用这个方式需要自身支=warp_content,并且pading也要自己处理
+	2.继承ViewGroup派生出来的Layout
+		这个相当于重写容器了，当某些效果看起来像是View的组合的时候，就是他上场的时候了，
+		不过这个很复杂，需要合理的使用测量和布局这两个过程，还要兼顾子元素的这两个过程
+	3.继承特定的View
+		比如TextView，就是重写原生的View嘛，比如你想让TextView默认有颜色之类的，有一些小改动，
+		这个就可以用它的，他相对来说比较简单
+	4.继承特定的ViewGroup
+		这个和上述一样，只不过是重写容器而已，这个也比较常见，事件分发的时候用的也多
+二.自定义View的须知
+	1.让View支持warp_content
+	2.如果有有必要，让你的View支持padding
+	3.尽量不要在View中使用Handler
+	4.View中如果有线程或者动画，需要及时停止，参考View#onDetachedFromWindow(onAttachedToWindow对应)
+	5.View带有滑动嵌套时，需要处理好滑动冲突
+三.自定义View的实例
+	1.继承View重写onDraw方法
+		主要是measure,draw方法
+	2.继承ViewGroup派生出来的Layout
+		主要是measure，layout方法
+	

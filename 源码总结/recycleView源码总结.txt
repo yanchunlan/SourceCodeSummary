@@ -1,0 +1,80 @@
+﻿recycleView四级缓存：
+	两个scrap就是第一级缓存（mAttachedScrap ，mChangedScrap ）
+	mCachedViews，mViewCacheExtension，mRecyclerPool分别对应2,3,4级缓存
+各级缓存作用：
+	scrap:
+
+	rv之所以要将缓存分成这么多块肯定在功能上是有一定的区分的，它们分别对应不同的使用场景，scrap是用来保存被rv
+	移除掉但最近又马上要使用的缓存，比如说rv中自带item的动画效果。
+
+	本质上就是计算item的偏移量然后执行属性动画的过程，这中间可能就涉及到需要将动画之前的item保存下位置信息，
+	动画后的item再保存下位置信息，然后利用这些位置数据生成相应的属性动画。如何保存这些viewholer呢，就需要使
+	用到scrap了，因为这些viewholer数据上是没有改变的，只是位置改变而已，所以放置到scrap最为合适。
+
+	稍微仔细看的话就能发现scrap缓存有两个成员mChangedScrap和mAttachedScrap，它们保存的对象有些不一样，一般
+	调用adapter的notifyItemRangeChanged被移除的viewholder会保存到mChangedScrap，其余的notify系列方法(不包括
+	notifyDataSetChanged)移除的viewholder会被保存到mAttachedScrap中。
+	cached:
+
+	也是rv中非常重要的一个缓存，就linearlayoutmanager来说cached缓存默认大小为2，它的容量非常小，所起到的作用
+	就是rv滑动时刚被移出屏幕的viewholer的收容所。
+
+	因为rv会认为刚被移出屏幕的viewholder可能接下来马上就会使用到，所以不会立即设置为无效viewholer，会将它们保
+	存到cached中，但又不能将所有移除屏幕的viewholder都视为有效viewholer，所以它的默认容量只有2个，当然我们可以通过：
+
+	public void setViewCacheSize(int viewCount) {
+		mRequestedCacheMax = viewCount;
+		updateViewCacheSize();
+	}
+
+	来改变这个容量大小，这个就看实际应用场景了。
+	
+	extension:
+
+	第三级缓存，这是一个自定义的缓存，没错rv是可以自定义缓存行为的，在这里你可以决定缓存的保存逻辑，但是这么个
+	自定义缓存一般都没有见过具体的使用场景，而且自定义缓存需要你对rv中的源码非常熟悉才行，否则在rv执行item动画，
+	或者执行notify的一系列方法后你的自定义缓存是否还能有效就是一个值得考虑的问题。
+
+	所以一般不太推荐使用该缓存，更多的我觉得这可能是google自已留着方便扩展来使用的，目前来说这还只是个空实现而
+	已，从这点来看其实rv所说的四级缓存本质上还只是三级缓存。
+
+	pool：
+
+	又一个重要的缓存，这也是唯一一个我们开发者可以方便设置的一个(虽然extension也能设置，但是难度大)，而且设置
+	方式非常简单，new一个pool传进去就可以了，其他的都不用我们来处理，google已经给我们料理好后事了，这个缓存保
+	存的对象就是那些无效的viewholer，虽说无效的viewholer上的数据是无效的，但是它的rootview还是可以拿来使用的，
+	这也是为什么最早的listview有一个convertView参数的原因，当然这种机制也被rv很好的继承了下来。
+
+	pool一般会和cached配合使用，这么来说，cached存不下的会被保存到pool中毕竟cached默认容量大小只有2，但是pool
+	容量也是有限的当保存满之后再有viewholder到来的话就只能会无情抛弃掉，它也有一个默认的容量大小
+	
+优化措施：
+	1.	降低item的布局层次
+	2.	去除冗余的setitemclick事件（不要在bindView里面设置点击事件）
+	3.	复用pool缓存（主要是针对item里面也是recycleView的情况，默认是不开启的）
+	4.	状态保存，
+		滑动状态保存，移出一点回来的rv会保留原先的滑动状态，移出一大段距离后回来的rv会丢失掉原先的滑动状态，
+		造成这个原因的本质是在于rv的缓存机制，简单来说就是刚滑动屏幕的会被放到cache中而滑出一段距离的会被放
+		到pool中，而从pool中取出的holder会重新进行数据绑定，没有保存滑动状态的话rv就会被重置掉，那么如何才
+		能做到即使放在pool中的holder也能保存滑动状态
+		
+		linearlayoutmanager中有对应的onSaveInstanceState和onRestoreInstanceState方法来分别处理保存状态和恢复状态
+	5.	设置itemanimator动画
+		默认在开启item动画的情况下会使rv额外处理很多的逻辑判断，notify的增删改操作都会对应相应的item动画效果
+		setItemAnimator(null) 可以关闭
+	6.	diffutils垃圾工具类去除
+	7.	setHasFixedSize
+		又是一个google提供给我们的方法，主要作用就是设置固定高度的rv，避免rv重复measure调用
+		一般内部嵌套recycleView,就设置它，嵌套的rv不会触发requestLayout，从而不会导致外层的rv进行重绘
+	8.	swapadapter
+		setadapter会直接清空rv上的所有缓存，而swapadapter会将rv上的holder保存到pool中，
+			两个数据源有很大的相似部分的情况下，直接使用setadapter重置的话会导致原本可以被复用的holder全部被清空，
+			而使用swapadapter来代替setadapter可以充分利用rv的缓存机制
+	9.	getAdapterPosition和getLayoutPosition
+		都是为了获得holder对应的position位置，但getAdapterPosition获取位置更为及时，而getLayoutPosition会滞后到
+		下一帧才能得到正确的position
+		主要是因为getAdapterPosition会及时计算，就能马上算出正确的位置，但是也可能返回-1，所以需要做好预防措施
+	10.	removeview和detachview
+		removeview是一个更为彻底的移除view操作，内部是会调用到detachview的，并且会调用到我们很熟悉的ondetachfromwindow
+		方法，而detachview是一个轻量级的操作，内部操作就是简单的将该view从父view中移除掉，rv内部调用detachview的场景
+		就是对应被移除的view可能在近期还会被使用到所以采用轻量级的移除操作，removeview一般都预示着这个holder已经彻底从屏幕消失不可见了

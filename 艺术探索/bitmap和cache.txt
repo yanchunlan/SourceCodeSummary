@@ -1,0 +1,36 @@
+一.Bitmap的高效加载
+	大小压缩： BitmapFactory.Options的inJustDecodeBounds
+二.Android中的缓存策略
+	1.LruCache
+		LinkedHashMap
+	2.DiskLruCache（主要是io流操作）
+		写入：
+		DiskLruCache.Editor editor = mDiskLruCache.edit(key);
+            if(editor != null){
+              OutputStream outputStream = editor.newOutputStream(DISK_CACHE_INDEX);
+            if(downloadUrlToStream(url,outputStream)){
+               editor.commit();
+            }else {
+               editor.abort();
+              }
+			}
+		读取：
+				Bitmap bitmap = null;
+				String keys = hashKeyFormUrl(url);
+                try {
+                    DiskLruCache.Snapshot snapshot = mDiskLruCache.get(keys);
+                    if(snapshot != null){
+                        FileInputStream fileInputStream = (FileInputStream) snapshot.getInputStream(DISK_CACHE_INDEX);
+                        FileDescriptor fileDescriptor = fileInputStream.getFD();
+                        bitmap = mImageResizer.decodeSampledBitmapFromFileDescriptor(fileDescriptor,reqWidth,reqHeight);
+                        if(bitmap != null){
+                            addBitmapToMemoryCache(keys,bitmap);
+                        }
+                    }	             					
+	3.ImageLoader的实现
+		1> 压缩图片
+		2>从内存取，从磁盘取，从网络取
+		3>同步，直接线程runnable 返回,异步通过handler接受消息获取数据
+		4>imageView.setTag(url)，的get取值，判断url是否是正确的再加载
+		5>滑动停止之后再加载数据，滑动中不加载数据
+		

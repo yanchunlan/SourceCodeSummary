@@ -1,0 +1,121 @@
+﻿动画包含三种View动画，帧动画，属性动画
+一.View动画
+	1.View动画的种类
+		TranslateAnimation,ScaleAnimation,RotateAnimation,AlphaAnimation
+		
+		set标签就是组合动画，对应着AnimationSet,他包含很多个类
+			android:interpolator
+					表示动画集合所使用的插值器，插值器影响动画的速度，比如非匀速动画
+					就需要插值器来制作动画的过程
+			android:shareInterpolator
+				表示集合中的动画是否和集合共享同一个插值器
+			android:pivotX
+				旋转轴点的x
+			android:pivotY
+				旋转轴点的y
+	2.自定义View动画
+		主要是计算和矩阵变换
+		extends Animation
+			initialize
+			applyTransformation
+	3.帧动画
+		系统提供了一个AnimationDrawable来实现帧动画
+		<animation-list
+			<item>
+		</>
+二.View动画的特殊使用场景
+	1.LayoutAnimation
+		LayoutAnimation作用于ViewGroup，为ViewGroup指定一个动画，这样他的子元素出场的时候就会具有这种动画了，
+		这种效果常常在listview上，我们时常会看到一种特殊的listview，他的每一个item都有一个动画
+			<layoutAnimation
+				android:delay	表示子元素开始动画的延迟
+				android:animationOrder		表示子元素动画的顺序 normal，random,reverse
+				android:animation	为子元素指定动画
+			还可以通过LayoutAnimationController来实现
+				Animation animation = AnimationUtils.loadAnimation(this,R.anim.anim_layout);
+				LayoutAnimationController controller = new LayoutAnimationController(animation);
+				controller.setDelay(0.5f);
+				controller.setOrder(LayoutAnimationController.ORDER_NORMAL);
+				mListView.setLayoutAnimation(controller);
+	2.Activity的切换效果
+		startActivity(new Intent(MainActivity.this,OneActivity.class));
+		//这是activity的跳转动画
+		overridePendingTransition(R.anim.animation,R.anim.anim_layout);
+		
+		当activity退出的时候我们也可以为他指定一个切换效果
+			@Override
+			public void onBackPressed() {
+				super.onBackPressed();
+				overridePendingTransition(R.anim.animation, R.anim.anim_layout);
+			}
+		在fragment中也是可以的，使用的方法是通过FragmentTransaction中的setCustomAnimations去使用
+		
+三.属性动画
+	ValueAnimator,ObjectAnimator,AnimatorSet
+	1.使用属性动画
+		<valueAnimator	列如设置背景色：
+			ObjectAnimator.ofInt(ll_content, "backgroundColor", 0xFFFF8080, 0xFF8080FF);
+		<objectAnimator	
+			android:propertyName:表示属性动画作用对象的属性的名称
+			android:repeatCount：表示动画的重复次数
+			android:repeatMode：表示动画的重复模式
+			android:valueType:表示propertyName有两个属性有int和float两个可选项，分别表示属性的类型，和浮点型，
+			另外，如果所制定的是颜色类型，那么就不需要指定propertyName，系统会自动对颜色类型进行处理
+			
+	2.理解插值器和估值器
+		TimeInterpolator: 根据时间流逝的百分比来计算出当前属性值改变的百分比，系统预设的是LinearInterpolator(
+		线性加速器，匀速加速器)，加速和减速插值器
+			implemnents Interpolator
+				init()
+				getInterpolation()
+		
+		TypeEvaluator: 估值器，他的作用是根据当前属性变化的百分比来计算变化后的属性值，系统也预设了针对整型属
+		性，浮点型，和color颜色值
+			implemnents TypeEvaluator<T>
+				evaluate()
+				
+		属性动画要求对象的属性有set get方法,
+		
+		
+	3.属性动画的监听
+		AnimationUpdateListener,AnimationListener
+	4.对任意属性做动画
+		我们对object的属性abc做动画，如果想让动画生效，要同时满足两个条件：
+			(1)object必须要提供set方法，如果动画的时候没有传递初始值，那么我们还要提供get方法，因为系统要去取
+			abc的属性(如果这条不满意，程序直接Crash)
+			(2)object的set方法对abc所做的改变必须通过某种方法反应，比如带来UI的改变(如果这条不满足，动画无效
+			果但是不会Crash)
+
+		如果是button,set无法改变控件宽度，解决方法有3种:
+			给你的对象增加set/get方法，前提是你有权限的话
+			用这个类来包装原始对象，间接提供get/set方法
+			采用ValueAnimator，监听动画过程自己去实现
+	5.属性动画的工作原理
+		ObjectAnimator.start->ValuesAnimator.start->addAnimationCallback->AnimationHandler.start->jnji
+		->doAnimationFrame->animationFrame->animateValue(onAnimationUpdate) 计算值
+		
+		初始化的时候，如果属性的初始值没有提供，则get方法就会调用，PropertyValuesHolder中的setupValue
+		
+		当动画的下一帧到来的时候，PropertyValuesHolder中的setAnimatedValue方法将新的属性值设置给对象，调用其set方法
+		通过反射调用
+
+		注意： 动画start内部实现有一个runnable，所以需要handler发送消息，所以线程必须开启looper
+四.使用动画的注意事项
+	1.OOM问题
+		帧动画中，当图片过多的时候就OOM了，这个在实际的开发中尤其注意，尽量避免使用帧动画
+	2.内存泄漏
+		无限循环的动画，activity退出后停止的话，可能就不会存在这个问题
+	3.兼容性问题
+		动画在3.0以下的系统上有缺陷，最好做好适配工作
+	4.View动画的问题
+		view动画死对view的影像做动画，并不是真正的改变view的状态，因此有时候会出现完成后view无法隐藏的现象，
+		即setVisibility(View.GONE),这个时候只要调用clearAnimation清除动画即可
+	5.不要使用PX
+		在进行动画的过程，要尽量使用dp，使用px会导致适配问题
+	6.动画元素的交互
+	将view移动后，在3.0以前的系统，不管是view动画还是属性动画，新位置都无法调用单机事件，同时老位置却可以，
+	从3.0之后，但是事件就是懂后的，但是view动画仍然在原位置
+	7.硬件加速
+		使用动画的过程，建议开启硬件加速，这样会提高动画的流畅性
+		
+		

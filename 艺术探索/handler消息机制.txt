@@ -1,0 +1,73 @@
+﻿handler流程：	
+	Handler向外暴露两种类型的接□:第一种是sendMessage 接口，即开发者构造一个Message对象，
+	然后调用sendMessage或者 sendMessageDelayed利用Handler将消息发送出去.第二种是postRunnable接口.
+	即 开发者构造一个Runnable类型的对象•然后调用post方法或者postDelayed方法•在 Handler内部.无论是对于哪一种接口
+	，都会构造一
+	个Message对象。对干post类型的接 口，会将Runnable对象賦值给Message的成员变量callback，
+	以备后队然后将这个 Handler赋值给Message的成员变量target,并按照当前时间戳加上Delayed的时间，作为 
+	执行时间调用消息队列（MessageQueue〉的enqueueMessage方法，鱼将Message对象 
+	放入消息对列（MessageQueue)。而Looper的loop方法在Android引擎启动应用的时 候就在主线程中不断地调
+	用消息队列（MessgeQueue)的next方法，它会取出消患 
+	(Message) » 幷调用消息的target (开发者自定义的Handler)的dispatchMessage方 
+	法，在dispatchMessage方法中会先判定消息有没有被设置callback。如果有，说明是 
+	post接口推送进来的消息，则调用callback的run方法，如果没有被设罝callback，则调用 
+	handleMessage方法，一般开发者会童写这个方法来处理自己的消患回调I这样就完成了 子线程和主线程的交互操作
+
+	注： 
+	1> 线程默认是没有looper的，需要自己创建，主线程是在activityThread的时候创建了
+	2> looper是运行在创建hander所在的线程中的
+	3> 子线程调用完looper之后需要looper.quit,或者looper.quitsafely 释放阻塞
+
+	1.Message:封装了任务携带的消息，和处理该任务的handler
+	int  what,arg1,arg2;
+	Object obj;
+	Bundle bundle;
+	2.looper 消息循环，内部封装有messageQueue队列
+		创建messageQueue，设置thread线程
+		looper循环调用messageQueue的next方法
+		一个线程只有一个looper,它是存在threadLocal里面
+	3.messageQueue
+		插入enqueueMessage,单链表插入
+		读取next,无限循环方法，如果没有消息就阻塞，否则返回消息并哦才能够单链表移除消息
+	4.handler
+		创建必须要；looper，不然就抛出异常
+		handler 接受消息在创建的线程执行
+		一个线程可以有多个handler
+	
+	5.主线程消息循环
+	ActivityThread通过ApplicationThread和AMS进程进程间通信，AMS以进程间通信的方法完成ActivityThread的
+	请求后回调后者的Binder方法，然后通过H发送消息，H收到消息后将ApplicationThread中的逻辑切换到
+	ActivityThread去执行，这就是切换到主线程去执行，这个过程就是主线程的消息循环模型。
+
+主线程中的Looper.loop()一直无限循环为什么不会造成ANR？
+主线程Looper从消息队列读取消息，当读完所有消息时，主线程阻塞。子线程往消息队列发送消息，
+并且往管道文件写数据，主线程即被唤醒，从管道文件读取数据，主线程被唤醒只是为了读取消息，
+当消息读取完毕，再次睡眠。因此loop的循环并不会对CPU性能有过多的消耗
+
+
+
+
+是因为线程的休眠状态：
+
+
+线程的几种状态
+很多读者会问，你说的好好地Looper，干嘛突然转到线程状态的知识点了呢？别急别急，请允许老衲细细道来。
+众所周知，线程的五大状态为：New、Runnable、Running、Blocked、Dead，而他们之间有者千丝万缕的关系，为了便于大家理解，看图说话
+
+
+
+
+线程状态图
+很多人会问，为什么有这么多Blocked?
+（1）新建状态（New）：新创建了一个线程对象。
+（2）就绪状态（Runnable）：线程对象创建后，其他线程调用了该对象的start()方法。该状态的线程位于可运行线程池中，变得可运行，等待获取CPU的使用权。
+（3）运行状态（Running）：就绪状态的线程获取了CPU，执行程序代码。
+（4）阻塞状态（Blocked）：阻塞状态是线程因为某种原因放弃CPU使用权，暂时停止运行。直到线程进入就绪状态，才有机会转到运行状态。阻塞的情况分三种：
+		等待阻塞：运行的线程执行wait()方法，JVM会把该线程放入等待池中。
+		同步阻塞：运行的线程在获取对象的同步锁时，若该同步锁被别的线程占用，则JVM会把该线程放入锁池中。
+		其他阻塞：运行的线程执行sleep()或join()方法，或者发出了I/O请求时，JVM会把该线程置为阻塞状态。当sleep()状态超时、join()等待线程终止
+		或者超时、或者I/O处理完毕时，线程重新转入就绪状态。
+		不管线程进入哪种阻塞状态，都得等所等待的事件（wait、sleep、join、synchronized、I/O）完成后，才可以进入就绪队列，排队等待CPU资源
+（5）死亡状态（Dead）：线程执行完了或者因异常退出了run()方法，该线程结束生命周期。
+
+	

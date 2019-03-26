@@ -1,0 +1,46 @@
+一.注解：
+	@Expose 暴露于JSON序列化/反序列化，excludeFieldsWithoutExposeAnnotation()时才会生效
+	@SerializedName  成员变量序列化/反序列化的名字，会覆盖掉FieldNamingPolicy
+	@Since 成员变量从哪个版本开始生效，setVersion()时才会生效
+	@Until 成员变量从哪个版本开始失效。setVersion()时才会生效
+	@JsonAdapter 拦截器
+		// 1.使用typeAdapter自定义序列化，反序列化类型，其余的注解全部失效
+        // 2.由于typeAdapter太复杂，所以使用简单的JsonSerializer与JsonDeserializer来序列化，反序列化
+        // 3.为了优化每次需要都注册，所以出现了@TypeAdapter注解，直接在类上面注解即可
+二.源码分析
+	JsonWriter: 内部有writer写入字符
+		beginObject,包含有“{”，校验ok后写入name,及更改栈顶状态
+		endObject,包含有“}”，校验ok后,及更改栈顶状态
+	JsonReader：类似于jsonwriter
+	TypeToken: 泛型 ，new TypeToken<List<User>>(){}.getType();来使用，内部封装有对其ParameterizedType，GenericArrayType类型的判断
+	JsonElement：代表着JSON中的元素类型，JsonObject/JsonArray/JsonPrimitive/JsonNull继承于JsonElement
+	（其中子类，JsonPrimitive代表着java中的基本数据类型）
+	typeAdapter:抽象类，内部封装write,read方法对数据进行序列化，反序列化，
+	有内部类nullSafe（），对非空进行排除
+	TypeAdapterFactory：是创造一些相似类型的TypeAdapter，如果只需要序列化，反序列化一种，只需要
+	JsonSerializer和JsonDeserializer接口即可，
+三.序列化策略
+	LongSerializationPolicy：枚举类，指定长整型的序列化类型，默认有DEFAULT，STRING两种类型，可继承它实现其他类型
+	FieldNamingStrategy：提供了一个自定义的字段命名机制
+	FieldNamingPolicy：一个枚举类，实现了FieldNamingStrategy，提供了一些默认的字段命名机制，
+					IDENTITY：原始机制；UPPER_CAMEL_CASE：首字母大写的驼峰映射；
+					UPPER_CAMEL_CASE_WITH_SPACES：用空格分隔的大写驼峰
+					LOWER_CASE_WITH_UNDERSCORES：下划线相连的小写映射;
+					LOWER_CASE_WITH_DASHES:虚线相连的小写映射
+	FieldAttributes：用来存取字段的属性：getName获取字段名，getDeclaringClass获取声明的类，
+					getDeclaredType获取字段的声明类型，getAnnotation获取注解。
+	ExclusionStrategy：一个用于定义排除策略的的接口。
+四.源码解读
+	  Gson(final Excluder excluder, final FieldNamingStrategy fieldNamingStrategy,
+      final Map<Type, InstanceCreator<?>> instanceCreators, boolean serializeNulls,
+      boolean complexMapKeySerialization, boolean generateNonExecutableGson, boolean htmlSafe,
+      boolean prettyPrinting, boolean lenient, boolean serializeSpecialFloatingPointValues,
+      LongSerializationPolicy longSerializationPolicy,
+      List<TypeAdapterFactory> typeAdapterFactories)
+			----------------> 创建有多个typeAdapter，序列化，反序列化都是按照此规则执行
+	  getAdapter()------------>首先从typeTokenCache中获取看看有没有相应类型的Adapter，第一次肯定没有，然后利用中间变量
+				  FutureTypeAdapter,从工厂中遍历去取，然后放入typeTokenCache中。FutureTypeAdapter是一个代理TypeAdapter,内部还是
+				  原TypeAdapter进行处理	
+	 toJson()-->从typeAdapter中取出并执行其write方法
+	 fromJson()-->从typeAdapter中取出并执行其read方法
+	 GsonBuilder--> 用来对Gson进行配置，比如注册TypeAdapter等等。最后调用create()返回Gson对象

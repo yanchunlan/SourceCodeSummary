@@ -1,0 +1,117 @@
+git init 初始化
+git add fileName 
+git commit -m "XXXX"
+git re flieNeme       ( rm flieName)
+
+使用ls -al查询代码仓库
+
+log信息
+git log 
+git log --pretty=oneline
+git reflog 
+
+回退
+git reset --hard HEAD^ (or 版本号部分)       
+
+git checkout --file    (可以从暂存区回复过来)
+git reset HEAD file  
+
+
+创建SSH Key
+$ ssh-keygen -t rsa -C "907740329@qq.com" 
+
+全局的配置
+$ git config --global user.name "yanchunlan"
+$ git config --global user.email "907740329@qq.com"
+
+添加一个远程仓库 (通过ssh方式)
+$ git remote add origin git@github.com:yanchunlan/xxx.git 
+$ git remote remove origin
+
+$ git push -u origin master  // 将本地的master分支推送到远程的master分支中
+$ git push -u origin dev    // 本地切换到dev分支然后将本地的dev分支推送到远程
+
+
+
+
+git branch  查看分支
+
+git branch ***   创建分支
+
+git checkout ****   切换分支
+
+git checkout -b ***   创建+切换分支
+
+git merge *** 合并分支到当前分支
+
+git merge --no-ff -m "merge with no-ff" dev   普通方式合并分支
+
+git branch -d *** 删除分支（合并之后才能删除，不然就只能强行删除 -d变成-D）
+
+
+长度相同的不能够合并分支  
+  git log --graph --pretty=oneline --abbrev-commit 查看分支情况
+
+
+（首先，master分支应该是非常稳定的，也就是仅用来发布新版本，平时不能在上面干活；
+
+那在哪干活呢？干活都在dev分支上，也就是说，dev分支是不稳定的，到某个时候，比如1.0版本发布时，再把dev分支合并到master上，在master分支发布1.0版本；
+
+你和你的小伙伴们每个人都在dev分支上干活，每个人都有自己的分支，时不时地往dev分支上合并就可以了。）
+ 
+
+
+git stash  存储现场
+
+git stash apply 恢复现场 
+ 
+git stash drop 删除现场 
+
+git stash pop 恢复+删除现场
+
+git  stash list 查看存储的现场信息
+
+（修复bug时，我们会通过创建新的bug分支进行修复，然后合并，最后删除；
+
+开发一个新feature，最好新建一个分支；
+
+当手头工作没有完成时，先把工作现场git stash一下，然后去修复bug，修复后，再git stash pop，回到工作现场。）
+
+
+
+git remote 查看远程库信息
+
+git remote -v 显示远程库更详细的信息
+
+git push origin dev (master) 推送分支 
+
+
+git push origin branch-name 本地推送分支到远程
+
+git pull  本地的和远程的合并
+git branch --set-upstream branch-name origin/branch-name  本地分支和远程分支建立连接
+
+
+
+
+git tag ***  打标签    
+
+git tag *** (-s  -a **  -m **  ) XXX 打标签到  (-s PGP签名  -a 标签名 -m标签说明 XXX 为commmitID)
+
+git tag 显示标签
+
+git show *** 查看标签
+
+
+
+
+git tag -d ** 删除标签
+
+git tag push origin ** 推送标签到远程 
+
+git tag push origin --tags 推送全部到远程
+
+
+git push origin :refs/tags/** 删除远程标签
+
+

@@ -1,0 +1,9 @@
+Android系统Binder机制中的四个组件Client、Server、Service Manager和Binder驱动程序的关系如下图所示：
+	
+	client  -- ipc--  server         serverManager
+		|				|					|
+		|				|					|
+		|				|					|
+				binder driver
+				 /dev/binder
+	

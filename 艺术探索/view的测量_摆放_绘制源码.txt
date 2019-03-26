@@ -1,0 +1,87 @@
+一.初识ViewRoot和DecorView
+	perfromTraversals会依次调用perfromMeasure，perfromLayout，perfromDraw，他们分别完成顶级View的measure，
+	layout和draw这三大流程，其中在perfromMeasure中会调用measure方法，在measure方法中又调用onMeasure,这个时
+	候measure流程就从父容器传递到子元素了，这样就完成了一次measure过程，接着子元素会重复父容器的measure过程，
+	如此反复的完成了整个View树的遍历，同理，其他两个也是如此
+	
+	measure過程决定了View的宽高，Measure完成之后可以通过getMeasureWidth和getMeasureHeight来获取View测量后的
+	高宽，在所有的情况下塔几乎都是等于最终的宽高，但是特殊情况除外，这点以后说，layout过程决定了view的四个
+	顶点的坐标和实际View的宽高，完成之后，通过getTop，getLeft，getRight,getBottom获得，，Draw决定了View的
+	显示，只有draw方法完成了之后，view才会显示在屏幕上
+二.理解MeasureSpec
+	1.MeasureSpec
+		代表一个32位int值，高两位代表SpecMode，低30位代表SpecSize，SpecMode是指测量模式，而SpecSize是指在某个测量模式下的规格大小
+		
+		UNSPECIFIED
+		父容器不对View有任何的限制，要多大给多大，这种情况一般用于系统内部，表示一种测量的状态
+
+		EXACTLY
+		父容器已经检测出View所需要的精度大小，这个时候View的最终大小就是SpecSize所指定的值，它对应于LayoutParams中的match_parent,和具体的数值这两种模式
+
+		AT_MOST
+		父容器指定了一个可用大小，即SpecSize，view的大小不能大于这个值，具体是什么值要看不同view的具体实现，它对应于LayoutParams中wrap_content
+	2.MeasureSpec 和 LayoutParams 的对应关系
+		在view测量的时候，系统会将layoutparams在父容器的约束下转换成对应的MeasureSpec，然后再根据这个MeasureSpec来确定view测量后的宽高
+		MeasureSpec不是唯一由layoutparams决定的，layoutparams需要和父容器一起决定view的MeasureSpec从而进一步决定view的宽高（padding+params.xxx+size）
+		
+		DecorView的MesourSpec：
+			LayouParams.MATCH_PARENT:精确模式，大小就是窗口的大小
+			LayouParams.WRAP_CONTENT:最大模式，大小不定，但是不能超出屏幕的大小
+			固定大小（比如100dp）:精确模式，大小为LayoutParams中指定的大小
+		普通控件的MesourSpec：
+			根据父容器的MeasureSpec同时结合view本身来layoutparams来确定子元素的MesureSpec，
+			参数中的pading是指父容器中已占有的控件大小，因此子元素可以用的大小为父容器的尺寸减去pading
+		
+		当View采用固定宽/高的时候，不管父容器的MeasureSpec是什么，View 的MeasureSpee都是精确模式，那么View也是精准模式并且其大小是父容器的剩余空间；如果父容器是最大模式，
+		那么View也是最大模式并且其大小不会超过父容器的剩余空间。当View的宽/高是wrap_content时，不管父容器的
+		模式是精准还是最大化，View的模式总是最大化,并且大小不能超过父容器的剩余空间，可能读者会发现，在我们
+		的分析中漏掉了UNSPECIFIED模式，那是因为这个模式主要用于系统内部多次Measure的情形，一般来说，我们不需要关注此模式
+	3.View的工作流程
+		1.measure过程
+			1.View的measure过程
+			如果View没有设置背景，那么返回android:minwidth这个属性所指定的值，这个值可以为0：如果View设置了背景，则返回 android:minwidth和背景的最小宽度这两者中的最大值，getSuggestedMinimumWidth和getSuggestedMinimumHeight的返回值就是View 在UNSPECIFIED情况下的测量宽/高
+		2.ViewGroup的measure过程
+			除了完成自己的measure过程以外，还会遍历去调用所有子元素的measure方法
+			怎么知道View已经测量完成，获取其值有四种方法：
+				 (1)Activity/View#onWindowFocusChanged。
+					View已经初始化完毕了，宽/高已经准备好了，这个时候去获取宽/高是没问题的。需要注意的是，onWindowFocusChanged会被调用多次，
+					当Activity的窗口得到焦点和失去焦点时均会被调用一次。具体来说，当Activity继续执行和暂停执行时，onWindowFocusChanged均会被调用，
+					如果频繁地进行onResume和onPause，那么onWindowFocusChanged也会被频繁地调用
+				（2）view.post(runnable)
+					通过post可以将一个runnable投递到消息队列，然后等到Lopper调用runnable的时候，View也就初始化好了（主要是因为这个界面post的消息
+					肯定是在View创建执行的后面执行的，所以其调用的时候，肯定是有值得）
+				（3）ViewTreeObserver
+					使用ViewTreeObserver的众多回调可以完成这个功能，比如使用OnGlobalLayoutListener这个接口，当View树的状态发生改变或者View树内
+					部的View的可见性发生改变，onGlobalLayout方法就会回调，因此这是获取View的宽高一个很好的例子，需要注意的是，伴随着View树状态
+					的改变，这个方法也会被调用多次
+				(4)view.measure(int widthMeasureSpec , int heightMeasureSpec)
+					手动测量View的宽高，这种方法比较复杂，这里要分情况来处理，根据View的LayoutParams来处理
+						match_parent
+							直接放弃，无法测量出具体的宽高，根据View的测量过程，构造这种measureSpec需要知道parentSize，即父容器的剩下空间，
+							而这个时候我们无法知道parentSize的大小，所以理论上我们不可能测量出View的大小
+						具体的数值
+							int widthMeasureSpec = View.MeasureSpec.makeMeasureSpec(100, View.MeasureSpec.EXACTLY);
+							int heightMeasureSpec = View.MeasureSpec.makeMeasureSpec(100, View.MeasureSpec.EXACTLY);
+							mTextView.measure(widthMeasureSpec,heightMeasureSpec);
+						warap_content
+							int widthMeasureSpec = View.MeasureSpec.makeMeasureSpec((1<<30)-1, View.MeasureSpec.AT_MOST);
+							int heightMeasureSpec = View.MeasureSpec.makeMeasureSpec((1<<30)-1, View.MeasureSpec.AT_MOST);
+							mTextView.measure(widthMeasureSpec,heightMeasureSpec);
+						
+							注意到(1<<30)-1， 通过分析MeasureSpec的实现可以知道，View的尺寸三十位的二进制表示，也就是说最大
+							是30个1（2^30-1）,也就是（1<30-1）,在最大的模式下，我们用View理论上能支持最大值去构造MwasureSpec是合理的
+			2.layout过程
+				Layout的作用是ViewGroup用来确定子元素的作用的，当ViewGroup的位置被确认之后，
+				他的layout就会去遍历所有子元素并且调用onLayout方法，在layout方法中onLayou又被调用
+				
+				getWidth 测量完成有一个值，layout之后有一个值，但是最终是layout之后的值
+			3.draw过程
+				View的绘制过程由如下几个步骤：
+					1.绘制背景
+					2.绘制自己
+					3.绘制children
+					4.绘制装饰
+				如果一个View不需要绘制任何内容,那么设置这个标记位为true以后，系统会进行相应的优化。默认情况下，View没有启用这个
+				校化标记位，但是ViewGroup会默认启用这个优化标记位。这个标记位对实际开发的意义是。当我们的自定义控件继承于ViewGroup
+				并且本身不具备绘制功能时，就可以开启这个标记位从而便于系统进行后续的优化。当然，当明确知道一个ViewGroup需要通过
+				onDraw来绘制内容时，我们需要显式地关闭WILL_NOT_DRAW这个标记位

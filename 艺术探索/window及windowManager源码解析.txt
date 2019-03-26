@@ -1,0 +1,107 @@
+windowManager 管理window,window的具体实现是WindowManagerService，window管理view,
+（view包含Activity,Dialog还是Toast）
+一.Window和WindowManager
+	WindowManager来创建一个Window中
+		Flag参数表示window的属性，他有很多选项，我们挑几个重点的
+		FLAG_NOT_FOCUSABLE
+			表示窗口不需要获取焦点，也不需要接收各种事件，这属性会同时启动FLAG_NOT_TOUCH_MODAL，	
+			最终的事件会传递给下层的具体焦点的window
+		FLAG_NOT_TOUCH_MODAL
+			在此模式下，系统会将当前window区域以外的单击事件传递给底层的Window，此前的Window区域
+			以内的单机事件自己处理，这个标记很重要，一般来说都需要开启，否则其他window将无法获取单击事件
+		FLAG_SHOW_WHEN_LOCKED
+			可以让window显示在锁屏上
+		
+		
+		ype参数表示window的类型，window有三种类型，分别是应用，子，系统，应用window对应一个Activity,
+		子Window不能单独存在，需要依赖一个父Window，比如常见的Dialog都是子Window,系统window需要声明权限，
+		比如系统的状态栏
+		
+		Window是分层的，每个Window对应着z-ordered,层级大的会覆盖在层级小的Window上面，这和HTML中的z-index
+		的概念是一致的，在这三类中，应用是层级范围是1-99，子window的层级是1000-1999，系统的层级是2000-2999。
+		这些范围对应着type参数，如果想要window在最顶层，那么层级范围设置大一点就好了，很显然系统的值要大一些，
+		系统的值很多，我们一般会选择TYPE_SYSTEM_OVERLAY和TYPE_SYSTEM_ERROR，记得要设置权限哦；
+		
+		
+		ViewManager的方法，addView，updateViewLayout，removeView
+		
+二.Window的内部机制
+
+	window(抽象的)，一个Window对应着一个View和一个ViewRootImpl,Window和View通过ViewRootImpl建立关系
+	
+	1.Window的添加过程
+	
+		windowManager->WindowManagerImpl->WindowManagerGlobal ( add 到缓存里面去，在ViewRootImpl.setView(view, wparams, 
+		panelParentView);) -> requestLayout()->scheduleTraversals-> 开始绘制View , pokeDrawLockIfNeeded->
+		mWindowSession.pokeDrawLock(其真实实现类是IWindowSession，是一个Binder对象，也是一次真正意义上的IPC操作)
+			WindowManagerGlobal.addView() -> WindowManagerService-> addWindow
+				1.检查参数是否合法，如果是子Window还需要调整一下参数
+				2.创建ViewRootImpl并将View添加到列表中
+					private final ArrayList<View> mViews = new ArrayList<View>();
+					private final ArrayList<ViewRootImpl> mRoots = new ArrayList<ViewRootImpl>();
+					private final ArrayList<WindowManager.LayoutParams> mParams = new ArrayList<WindowManager.LayoutParams>();
+					private final ArraySet<View> mDyingViews = new ArraySet<View>();
+						mViews存储所有window所对应的View，mRoots存储是所有window所对应的ViewRootImpl，mParams存储是所对应的布局参
+						数 ，而mDyingViews则存储那些正在被删除的对象
+				3.通过ViewRootImpl来更新界面并完成Window的添加
+				
+	2.Window的删除过程
+		windowManager->WindowManagerImpl->WindowManagerGlobal.removeView -> findViewLocked->
+		数组遍历,removeViewLocked()删除->ViewRootImpl
+		
+		注意：
+			在windowmanager中提供了两种接口removeView和removeViewImmediate，他们分别表示异步删除和同步删除，其中removeViewImmediate，
+			使用起来要格外注意，一般来说不需要使用此方法来删除window以免发生意外的错误，这里主要是异步删除的问题，具体的删除操作是
+			ViewImple的die方法来完成的，在异步删除的情况下，die只是发生一个删除的请求后就返回了，这个时候View并没有完成删除的操作，
+			所有最后会将其添加到mDyingViews中，mDyingViews表示待删除的View列表
+		
+			在die方法内部只是做了简单的判断，那么就发送了一个MSG_DIE的消息，ViewRootImpl中的mHandler会处理此消息并且并调用doDie方法，
+			如果是同步删除就会直接调用doDie方法，在doDie方法内部会操作dispatchDetachedFromWindow，真正删除window就是在这里面实现的，
+			他主要做了四件事
+					1.垃圾回收相关的工作，比如清除数据和消息，移除回调
+					2.通过Session的remove方法来删除window,这同样是一个IPC的过程，最终会调用wms的removeWindow方法
+					3.调用view的dispatchDetachedFromWindow 
+					方法，在内不会调用onDetachedFromWindow,他做了一些回收资源或者停止动画的一些操作
+					4.调用WindowManagerGlobal的doRemoveView方法刷新数据
+	3.Window的更新过程
+			windowManager->WindowManagerImpl->WindowManagerGlobal的updateViewLayout
+			updateViewLayout做的方法比较简单，首先他更新View的LayoutParams替换老的，接着再更新下ViewRootimpl中的LayoutParams，
+			这一步是通过viewrootimpl的setLayoutParams来做的，在ViewRootImpl中会通过scheduleTraversals方法来对View，测量，布局，
+			重绘等等，除了view本身的重绘之外，ViewRootImpl还会通过WindowSession来更新Window的视图，这个过程最终是WindowManagerService
+			的relayoutWindow来实现的，具体也是一个IPC的过程
+			
+三.Window的创建过程
+	1.Activity的Window创建过程
+		启动activity -> ActivityThread.perfromLaunchActivity() -> activity.attach
+			系统会创建activity所属的window对象并为其设置回调接口，window对象的创建过程是由PolicyManager的akeNewWindow方法实现的，
+			由于activity实现了window的callback方法接口，因此当window接受到外界的状态改变的时候就会去调用activity的方法，callback
+			接口中的方法很多，但是有几个确实我们非常熟悉的，如onAttachedToWindow,onDeatchedFromWindow,dispatchTouchEvent
+			
+			window创建完成，
+			
+			接下来就是：activity的视图是怎么依附在window上
+				1.如果没有DecorView就去创建他
+				2.将View添加到DecorView的mContentParent中
+				3.回调Activity的onCreateChanged方法来通知Activity视图已经发生改变
+				
+			到此布局放在DecorView了，但是DecorView并没有被windowmanager加入window
+		
+				
+			在activityThread的makeVisible中
+				void makeVisible() {
+				if (!mWindowAdded) {
+					ViewManager wm = getWindowManager();
+					wm.addView(mDecor, getWindow().getAttributes());
+					mWindowAdded = true;
+				}
+				mDecor.setVisibility(View.VISIBLE);
+				}
+	2.Dialog的Window创建过程
+		1.创建Window
+		2.初始化DecorView并将Dialog的师徒添加到DecorView
+		3.将DecorView添加到window并且显示
+			注意：dialog 传入的context 需要是activity的，因为是当前activity上面的window 上面添加View
+	3.Toast的Window创建过程
+		
+		
+			

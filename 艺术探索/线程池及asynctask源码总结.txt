@@ -1,0 +1,78 @@
+﻿一.	AsyncTask(串行执行)
+		首先系统会把AsyncTask的Params参数封装为FutureTask对象，FutureTask是一个并发类，在这里他充当了Runnable的作用，
+		接着这个FutureTask会交给SerialExecutor的execute方法去处理，SerialExecutor的execute会将FutureTask对象插入到任
+		务列表的mTask中，如果这个方法没有正在活动的AsyncTask任务，那么就会调用SerialExecutor的scheduleNext的方法来执
+		行下一个AsyncTask任务，同时当一个AsyncTask任务执行后，AsyncTask会继续执行其他任务直到任务都被执行完为止
+		
+		AsyncTask中有两个线程池（SerialExecutor和THREAD_POOL_EXECUTOR）和一个Handler，其中线程池SerialExecutor用于任
+		务的排队，而线程池THREAD_POOL_EXECUTOR用于真正的执行任务，IntentalHandler用于将执行幻境从线程池切换到主线程，
+		关于线程池的概念后面会说道，其本质仍然是线程的调用mWorker的call方法，因此mWorker的call方法最终会将线程池中执行
+		
+		在mWorker的call方法里，首先将mTaskInvoked设置为true,表示当前任务已经被调用过了，然后执行AsyncTask的doInBackgroup
+		方法，接着将其返回值传递给postResult方法,postResult会通过sHandler发送给一个MESSAGE_POST_RESULT
+		
+		InternalHandler是一个静态的Handler对象，为了能够将执行环境切换到主线程，这就是要求sHandler这个对象必须在主线程创建，
+		由于静态成员会在加载类的时候进行初始化，因此这就变相要求AsyncTask的类必须在主线程加载，否则无法工作，同时sHandler
+		收到MESSAGE_POST_RESULT这个消息后会调用AsyncTask的finish方法
+二.	handlerThread
+		HandlerThread 继承了Thread，踏实一种可以使用Handler的Thread，他的实现也很简单，就是在run方法中通过
+		Looper.prepare来创建消息队列，并通过loop来开启消息循环
+三.	IntentService
+		当IntentService第一次启动的时候，onCreate会创建一个HandlerThread，然后使用它的Looper来构造一个Handler对象mServiceHandler，
+		这样通过mServiceHandler发送的消息最终都会在HandlerThread中执行，从这个角度来看，IntentService也可以用于执行后台任务，
+		每次启动onstartCommon都会执行一次，所以在这里执行每一个后台任务的Intent
+
+		这里只是发送一个一个消息，这个消息会在HandlerThread中处理，mServiceHandler收到消息后，会将Intent对象传递给onHandlerIntent
+		方法去处理，注意这个Intent对象的内容和外界的startService中的intent是完全一致的，通过这个Intent对象可以解析出外界启动IntentService
+		所传递的参数，通过这些参数可以区分具体的任务，当onHandleIntent方法结束之后，IntentService会通过stopSelf方法来尝试停止服务，
+		这里之所以采用stopSelf（int id）而不会stopSelf是因为stopSelf会立刻停止服务，而这个时候可能还有任务没有执行完成，
+		stopSelf（int id）会让所有任务都完成后才执行的
+		
+		IntentService的onHandleIntent方法是一个抽象方法，他需要我们在子类中实现，他的作用是从Intent参数中区分具体的任务并执行这些任务，
+		如果目前只存在一个后台任务，那么onHandlerIntent方法执行完之后，stopSelf(int id)就会直接停止服务，如果目前存在多个后台任务，
+		那么当onHandleIntent方法执行完最后一个任务时，stopSelf(int id)才会停止服务，另外由于每执行一个后台任务就必须启动一次IntentService，
+		而IntentService内部则通过消息的方式向HandlerThread请求执行任务，Handler中的Looper是顺序处理消息的，这就意味着IntentService
+		也是顺序执行的，当有多个后台任务时同时存在的，这些后台任务会按照外界发起的顺序排队执行
+四.	线程池
+		ThreadPoolExecutor(int corePoolSize,
+                              int maximumPoolSize,
+                              long keepAliveTime,
+                              TimeUnit unit,
+                              BlockingQueue<Runnable> workQueue
+                              ThreadFactory threadFactory)
+		corePoolSize 
+		线程池的核心线程数，默认情况下，核心线程会在线程池中一直存活，即使他们处于闲置状态，如果将ThreadPoolExecutor的allowCoreThreadTimeOut属性设置为true,那么闲置的核心线程在等待新任务到来时就会有超市策略，这个间隔由keepAliveTime指定，当等待时间超过keepAliveTime所指的时长后，核心线程就会被终止
+		maximumPoolSize 
+		线程池所容纳最大的线程数，当活动线程数达到这个数值后，后续的新任务将会被阻塞
+		keepAliveTime 
+		非核心线程闲置时的超时时长，超过这个时长，非核心线程就会被回收，当ThreadPoolExecutor的allowCoreThreadTimeOut属性设置为true时，keepAliveTime同样会作用于核心线程
+		unit 
+		用于指定keepAliveTime参数的时间单位，这是一个枚举，常用的有TimeUnit,毫秒，秒，分钟等
+		workQueue 
+		线程池的任务队列，通过线程池的execute方法提交的Runnable对象会存储在这个参数中
+		threadFactory 
+		线程工厂，为线程池提供创建新线程的功能，ThreadFactory是一个接口，他只有一个方法，Thread new Thread(Runnable r)
+		
+		ThreadPoolExecutor执行任务时大致遵守如下规则：
+			1.如果线程池中的线程数量未达到核心线程的数量，那么直接启动一个核心线程来执行任务
+			2.如果线程池中的线程数量已经达到或者超过核心线程的数量，那么任务会被插入到任务队列中排队等待执行
+			3.如果在步骤2中无法将任务插入到任务队列中，这往往是由于任务队列已满，这个时候如果线程数量未达到线程池规定的最大值，那么会立刻启动一个非核心线程来执行任务。
+			4.如果步骤3中线程数量已经达到线程池规定的最大数量，那么就会拒绝执行此任务，ThreadPoolExecutor会调用RejectedExecutionHandler的rejectedExecution方法来通知调用者
+	线程池的分类
+		FixedThreadPool 
+			通过Executors的newFixedThreadPool方法来创建，他是一种线程数量固定的线程池，当线程池处于空闲的状态时，他们并不会被回收，除非线程池被关闭了，当所有的线程池都处于活动状态时，
+			新任务都处于等待状态，直到有线程空闲出来，由于FixedThreadPool只有核心线程并且只有核心线程不会被回收，这意味着他能够更快加速的相应外界的请求，
+			newFixedThreadPool方法的实现如下，可以发现FixedThreadPool中只有核心线程并且这些核心线程没有超时机制，另外任务大小也是没有限制的
+		CachedThreadPool
+			通过Executors的newCachedThreadPooll来创建，这是一种线程数量不定的线程池，他只有非核心线程，并且其最大线程数为Integer.MAX_VALUE,由于Integer.MAX_VALUE是一个很大的数，
+			实际上就相当于最大线程数可以任意大，当线程池中的线程都处于活动状态的时候，线程池会创建新的线程来处理新任务，否则就会利用空闲的线程来处理新任务，
+			线程池的空闲线程都有超时机制，这个超时机制为60秒，超过就会被回收，和上面不同的事，CachedThreadPool的任务队列其实相当于一个空集合，这就导致任何
+			任务都会立即被执行，因为在这种场景下，SynchronousQueue是无法插入任务的，SynchronousQueue是一个非常特殊的队列，在很多情况下可以把他简单理解为
+			一个无法存储的元素队列，由于他在实际中较少使用，这里就不深入探讨它了，从SynchronousQueue的特性来看，这类线程池比较适合执行大量的耗时较少的任务，
+			当整个线程池属于闲置状态的时候，线程池中的线程都会超时而被停止，这个时候CachedThreadPool之中实际上是没有任何线程，他几乎是不占用任何资源的
+		ScheduleThreadPool
+			通过ScheduleThreadPool方法来创建，他的核心线程数量是固定的，而非核心线程是没有限制id，并且当非核心线程闲置时会立即回收
+			ScheduleThreadPool这类主要用于定时任务和具有固定周期的重复任务
+		SingleTheardExecutor
+			通过newSingleTheardExecutor创建，内部只有一个核心线程，确保所有的任务都在同一个线程按顺序执行，SingleTheardExecutor的意义是统一所有的外界任务到同一个线程中，这使得这些任务之间不需要处理线程同步的问题
+		

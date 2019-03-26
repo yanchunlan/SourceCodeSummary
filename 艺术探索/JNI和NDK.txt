@@ -1,0 +1,69 @@
+一.JNI的开发流程
+	JNIEXPORT,JNICALL:他们是JNI所定义的宏，可以在jni.h这个头文件中查看
+	
+	
+	防止C++使用了代码，需要使用这个来解决在c里面出现的问题
+		#ifdef _cplusplus
+		extern "C"{
+		#endif
+		
+		
+	gcc,可以编译so库并在Java中调用：
+	C++：gcc -shared -I /usr/lib/jvm/java-7-openjdk-amd64/include -fPIC test.cpp -o libjni-test.so
+	C:gcc -shared -I /usr/lib/jvm/java-7-openjdk-amd64/include -fPIC test.c -o libjni-test.so
+	
+二.NDK的开发流程
+	配置ndk环境
+	
+	#Android.mk
+		LOCAL_PATH := $(call my-dir)
+		
+		include $(CLEAR_VARS)
+		
+		LOCAL_MODULE := jni-test // 模块的名称
+		LOCAL_SRC_FILES := test.cpp //参与编译的源文件
+		
+		include $(BUILD_SHARED_LIBRARY)
+
+	#Application.mk
+		APP_ABI := armeabi
+		
+	配置：
+		ndk-build命令会默认jni目录为本地源码的目录，如果庅存放的目录名字不是jni则编译不通过
+		然后再创建一个jniLibs放进去即可
+			sourceSets.main{
+				jniLibs.srcDir 'src/main/jniLibs'
+			}
+			
+三.JNI的数据类型和类型签名
+
+	基本类型
+	引用类型
+	基本类型签名：
+		类的签名比较简单，采用了L+包名+类名+.的形式，只需要将其中的.替换为/即可，比如
+		java.lang.String，他的签名是Ljava/lang/String,注意末尾也是签名的一部分
+		
+		基本数据类型的签名是有规律的，一般是首字母的大写，但是boolean除外，因为B已经被byte占用，
+		而long的签名之所以不是L，那是因为L表示的是类的签名
+		
+		对象和数组的签名稍微复杂一些,对于对象来说,他的签名就是对象所属的类的签名,比如String对象，
+		他的签名是Ljava/lang/String，对于数组来说，他的签名为【+类型签名，比如int数组，其类型为int，
+		而int的签名为I，所以int数组的签名为【I，同理就是可以得出如下的签名对应关系:
+			char[] [C
+			float[] [F
+			double[] [D
+			long[] [J
+			String[] [Ljava/lang/String
+			Object[] [Ljava/lang/Object
+			
+		对于多维数组来说，他的签名为n+[+类型签名，其中n表示数组的维度，比兔int[][]的签名[[I
+
+		方法的签名为（参数类型签名）+返回值类型签名，这有点不好理解，举个例子，如下方法：boolean 
+		fun1(int a,double b,int[]c)，根据签名的规定可以知道，他的参数类型的签名连在一起读ID[I,返回值类型的签名为Z，
+		所以整个办法的签名就是（ID[I）Z。再举例子:
+			int fun1()  签名为（）I
+			void fun1（int i） 签名为（I）V
+			
+四.JNI调用JAVA方法的流程
+	JNI调用Java方法的流程是闲通过类名找到类，然后再根据方法名找到方法的id，最后就可以调用这个方法了，
+	如果调用JAVA中的非静态方法，那么需要构造出类的对象后才能调用 

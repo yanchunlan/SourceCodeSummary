@@ -1,0 +1,228 @@
+一.	View的事件体系
+	1.	View的基础知识
+		1>view的位置
+			Left = getLeft();
+			Right = getRight();
+			Top = getTop();
+			Bottom = getBottom():
+				x,y，translationX,translationY,其中x，y是View左上角的图标，
+				而translationX,translationY是左上角相对父容器的便宜角量，这几个参数也是相对于父容器的坐标，
+				并且translationX,translationY的默认值野0
+				
+				x = left + translationX
+				y = top + translationY
+					平移的时候，此时发生改变的是x,y,translationX,translationY
+			上面全部值都是相对于父容器
+		2>MotionEvent和TouchSlop
+		MotionEvent
+			ACTION_DOWN一手指刚接触屏幕
+			ACTION_MOVE一—手指在屏幕上移动
+			ACTION_UP——手机从屏幕上松开的一瞬间
+				getX/getY返回的是相对于当前View左上角的x和y坐标，
+				geiRawX/getRawY返回的是相对于手机屏幕左上角的x和y坐标
+		TouchSlop
+			TouchSlop是系统所能识别出的被认为是滑动的最小距离,换句话说，当手指在屏慕上滑动时，
+			如果两次滑动之间的距离小于这个常量，那么系统就不认为你是在进行滑动操作，原理很简单，
+			滑动的距离太短，系统不认为他在滑动，这是一个常量，和设备无关，在不同的设备下这个值
+			可能不同，通过如下方式即可获取这个常量：ViewConfigurtion.get(getContext()).getScaledTouchSlop,
+			这个常量有什么意义呢?当我们在处理滑动时，可以利用这个常量来做一些过滤，比如当两次滑动事件的
+			滑动距离小于这个值，我们就可以认为未达到常动距离的临界值，因此就可以认为它们不是滑动，这样
+			做可以有更好的用户体验在fraweworks/base/core/res/va;ues/config.xml中，就有这个常量的定义
+		3>VelocityTracker,GestureDetector和Scroller
+		VelocityTracker
+			速度追踪，用于追踪手指在屏幕上滑动的速度,在View的onTouchEvent方法里追踪
+			  VelocityTracker velocityTracker = VelocityTracker.obtain();
+			  velocityTracker.addMovement(event);
+			获取速度：
+				velocityTracker.computeCurrentVelocity(1000);
+				int xVelocity = (int) velocityTracker.getXVelocity();
+				int yVelocity = (int) velocityTracker.getYVelocity();
+				速度 = （终点位置 -  起点位置）/时间段（实际就是像素长度/这个时间）
+			清除并回收：
+				velocityTracker.clear();
+				velocityTracker.recycle();
+		GestureDetector（手势检测，或者OnDoubleTapListener 实现双击的监听）
+			初始化：
+				GestureDetector mGestureDetector = new GestureDetector(this);
+				//解决长按屏幕后无法拖动的现象
+				mGestureDetector.setIsLongpressEnabled(false);
+			开启监听：
+				boolean consum = mGestureDetector.onTouchEvent(event);
+				return consum;
+		Scroller(弹性滑动)
+			scroller = new Scroller(getContext());
+			private void smoothScrollTo(int destX,int destY){
+					int scrollX = getScrollX();
+					int delta = destX - scrollX;
+					//1000ms内滑向destX,效果就是慢慢的滑动
+					scroller.startScroll(scrollX,0,delta,0,1000);
+					invalidate();
+				}
+			@Override
+			public void computeScroll() {
+					if(scroller.computeScrollOffset()){
+						scrollTo(scroller.getCurrX(),scroller.getCurrY());
+						postInvalidate();
+					}
+			 } 
+	2.	View的滑动
+		常用的滑动方式：
+			第一种是通过View本身提供的scrollTo/scrollBy方法来实现滑动；
+			第二种是通过动画给View施加平移效果来实现滑动；
+			第三种是通过改变Viev的LayoutParams使得View重新布局从而实现滑动
+		1>.使用scrollTo/scrollBy
+			scrollBy实际上也是调用了scrolrTo方法，它实现了基于当前位置的相对滑动，
+			而scrollTo则实现了基于所传递参数的绝对滑动
+			
+			mScrollX的值总是等于View左边缘和View内容左边缘在水平方向的距离，
+			而mScrollY的值总是等于View上边缘和View内容上边缘在竖直方向的距离
+			实际指定的滑动都是其内容的滑动
+				mScrollX和mscrollY的单位为像素，并且当View左边缘在Veiw内容左边缘的右边时，
+				mScrolX为正值，反之为负值；当View上边缘在View内容上边缘的下边时，
+				mScrollY为正值，反之为负值（反正跟View的坐标是相反的）
+		2>.使用动画
+			根本就是操作 View的translationX，translationY属性
+		3>.改变布局参数
+			直接改变LayoutParams参数，就相当于相对于父控件移动了位置
+		区别：
+			scrollTo/scrollBy：操作简单，适合对View内容的滑动：
+			动画：操作简单，主要适用于没有交互的Visw和实现复杂的动画效果
+			改变布局参数：操作稍微复杂，适用于有交互的View
+	3.	弹性滑动
+		实现方式有Scroller，Handler#PostDelayed以及Thread#Sleep
+		1>.Scroller
+			本身并不会滑动，需要配合computeScroll方法才能完成弹性滑动的效果，不断的让View重绘，
+			而每次都有一些时间间隔，通过这个事件间隔就能得到他的滑动位置，这样就可以用ScrollTo方法
+			来完成View的滑动了，就这样，View的每一次重绘都会导致View进行小幅度的滑动，而多次的小幅度
+			滑动形成了弹性滑动，整个过程他对于View没有丝毫的引用，甚至在他内部连计时器都没有
+		2>.通过动画
+		3>.使用延时策略
+	4.	View的事件分发
+		1>事件的传递规则
+			puhlic boolean dispatch fouchEvent(MotionEvent ev)
+			用来进行事件的分发。如果事件能够传递给当前View，那么此方法一定会被调用，返回结果受当前View的onTouchEvent
+			和下级View的dispatchTouchEvent方法的影响，表示是否消耗当前事件。
+
+			public boolean onIntercept fouchEven(MotionEvent event)
+			在上述方法内部调用，用来判断是否拦截某个事件，如果当前View拦截了某个事件，那么在同一个事件序列当中，
+			此方法不会被再次调用，返回结果表示是否拦截当前事件
+
+			public boolean onTouchEvent(MotionEvent event)
+			在dispatchTouchEvent方法中调用，用来处理点击事件，返回结果表示是否消耗当前事件，如果不消耗，
+			则在同一个事件序列中，当前View无法再次接收到事件。
+				@Override
+				public boolean dispatchTouchEvent(MotionEvent ev) {
+					boolean consume = false;
+					if(onInterceptTouchEvent(ev)){
+						consume = onTouchEvent(ev);
+					}else {
+						consume = child.dispatchTouchEvent(ev);
+					}
+					return consume;
+
+				}
+				
+			传递规则总结：
+			
+				对于一个根ViewGroup来说，点击事件产生以后，首先传递给 
+				产，这时它的dispatchTouchEvent就会被调用，如果这个ViewGroup的onIntereptTouchEvent方法返回true
+				就表示它要控截当前事件，接着事件就会交给这个ViewGroup处理，则他的onTouchEvent方法就会被调用；
+				如果这个ViewGroup的onIntereptTouchEvent方法返回false就表示不需要拦截当前事件，这时当前事件就
+				会继续传递给它的子元素，接着子元素的onIntereptTouchEvent方法就会被调用，如此反复直到事件被最终处理。
+
+				当一个View需要处理事件时，如果它设置了OnTouchListener，那么OnTouchListener中的onTooch方法会被回
+				调。这时事件如何处理还要看onTouch的返回值，如果返回false,那当前的View的方法OnTouchListener会被
+				调用；如果返回true，那么onTouchEvent方法将不会被调用。由此可见，给View设置的OnTouchListener，
+				其优先级比onTouchEvent要高，在onTouchEvent方法中，如果当前设置的有OnClickListener，那么它的onClick
+				方法会用。可以看出，平时我们常用的OnClickListener，其优先级最低，即处于事尾端
+				
+			
+				Activity>Window-View，即事件总是先传递给Activity,Activity再传递给Window，最后Window再传递给
+				顶级View顶级View接收到事件后，就会按照事件分发机制去分发事件。考虑一种情况，如果一个view的
+				onTouchEvent返回false，那么它的父容器的onTouchEvent将会被调用，依此类推,如果所有的元素都不
+				处理这个事件，那么这个事件将会最终传递给Activity处理，即Activity的onTouchEvent方法会被调用
+				
+		2>事件分发的源码解析
+			activity的分发过程：
+				activity->window->photoWindow->decorView->ViewGroup->View
+				
+			顶级View对事件的分发过程：
+	
+				点击事件达到顶级View（一般是一个ViewGroup)以后，会调用ViewGiroup的的dispatchTouchEvent方法，
+				然后的逻辑是这样的：如果顶级ViewGroup拦截事件即 onIntercepTouchEvent返回true，则事件由ViewGroup处理，
+				这时如果ViewGroup的mOnTouchListener被设置，则onTouch会被调用，
+				否则onTouchEvent会被调用。也就是说如果都提供的话，onTouch会屏蔽掉onTouchEvent。在onTouchEvent中，如果设置了 
+				mOnTouchListener,则onClick会被调用。如果顶级ViewGroup不拦截事件，则事件会传递给它所在的点击事件链上的子View，
+				这时子View的dispatchTouchEvent会被调用。到此为止，事件已经从顶级View传递给了下一层View，接下来的传递过程和顶级View是一致的
+				
+				事件类型为ACTION_DOWN或者mFirstTouchTarget!=null,ACTION_DOWN事件好理解，那么mFirstTouchTargetl=null是
+				什么意思呢？这个从后面的代码逻辑可以看 
+				出来，当事件由ViewGroup的子元素成功处理时，mFirstTouchTarget会被赋值并指向子元素，换种方式来说，当ViewGroup不拦截
+				事件并将事件交由子元素处理时mFirstTouchTarget != null。反过来，一旦事件由当前ViewGroup拦截时，mFirstTouchTarget !=null
+				就不成立。那么当ACTION_MOVE和ACTION_UP事件到来时，由于actionMasked == MotionEvent.ACTION_DOWN|| mFirstTouchTarget != null
+				这个条件为false，将导致ViewGroup 的onInterceptTouchEvent不会再被调用，并且同一序列中的其他事件都会默认交给它处理。
+
+				当然，这里有一种特殊情况，那就是FLAG_DISALLOW_INTERCEPT标记位，这个标记位是通过requestDisallowInterceptTouchEvent
+				方法来设置的，一般用于子View中。FLAG_DISALLOW_INTERCEPT一旦设置后，ViewGroup将无法拦截除了ACTION_DOWN以外的其他
+				点击事件。为什么说是除了ACTION_DOWN以外的其他事件呢?这是因为ViewGroup在分发事件时，如果是ACTION_DOWN就会重置 
+				FLAG_DISALLOW_INTERCEPT这个标记位，将导致子View中设置的这个标记位无效。因此，当面对ACTION_DOWN事件时，ViewGroup
+				总是会调用自己的onInterceptTouchEvent方法来询问自己是否要拦截事件，这一点从源码中也可以看出来,在下面的代码中，
+				ViewGroup会在ACTION_DOWN事件到来时做重置的作用。而在requsstTouchState方法中会对FLAG_DISALLOW_INTERCEPT进行重置，
+				因此子View调用requestDisallowInterceptTouchEvent方法并不能影响ViewGroup对ACTION_DOWN事件的处理
+				
+				当ViewGroup决定拦截事件之后，那么后续的点击事件，将会默认交给他处理并且不再调用他的onInterceptTouchEvent方法，
+				这就证实了我们刚才所说的标记位无效的理论，当然前提是ViewGroup不拦截ACTION_DOWN事件
+				
+				总结：
+				ViewGroup->onIntercepTouchEvent->mOnTouchListener(onTouch)->onTouchEvent
+				如果不拦截  -> 子View的 dispatchTouchEvent
+				
+				0>如果ViewGroup的 onIntercepTouchEvent 返回true,就会拦截，并实现了mOnTouchListener，执行touch,否则onTouchEvent调用
+				1>ViewGroup的action_Down是一定会执行onIntercepTouchEvent的，其他的是否拦截，由子控件，如果ViewGroup拦截则target==null成立，
+				则直接再分发就拦截下来了，不会执行后续的onIntercepTouchEvent了
+				2>requestDisallowInterceptTouchEvent,FLAG_DISALLOW_INTERCEPT一旦设置后，ViewGroup将无法拦截除了ACTION_DOWN以外的其他点击事件
+				3>viewGroup决定拦截事件时候，不能拦截down事件，后续都会返回true了，所以onIntercepTouchEvent不会拦截所有事件（actionDown），
+				要想拦截所有事件，选择dispatchTouchEvent
+				4>事件传递到子控件的时候，因为子元素的dispatchTransformedTouchEvent为true的时候就会给target
+				赋值，就会targey!=null了，就会前面执行ViewGroup.onIntercepTouchEvent方法，
+				5>为什么事件分发是责任链，是因为里面有一个target.next在记录每一个View
+				
+			
+			View对点击事件的处理
+				View点击事件的处理，因为他只是一个View，他没有子元素所以无法向下传递，所以只能自己处理点击事件，从上门的源码可
+				以看出View对点击事件的处理过程，首选会判断你有没有设置onTouchListener，如果onTouchListener中的onTouch为true，
+				那么onTouchEvent就不会被调用，可见onTouchListener的优先级高于onTouchEvent，这样做到好处就是方便在外界处理点击事件，
+				先看当View处于不可用的状态下点击事件的处理过程，如下，很显然，不可用状态下的View照样会消耗点击事件
+				
+				如果View设置有代理，那么还会执行TouchDelegate的onTouchEvent方法，这个onTouchEvent的工作机制看起来和onTouchListener类似
+				
+				只要View的CLICKABLE和LONG_CLICKABLE有一个为tru，那么他就会消耗这个事件，即onTouchEvent返回true，不管他是不是DISABLE
+				状态，这就证实了上面的第8,9,10结论，然后就是当ACTION_UP事件发生之后，会触发performClick方法，如果View设置了onClickListener，
+				那么performClick方法内部就会调用他的onClick方法
+				
+				
+			总结：
+				View  dispatchTouchEvent  -> touchListener -> onTouchEvent ,如果设置了touchListener 就不会回调onTouchEvent了
+				View 的点击，长按事件是在 action_up 的时候执行performClick 再开始执行的，优先级是最低的，并且设置事件监听，只是赋值了，最终实现还是事件分发的时候执行
+				
+		3>View的滑动冲突
+				1.常见的滑动冲突场景
+					常见的滑动一般有三个方面
+
+					外部滑动方向和内部滑动方向不一致
+					外部滑动方向和内部滑动方向一致
+					上面两种情况的嵌套
+				2.滑动冲突的处理规则
+				3.滑动冲突的解决方式
+					外部拦截法：
+						父容器 onInterceptTouchEvent 方法中 action_down 的时候，不拦截事件，因为一但拦截，分发就返回true了，后续所有的事件都是父容器处理，不会传递到子控件了
+						只需要决定是否拦截move就可以了，不拦截up事件，因为up拦截之后子控件无法实现点击事件了
+					内部拦截法：
+						内部拦截法是指父容器不拦截任何事件，所有的事件都传递给子元素，如果子元素要消耗此事件就直接消耗掉，
+						否则就交由父容器进行处理，这种方法和Android中的事件分发机制不一致，需要配合requestDisallowInterceptTouchEvent
+						方法才能正常工作，使用起来较外部拦截法稍显复杂。它的伪代码如下，我们需要重写子元素的dispatchTouchEvent方法
+						
+						
+						子元素 ACTION_DOWN，ACTION_MOVE getParent().requestDisallowInterceptTouchEvent(false);
+						除了子元素需要处理之外，父元素默认也要拦截除ACTION_DOWN之外的其他事件，这样当子元素调用
+						getParent().requestDisallowInterceptTouchEvent(true)方法时，父元素才能继续拦截所需要的事件

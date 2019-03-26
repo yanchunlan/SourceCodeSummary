@@ -1,0 +1,66 @@
+﻿一.	Activity的工作过程
+	startActivity->startActivityForResult->mInstrumentation.execStartActivity(checkStartActivityResult)
+	->ActivityManager.getService().startActivity->AMS的startActivity->
+	
+	mActivityStarter.startActivityMayWait
+	->startActivityLocked
+	->startActivityUnchecked 				->resumeTopActivityUncheckedLocked ->resumeTopActivityInnerLocked
+	->ActivityStackSupervisor的startSpecificActivityLocked
+	
+	->realStartActivityLocked
+	->app.thread.scheduleLaunchActivity(app.thread的类型为IApplicationThread)
+	->ActivityThread通过scheduleLauncherActivity(sendMessage)
+	->H 类接收消息 handleLaunchActivity
+	->performLaunchActivity(handleResumeActivity,callActivityOnPause,resume下一个页面，pause当前页面)
+	->instrumentation的newActivity->instantiateActivity->(Activity) cl.loadClass(className).newInstance()
+	->LoadedApk的makeApplicatiton
+	->Instrumentation的callApplicationOnCreate(调用application的oncreate)
+	->Activity的onCreate // 开始启动
+	
+	->ContextImpl.oncreate
+	->activity.attach(关联window)
+	
+	
+	
+	AMS继承自ActivityManagerNative，而ActivityManagerNative继承自Binder并且实现了IActivityManager这个Binder
+	接口，因此AMS也是一个Binder，他是IActivityManager的集体实现，由于ActivityManager.getService()是一个
+	IActivityManager类型的Binder对象，因此他的具体实现是AMS,可以发现在ActivityManagerNative中，AMS这个
+	Binder对象采用单例模式对外提供，Singleton是一个单例的封装类，第一次调用他的set方法时，她会通过create
+	方法来初始化AMS这个Binder对象，在后续的调用中则直接返回创建的对象
+	
+	
+	从上面的分析我们可以知道，Activity是由ActivityManager.getService来启动的，所以Activity的启动又转移到了AMS
+	
+	
+	checkStartActivityResult的作用很明显，就是检查启动Avtivity的结果，当无法正确的启动的时候就会抛出异常
+	
+	IApplicationThread :
+		public interface IApplicationThread extends IInterface ;他继承了IInterface接口，所以他是一个Binder类型的接口
+		他内部包含了大量的启动，停止Activity的操作，此外还包含了启动和停止服务的操作，接口的命名可以猜测，IApplicationThread
+		这个Binder接口的实现者完成了这些操作
+		
+		它的具体实现是，ActivityThread的内部类ApplicationThread，ApplicationThread继承自ApplicationThreadNative，而
+		ApplicationThreadNative继承自Binder并且实现了IApplicationThread接口，如果你还记得系统为AIDL自动生成的代码，
+		就会发现ApplicationThreadNative的作用和系统的AIDL生成的类是一样的，
+		
+		在ApplicationThreadNative的内部，还有一个
+		ApplicationThreadProxy,这个类的实现如下，相信大家都有一种似曾相识的感觉，其实这个内部类也是系统为AIDL文件自
+		动生成的地理类，种种迹象表明，ApplicationThreadNative就是IApplicationThread的是实现者
+
+	Activity的启动过程最终还是回到了ActivityThread中，ActivityThread通过scheduleLauncherActivity来启动Activity,并发送消息
+		
+	而内部消息的的接收是private class H extends Handler ，
+	
+	handleResumeActivity做的事情：
+		1.从ActivityClientRecord中获取待启动的Activity组件信息
+			主要是从performResumeActivity方法里面的ActivityClientRecord 获取到了数据
+		
+	performLaunchActivity：
+		1.通过instrumentation的newActivity方法使用类加载器创建Activity对象
+	
+	newActivity->getFactory:
+		通过LoadedApk的makeApplicatiton方法来创建Application对象
+		
+		如果Application已经被创建郭，那么久不会再重复创建了，这也意味着一个应用只有一个Application,Application对象的创建也是通过
+		Instrumentation来完成的，这个过程和Activity对象的创建一样，都是通过类加载器来完成的，Application创建后，系统会通过Instrumentation
+		的callApplicationOnCreate来调用Application的onCreate

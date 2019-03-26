@@ -1,0 +1,170 @@
+一.使用CrashHandler来获取应用的crash
+	implements Thread.UncaughtExceptionHandler{
+		public void init(Context context){
+			mDefCrashHandler = Thread.getDefaultUncaughtExceptionHandler();
+			Thread.setDefaultUncaughtExceptionHandler(this);
+			mContext = context.getApplicationContext();
+		}
+		@Override
+		public void uncaughtException(Thread thread, Throwable throwable) {
+			Log.e(TAG,throwable.toString());
+			//这里保存错误信息
+			if(mDefCrashHandler != null){
+				mDefCrashHandler.uncaughtException(thread,throwable);
+			}else {
+				Process.killProcess(Process.myPid());
+			}
+
+		}
+	}
+二.使用muitidex来解决方法数越界
+	导入：
+		multiDexEnabled true
+		implementation 'com.android.support:multidex:1.0.0'
+	然后在Application中加入：(或者直接集成multidexApplocation)
+		MultiDex.install(this);
+	自定义dex包含哪些类：
+		afterEvaluate {
+			println "afterEvaluate"
+			tasks.matching {
+				it.name.startsWith("dex")
+			}.each { dx ->
+				def listFile = project.rootDir.absolutePath + '/app/muindexlist.txt'
+				println "root dir:" + project.rootDir.absolutePath
+				println "dex task found:" + dx.name
+				if(dx.additionalParameters == null){
+					dx.additionalParameters = []
+				}
+				dx.additionalParameters += '--multi-dex'
+				dx.additionalParameters += '--main-dex-list=' + listFile
+				dx.additionalParameters += '--minimal-main-dex'
+			}
+		}
+	在上面的配置文件中，–multi-dex表示当方法数越界时则生成多个dex文件，–main-dex-list=指定了要在主dex中打包的类的列表，
+	–minimal-main-dex中则指定了一系列的类，所有在maindexlist.txt中的类都会打包到主dex中，并且这个txt可以被修改，但是他的格式需要规范
+
+		com/liuguilin/androidsample/MainActivity
+
+		//multidex
+		android/support/multidex/MultiDex.class
+		android/support/multidex/MultiDexApplication.class
+		android/support/multidex/MultiDexExtractor.class
+		android/support/multidex/MultiDexExtractor$1.class
+		android/support/multidex/MultiDex$V4.class
+		android/support/multidex/MultiDex$V14.class
+		android/support/multidex/MultiDex$V19.class
+		android/support/multidex/ZipUtil.class
+		android/support/multidex/ZipUtil$CentralDirectory.class
+	需要注意的是，multidex的jar包中的9个类必须也要打包到主dex中，窦否则会出异常，这是因为Application对象被创建以后会在
+	attachBaseContext方法中通过install来加载其他的dex文件，这个时候如果相关的类不在主dex中，很显然这些都无法加载。
+三.Android的动态加载技术
+	1.资源访问
+		private void loadResources() {
+        try {
+            AssetManager assetManager = AssetManager.class.newInstance();
+            Method addAssetPath = assetManager.getClass().getMethod("addAssetPath",String.class);
+            addAssetPath.invoke(assetManager,mDexPath);
+            mAssetManager = assetManager;
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
+
+        Resources superRes = super.getResources();
+        mResources = new Resources(mAssetManager,superRes.getDisplayMetrics(),superRes.getConfiguration());
+        mTheme = mResources.newTheme();
+        mTheme.setTo(super.getTheme());
+		}
+		在代理Activity中实现getAssets()和getResources()
+	2.Activity生命周期管理
+		反射或者代理2种方式：
+		反射：
+			@Override
+			protected void onResume() {
+				super.onResume();
+				Method onResume = mActivityLifecircleMethods.get("onResume");
+				if(onResume != null){
+					try {
+						onResume.invoke(this,new Object[]{});
+					} catch (IllegalAccessException e) {
+						e.printStackTrace();
+					} catch (InvocationTargetException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+
+			@Override
+			protected void onPause() {
+				super.onPause();
+				Method onPause = mActivityLifecircleMethods.get("onPause");
+				if(onPause != null){
+					try {
+						onPause.invoke(this,new Object[]{});
+					} catch (IllegalAccessException e) {
+						e.printStackTrace();
+					} catch (InvocationTargetException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			代理：
+			public interface DLPlugin {
+
+				public void onStart();
+				public void onRestart();
+				public void onActivityResult(int requestCode, int resultCode, Intent data);
+				public void onResume();
+				public void onPause();
+				public void onStop();
+				public void onDestroy();
+				public void onCreate(Bundle savedInstanceState);
+				public void setProxy(Activity proxyActivity,String dexPath);
+				public void onSaveInstanceState(Bundle outState);
+				public void onNewIntent(Intent intent);
+				public void onRestoreInstanceState(Bundle savedInstanceState);
+				public void onTouchEvent(MotionEvent event);
+				public void onKeyUp(int keyCode, KeyEvent event);
+				public void onWindowAttributesChanged(ViewGroup.LayoutParams params);
+				public void onWindowFocusChanged(boolean hasFocus);
+				public void onBackPressed();
+			}
+	3.插件ClassLoader的管理
+	为了更好的对多插件进行支持，需要合理的去管理各个插件的DexClassoader,这样同一个插件就可以采用同一个ClassLoader去加载类，从而避免
+	了多个ClassLoader加载同一个类所引发的类型换错误，看代码：
+		public class DLClassLoader extends DexClassLoader {
+		private static final String TAG = "DLClassLoader";
+		private static final HashMap<String, DLClassLoader> mPluginClassLoader = new HashMap<>();
+		public DLClassLoader(String dexPath, String optimizedDirectory, String librarySearchPath, ClassLoader parent) {
+			super(dexPath, optimizedDirectory, librarySearchPath, parent);
+		}
+		public static DLClassLoader getClassLoader(String dexPath, Context mContext,ClassLoader parentLoader){
+			DLClassLoader dlClassLoader = mPluginClassLoader.get(dexPath);
+			if(dlClassLoader != null){
+				return dlClassLoader;
+			}
+			File dexOutputDir = mContext.getDir("dex",Context.MODE_PRIVATE);
+			final  String dexOutputPath = dexOutputDir.getAbsolutePath();
+			dlClassLoader = new DLClassLoader(dexPath,dexOutputPath,null,parentLoader);
+			mPluginClassLoader.put(dexPath,dlClassLoader);
+			return dlClassLoader;
+		}
+		}
+四.反编译初步
+	1.使用dex2jar和jd-gui反编译apk
+		//linux
+		./dex2jar.sh classes.dex
+		//window
+		dex2jar.bat classes.dex
+	2.使用ktool对apk进行二次打包
+		解包：
+		./apktool d -f Test.apk NewTest.apk
+		二次打包：
+		./apktool b Test.apk NewTest.apk
+		签名：
+		java -jar signapk.jar testKey.x509.pem testKey.pk8  Test.apk NewTest.apk

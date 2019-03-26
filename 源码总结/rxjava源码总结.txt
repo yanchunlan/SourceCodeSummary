@@ -1,0 +1,115 @@
+﻿rxjava
+
+一.作用： 类似于AsyncTask,Handler作用，主要是处理异步调用
+二.原理：
+	Observable（被观察者） 产生事件
+	Observer（观察者）  接收事件
+	Subscribe（订阅）  连接观察者被观察者
+	Event （事件） 观察者，被观察者沟通的载体
+
+	start  ->Observable 发送事件 -> subscribe 订阅 —> observer 接受事件 -> end
+	
+	##注：subscribe(Observer/Consumer)区别：在于observer无返回值，consumer有返回值Disposable
+	
+三.操作符
+	1.创建型
+		创建型：
+			create,创建操作符
+		快速创建/发送事件：
+			just,发送事件，底层也是调用fromArray，发送10个及以下
+			fromArray,传入数组，发送10个以上
+			fromIterable,传入集合，发送10个以上
+			empty,事件接收时直接调用complated
+			error,事件接收时直接调用onerror
+			never,不发送任何事件
+		延迟创建：
+			defer,被观察者订阅时才接受事件
+			timer,延迟到指定事件，接收到onnext(0),complate
+			interval,从Xs后开始、无限递增1的的整数序列(延迟3s后，每隔1s发送事件)
+			intervalRange,每隔指定时间 就发送 事件，可指定发送的数据的数量
+			range,从XX开始、无限递增1的的整数序列,无延迟效果
+			ranglong，类似于rang只是为long类型
+			
+		###实例：轮训请求数据，使用interval（无限次数），intervalRange,（有限次数）
+				repeatWhen,有条件几条就结束
+		
+	2.变换型
+		Map: 将被观察者发送的事件转换为任意的类型事件
+		flatMap: 将被观察者发送的事件序列进行 拆分 & 单独转换，再合并成一个新的事件序列，最后再进行发送
+		ConcatMap: 拆分 & 重新合并生成的事件序列 的顺序 = 被观察者旧序列生产的顺序
+		Buffer:  被观察者（Obervable）需要发送的事件中 获取一定数量的事件 & 放到缓存区中，最终发送
+	
+	###实例：flatMap（新被观察者，同时也是新观察者）切换到IO线程去发起登录请求
+			特别注意：因为flatMap是对初始被观察者作变换，所以对于旧被观察者，它是新观察者，所以通过observeOn切换线程，
+			但对于初始观察者，它则是新的被观察者
+	3.组合/合并操作符
+		组合多个观察者：
+			按顺序：concat（<=4）,cancatArray(>4),合并后按发送顺序串行
+			按时间：merge（<=4）,mergeArray(>4),合并后按时间线并行执行
+			错误处理：concatDelayError,mergeDelayError,处理当异常的时候，异常最后执行
+		合并多个事件：
+			按数量：zip ，合并多个被观察者事件，生成新的事件，并发送（取最少的数量）
+			按时间：combineLatest，按时间合并，即在同一个时间点上合并
+					combineLatestDelayError，针对其的错误处理，异常最后执行
+			合成1个事件发送：
+				reduce：被观察者的事件聚合成1个事件
+				collect：被观察者发送的事件收集到一个数据结构里
+			追加事件：
+				startWith（针对单个），startWithArray(针对数组),（后调用的先追加）
+			统计事件数量：
+				count:统计被观察者发送事件的数量
+		###实例：1>磁盘取数据，先缓存，再磁盘，再内存；使用concat+firstElement(收到一个有效事件就停止)	
+				 2>合并数据源；mearge,zip
+				 3>多个控件不为null,combineLatest联合判断
+	4.功能性操作符
+			subscribe：连接观察者，被观察者
+			
+			线程调度：Schedulers.immediate()	当前线程 = 不指定线程
+					  AndroidSchedulers.mainThread()	Android主线程
+					  Schedulers.newThread()	常规新线程
+					  Schedulers.io()	io操作线程
+					  Schedulers.computation()	CPU计算操作线程
+			Observable.subscribeOn：多次指定被观察者生产事件，则只第一次有效，其余指定线程无效
+			Observable.observeOn：多次指定观察者接收，响应事件的线程，则每次指定均有效
+			
+			延迟操作：delay,延迟一段时间再发送事件
+			生命周期：
+				doOnEach,每发送数据一次就调用，
+				doOnNext，事件执行前调用
+				doOnAfter，事件执行后调用
+				doOnError,发送错误事件
+				doOnComplated,事件完成
+				doOnTerminate,异常终止
+				doFinally，最后执行
+				doOnSubscribe,订阅时调用
+				doOnUnsubscribe,取消订阅时调用
+			错误处理：
+				onErrorReturn,发送一个特殊事件，正常终止
+				onErrorResumeNext,onExceptionResumeNext,拦截错误，异常发送一个新的事件
+				retry,重试，当拦截到错误时，让被观察者（Observable）重新发射数据
+				retryUntil，出现错误后，判断是否需要重新发送数据，区别于retry,在于上面返回true就不发送数据
+				retryWhen，遇到错误时，将发生的错误传递给一个新的被观察者（Observable），并决定是否需要重新订阅原始被观察者（Observable）& 发送事件
+				repeat，无条件地、重复发送 被观察者事件
+				repeatWhen，有条件地、重复发送 被观察者事件
+		###实例：请求重试，retryWhen ，请求失败多少次之后就发送错误observer
+四，源码解析
+	任务链模式,包装模式
+	1>在subscribe关联的时候，会执行subscribe方法，然后一层一层向上调用subscribeActual 方法，
+	最终调用source.subscribe(parent),之后parent执行next方法里面的observable.onnext发送数据
+	2>onError与onComplate只能执行一次，因为执行后会调用dispose，
+	3>subscribeOn 第一次执行为准，是因为订阅是从下游往上游订阅，最上面的最晚执行，所以线程是以最上面的为准;
+	内部订阅者接收到数据后，直接发送给下游Observer;
+	
+		当 subscribeOn() 多次调用时，最终只有 ObservableCreate 调用的 subscribeOn()（即第一个）起作用，
+	因为每次 subscribeOn() 时新创建的包装 Observable 即 ObservableSubscribeOn 都会保存上一个 Observable ，
+	然后订阅时（在 run() 方法调用），会调用上一个 Observable.subscribe() ，
+	一直调用到最开始的 Observable 即 ObservableCreate 才开始切换线程并生产事件。
+
+	4>observeOn()，将待发送数据存入队列，同时请求切换线程处理真正push数据给下游，多次切换线程，都会对下游生效
+		
+		在 onNext() 里，首先把生产的数据加入队列，然后切换会 observeOn() 指定的线程，最后才把数据取出来传给消费者。
+	可以看到，每次切换线程后会立刻发送数据，所以调用 observeOn() 会生效多次，与 subscribeOn() 相反。
+	5>observable -> 订阅是一层一层向上一级获取到source,
+	    observer->是一层一层向下传递
+				
+		

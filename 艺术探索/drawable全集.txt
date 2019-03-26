@@ -1,0 +1,44 @@
+一.Drawable的简介
+	rawable的内部宽高参数很重要，通过getIntrinsicWidth和getIntrinsicHeight这两个方法可以获取到他们，
+	但是比并不是所有的Drawable都有内部宽高，比如一张图片所形成的Drawable，他就有，但是如果你是颜色
+	所形成的的，那就自然是没有的
+二.Drawable的分类
+	1.BitmapDrawable
+		android:tileMode
+			平铺模式，这个选项有几个值： disabled | clamp | repeat | mirror 其中disabled 是关闭平铺模式，这个也是默认值，开启后，gravity属性会无效，先说下其余三个属性的区别，
+			三种都表示平铺模式
+
+			repeat表示简单的水平和竖直方向上平铺效果
+			mirror表示一种在水平和竖直方向上的镜面投影效果
+			clamp表示四周像素扩散效果
+	2.NinePatchDrawable
+		.9图片的代码实现
+	2.ShapeDrawable
+	3.LayerDrawable
+		图层，通过不同的view达到叠加的效果
+	4.StateListDrawable
+		<selector>标签，他会根据view的状态来选择出现的drawable
+		android:constantSize
+			StateListDrawable的股友大小是不随其状态的改变发生改变的，因为状态的改变会导致他切换不同的drawable,
+			而不同的drawable具有不同的drawable,true表示StateListDrawable的固有大小不变，这时他的固有大小就是内部
+			所有drawable的固有大小的最大值，false则是跟随状态改变，默认false
+		android:variablePadding
+			StateListDrawable的pading是跟随其状态发生改变的而改变，fasle为最大值，跟constantSize类似，不建议开启，默认false
+	5.LevenlListDrawable
+		表示一个drawable的集合。集合中的每一个Drawable都有一个等级，根据不同的等级切换不同的Item
+		当他作为view的背景时，可以通过setLevenl来设置不同的drawable,等级的范围是0-10000
+	6.TransitionDrawable
+		<transition>	TransitionDrawable对应的是用于实现两个Drawable的淡入淡出
+	7.InsetDrawable
+		<inset>		InsetDrawable对应的是,他可以将其他的Drawable内嵌到自己当中，并且可以在四周
+		留下一定的距离，当一个View想他的背景比实际的距离小的时候就可以用
+	8.ScaleDrawable
+		<scale>		ScaleDrawable对应的是,他可以指定自己的等级将指定的Drawable缩放带一定的比例
+		0为不可见，要想可见，需要不为0
+	9.ClipDrawable
+		ClipDrawable对应的是，他可以根据自己的等级裁剪另一个Drawable,裁剪的方法可以通过
+		android:clipOrientation,clipOrientation标示裁剪方向，有水平和竖直，gravity比较复杂，
+		需要和clipOrientation才有作用
+三.自定义Drawable
+	draw,setAlpha,setColorFilter,getOpacity
+	主要参考shapDrawable的实现即可
