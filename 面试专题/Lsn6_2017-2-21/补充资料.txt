@@ -1,0 +1,2 @@
+
+这个问题可能还涉及到一些问题可以聊聊：《如何选择 compileSdkVersion, minSdkVersion 和 targetSdkVersion》http://chinagdg.org/2016/01/picking-your-compilesdkversion-minsdkversion-targetsdkversion/  和《Android targetSdkVersion 原理》http://www.open-open.com/lib/view/open1453252891870.html
