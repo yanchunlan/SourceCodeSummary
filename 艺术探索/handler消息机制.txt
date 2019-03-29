@@ -1,4 +1,4 @@
-﻿handler流程：	
+﻿一.	handler流程：	
 	Handler向外暴露两种类型的接□:第一种是sendMessage 接口，即开发者构造一个Message对象，
 	然后调用sendMessage或者 sendMessageDelayed利用Handler将消息发送出去.第二种是postRunnable接口.
 	即 开发者构造一个Runnable类型的对象•然后调用post方法或者postDelayed方法•在 Handler内部.无论是对于哪一种接口
@@ -70,4 +70,10 @@
 		不管线程进入哪种阻塞状态，都得等所等待的事件（wait、sleep、join、synchronized、I/O）完成后，才可以进入就绪队列，排队等待CPU资源
 （5）死亡状态（Dead）：线程执行完了或者因异常退出了run()方法，该线程结束生命周期。
 
+二.	ThreadLocal： 内部就是一个map
+		使用场景：
+			1>当某些数据是以线程为作用域并且不同线程具有不同的数据副本的时候，就可以考虑采用ThreadLocal
+				如果不采用ThreadLocal，那么系统就必须提供一个全局的哈希表供Handler查找指定线程的Looper，这样一来就必
+			须提供一个类似于LooperManager的类了，但是系统并没有这么做而是选择了ThreadLocal，这就是ThreadLocal的好处
+			2>如果是线程为单位的监听器，就可以使用它，比自己再建立一个单独的manager管理比较好
 	

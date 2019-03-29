@@ -1,0 +1,68 @@
+一.	流程：
+
+	服务端	new_apk			---------->			apk.patc
+			old_apk				差分
+							|		|
+				发送版本号	|		|	下载差分包，apk.patch
+							|		|
+	
+	客户端		apk.patch	--------- >			new_apk
+				old_apk
+					
+增量更新通过哈夫曼算法，计算出旧的 apk 与新的 apk 之间不一样的地方（差分），客户端进行版本更新的时候，只
+需要下载差分包到本地与旧的 apk 进行合并，生成新的 apk，然后进行安装
+
+二.	哈夫曼算法：
+
+	apk 在文件存储中也是以二进制方式存在的，运用哈夫曼算法进行对比新旧版本的 apk 
+	的二进制文件。如果是相同内容，只保存索引；如果不同，则保存压缩的内容和索引。
+
+三.	增量更新与热更新、插件化：
+
+	热更新是使用热更新 service，只更新某些文件，比如原先有个 ClassA 的类文件，要进行更新为 ClassB 
+	的类文件，不进行整个应用的下载，属于轻量级的。
+
+	插件化使用了 pluginManager，以功能块划分插件化进行开发，更新的时候对整个功能块进行更新，比如有个 PluginA 
+	模块要更新为 PluginB 模块，相比热更新会更重量级一些。
+
+	相比于热更新和插件化，热更新和插件化更多的是体现要更新什么，而增量更新是要怎么更新。在热更新和插件化中仍可
+	以使用增量更新，只更新 ClassA 与 ClassB 之间的类差分包，或者 PluginA 与 PluginB 的模块差分包
+
+	如果在主包里面有很大的改变的话就需要全量更新
+
+四.	制造差分工具，并生成差分包（利用bsDiff的main函数差分）
+
+	查分合并使用：http://www.daemonology.net/bsdiff/  （bsdiff 查分/bspatch合成） 需要依赖bzip2
+	
+	1> linux 生成差分包
+			linux环境 ：	上传bsdiff-4.3.tar.gz，
+						解压 tar xvf bsdiff-4.3.tar.gz
+						vim makefile（去把makefile的第十三行，及最后一行增加换行，让其能够执行，wq!退出保存）
+						make 编译生成 diff.exe 差分工具
+						
+			bzip下载：	yum -y install bzip2-devel.x86_64  云服务器下载安装bzip2
+					
+						执行 ./bsdiff old_apk new_apk aptch 可以生成patch差分包
+						
+				
+	上面的简单的生成差分包方式，但是实际却不是根据这样，因为效率太低了
+	2>	一般是由 bsdiff 生成库文件，供后台进行 JNI 调用生成差分包
+			1.	官网下载bsdiff4.3-win32-src.zip ，并解压
+			2.	新建include文件夹，把 bsdiff4.3-win32-src.zip 中对应的 .h 文件拷贝到 include 文件夹下，
+			除 bspatch.cpp 外的 .c 和 .cpp 
+			3.	修改 bsdiff.cpp 的main 函数为diff_main，是为了区分，防止以后其他的像openCV，等待都有main函数，就重复了
+			4.在cpp文件中 Java_com_xiaoyue_Diff_diff(jstring old_path_jst, jstring new_path_jst, jstring patch_path_jst)
+				char *argv[4]={"Diff",old_path,new_path,patch_path}
+				diff_main(argc, argv);
+			5.编译将其生成库文件diff.dll，导入到web项目中使用
+五.	合并 （利用bsPatch的main函数合并）
+		1.	把 Linux 环境的bsdiff/bspatch 包下的 bspatch.c 和 bzip2 下的所有 .c 和 .h 文件拷贝到 cpp 下
+		2.	修改 bspatch.c 文件中的 #include <bzlib.h> 为 #include "bzip2/bzlib.h"，以及对 bzip2 下的 .c 文件修改 main 函数的函数名
+		3.	配置cmakeList
+			#添加整个目录的思路 指定一个变量 添加的时候使用变量值(my_c_path)
+			file(GLOB my_c_path src/main/cpp/bzip2/*.c)
+			add_library( xxx 
+			 ${my_c_path}
+             src/main/cpp/bspatch.c)
+		4.	bspatch.c 文件中的 main 函数的函数名为 path_main
+		5.	执行异步下载，再合并，回调主线程执行安装apk的intent

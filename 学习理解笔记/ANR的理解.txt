@@ -1,0 +1,77 @@
+﻿概述：
+	ANR(Application Not responding)是指应用程序未响应，Android系统对于一些事件需要在一定的时间范围内完成，如果超过预定时间能未能得
+	到有效响应或者响应时间过长，都会造成ANR。ANR由消息处理机制保证，Android在系统层实现了一套精密的机制来发现ANR，核心原理是消息调度和超时处理
+
+哪些场景造成anr:
+	Service Timeout，BroadcastQueue Timeout，ContentProvider Timeout，inputDispatching Timeout
+
+假如是service：
+	contextImpl.startService
+	activityManager.startServiceComomon
+	activityManagerService.startService
+	activityService.startserviceLocked
+	activices.startServiceInnerLocked
+	activityServices.bringUpServiceLocked
+	activityService.realstartServiceLocked    ------------------------  内部开始发送anr消息
+	processRecord.thread.scheduleCreateService
+	applicationThread.scheduleCreateService
+	ActivityThread.handleCreateService
+	Service.onoCreate
+	
+
+  private final void realStartServiceLocked(ServiceRecord r,
+            ProcessRecord app, boolean execInFg) throws RemoteException {
+        ...
+        // 主要是为了设置ANR超时，可以看出在正式启动Service之前开始ANR监测；
+        bumpServiceExecutingLocked(r, execInFg, "create");
+       // 启动过程调用scheduleCreateService方法,最终会调用Service.onCreate方法；
+        app.thread.scheduleCreateService(r, r.serviceInfo,
+        // 绑定过程中，这个方法中会调用app.thread.scheduleBindService方法
+        requestServiceBindingsLocked(r, execInFg);
+        // 调动Service的其他方法，如onStartCommand，也是IPC通讯
+        sendServiceArgsLocked(r, execInFg, true);
+    }
+
+
+ void scheduleServiceTimeoutLocked(ProcessRecord proc) {
+        if (proc.executingServices.size() == 0 || proc.thread == null) {
+            return;
+        }
+        Message msg = mAm.mHandler.obtainMessage(
+                ActivityManagerService.SERVICE_TIMEOUT_MSG);
+        msg.obj = proc;
+        // 在serviceDoneExecutingLocked中会remove该SERVICE_TIMEOUT_MSG消息，
+        // 当超时后仍没有remove SERVICE_TIMEOUT_MSG消息，则执行ActiveServices. serviceTimeout()方法；
+        mAm.mHandler.sendMessageDelayed(msg,
+                proc.execServicesFg ? SERVICE_TIMEOUT : SERVICE_BACKGROUND_TIMEOUT);
+        // 前台进程中执行Service，SERVICE_TIMEOUT=20s；后台进程中执行Service，SERVICE_BACKGROUND_TIMEOUT=200s
+    }
+
+
+如果在指定的时间内还没有serviceDoneExecutingLocked()方法将消息remove掉，就会调用ActiveServices. serviceTimeout()方法
+
+void serviceTimeout(ProcessRecord proc) {
+    ...
+    final long maxTime =  now -
+              (proc.execServicesFg ? SERVICE_TIMEOUT : SERVICE_BACKGROUND_TIMEOUT);
+    ...
+    // 寻找运行超时的Service
+    for (int i=proc.executingServices.size()-1; i>=0; i--) {
+        ServiceRecord sr = proc.executingServices.valueAt(i);
+        if (sr.executingStart < maxTime) {
+            timeout = sr;
+            break;
+        }
+       ...
+    }
+    ...
+    // 判断执行Service超时的进程是否在最近运行进程列表，如果不在，则忽略这个ANR
+    if (timeout != null && mAm.mLruProcesses.contains(proc)) {
+        anrMessage = "executing service " + timeout.shortName;
+    }
+    ...
+    if (anrMessage != null) {
+        // 当存在timeout的service，则执行appNotResponding，报告ANR
+        mAm.appNotResponding(proc, null, null, false, anrMessage);
+    }
+}
