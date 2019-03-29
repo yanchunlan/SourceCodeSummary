@@ -1,0 +1,56 @@
+jni中文乱码
+	1.java 内部16 bit 的 unicode 编码（utf-16）表示字符串，中英文2字节
+	2.jni	utf-8 ,是变长编码的 unicode,英文1字节，中文3字节
+	3.c/c++	ascii 就是一个字节，中文一般是 GB2312 编码，用 2 个字节表示一个汉字
+
+1.	java-c
+
+	1>	C 端进行编码转换
+		java（UTF-16）			
+		jni(GetStringUTFChars uft-8,GetStringChars utf-16)	
+		
+			1.	jni->	得到GetStringChars，和其GetStringLength，
+			2.	jni->	(char *)malloc(sizeof(char) * (2 * length + 1))
+						memset(rtn, 0, sizeof(char) * (2 * length + 1))// 重置malloc大小
+						// 采用window 环境提供的方法 WideCharToMultiByte 进行解析 编码转换 , #include <Windows.h>
+			3.	jni->	WideCharToMultiByte(CP_ACP, 0, (LPCWSTR)jcstr, length, rtn, sizeof(char) * (2 * length + 1), NULL, NULL);
+			
+	2>	java 端进行编码转换
+		java端直接转换为GB2312的byte[] ，传递到底层
+			1.	java->	byte[] byteArry="xxxx"..getBytes("GB2312")
+			2.	jni->	GetByteArrayElements,GetArrayLength
+						// 赋值str
+						malloc(size + 1)  								// \0"
+						memcpy(str, byteArr, size)
+						str[size] = 0									// 置位最后一个为0
+						
+						ReleaseByteArrayElements					// 释放原数组
+						
+2.	C –> java
+
+	1>	C 端进行编码转换
+		实际上是jni层调用java的new String(bytes,"GB2312"),从”GB2312”格式生成 utf-16 格式的java字符串
+	
+			1. 	jni->	char *c_str = "C 字符串";
+			2.	jni->	FindClass(env, "java/lang/String")
+						GetMethodID(env, str_cls, "<init>", "([BLjava/lang/String;)V");
+						
+						// 新建byteArray , 将Char * 赋值到 bytes
+						NewByteArray(env, strlen(c_str))
+						SetByteArrayRegion(env, bytes, 0, strlen(c_str), c_str)
+						
+						// 新建jString GB2312
+						>NewStringUTF(env, "GB2312")
+						
+						// 返回 GB2312的String对象
+			3.	jni->	NewObject(env, str_cls, jmid, bytes, charsetName)
+			
+	2>	java 端进行编码转换
+		实际上是jni层调用java的new String(bytes,"GB2312"),从”GB2312”格式生成 utf-16 格式的java字符串
+			1.	jni->	char *c_str = "C 字符串"
+						NewByteArray(env, strlen(c_str))
+						SetByteArrayRegion(env, byteArray1, 0, strlen(c_str), (jbyte *)c_str)
+			2.	java->	new String(byteArry, "GB2312")
+			
+	总结 ：
+		java->c，java变成byte数组传递到jni层最简单

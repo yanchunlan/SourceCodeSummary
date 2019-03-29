@@ -1,0 +1,20 @@
+1.局部引用
+	FindClass、NewObject、GetObjectClass、NewCharArray…. 、NewLocalRef() 等生成非基本数据都是局部引用
+	需要调用DeleteLocalRef释放
+	
+	如果在方法中，待方法执行完毕之后也会jvm自动释放，不过释放的是它指向的内容，但是它本身引用还存在，后面在使用的
+	时候，就会发现引用指向了一个未知的位置，报野指针异常
+2.全局引用
+	NewGlobalRef
+	DeleteGlobalRef
+3.弱全局引用
+	NewWeakGlobalRef
+	DeleteWeakGlobalRef 
+	
+4.缓存
+	static 修饰之后的数据会被缓存
+	1>	局部静态变量缓存
+		在方法里面调用，第一次赋值之后，后面方法再次执行之前 局部static的数据都是有数据的
+		使用 static 修饰的局部变量，会存储在静态区，只会定义一次，方法执行完之后 JVM 不会进行释放
+	2>	全局静态变量缓存
+		全局变量，只要在 fid_glb 的定义之后的代码，都可以使用 fid_glb。（fid_glb 定义前有没有使用 static 都是全局变量）
