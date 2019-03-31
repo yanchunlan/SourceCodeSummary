@@ -1,0 +1,83 @@
+一.	存储区域划分：
+	SUN 公司的 java 规范中，运行时数据区域分为两大块，一个是共享数据区，一个是线程私有。其中
+	共享数据区包括方法区和堆，线程私有包括程序计数器 PC，虚拟机栈和本地方法栈
+	
+	
+	1> 程序计数器 PC
+		很小，存放下一条指令（即下一条该执行的代码），属于线程私有的,一般不会OOM
+	2> 虚拟机栈和本地方法栈
+		虚拟机栈为虚拟机执行Java方法（也就是字节码）服务，而本地方法栈则是为虚拟机使用到的Native方法服务
+	3> 方法区
+		存储已被虚拟机加载的类信息、 常量、 静态变量、 即时编译器编译后的代码等数据
+	4> java 堆
+		存放对象实例
+			收集器基本都采用分代收集算法，
+			
+			所以Java堆中还可以细分为：新生代和老年代；再细致一点的有Eden空间、 From Survivor空间、 
+			To Survivor空间等
+			
+			内存泄漏主要查看泄露对象到 GC Roots 的引用链
+二.	GC回收
+	
+	1.	引用计数
+		有引用，计数器就加1，引用失效就减1，如果为0就回收
+		
+		缺点：
+			不能解决对象之间相互循环引用（所以，java 虚拟机并不是通过引用计数算法来判断对象是否存活的）
+	2.	可达性分析算法
+		GC Roots 作为起点， 走过的路径叫 引用链，当一个对象到GC Roots没有任何引用链相连，就
+		说明是不可用对象
+		
+		可作为GC Roots的对象有：
+			虚拟机栈（栈帧中的本地变量表）中引用的对象。
+			方法区中类静态属性引用的对象。
+			方法区中常量引用的对象。
+			本地方法栈中JNI（即一般说的Native方法）引用的对象。
+	3.	finalize
+		当对象 在可达性分析法中不可达了，标记一次，并确认有无执行finalize（），如果执行了就回收
+
+三.	内存泄漏
+		
+	强：Object obj = new Object()
+	软: 有用，但是又不是必须的对象。在内存不足时候，会将软引用回收，还不够的话，OOM
+	弱: 非必须的对象，gc 直接进行回收
+	虚: 幽灵、幻影引用，不对生存造成任何影响（在对象被回收时候 能够通知）
+
+四.	Android Profiler
+	
+	内存快照 -> Arrange by class(根据类名分配)
+	
+		1>	右边4个数据显示如下：
+			Alloc Cout：对象数
+			Native Size：native 占用的内存大小
+			Shallow Size：对象占用内存大小
+			Retained Set：对象引用组占用的内存
+		2>	然后单击一个类名，Instance View 窗格就会显示在右侧，显示该类的每个实例。
+			在 Instance View 窗格中，单击一个实例。References 选项卡显示在下面，显示了哪个实例被分配在哪个线程中。
+			在 References 选项卡中，右击任意行可以在编辑器中跳转到该代码。
+	
+	点击save把hprof 保存到captures目录，点击左边captures，在AS里面分析，
+		AS提供了2个测试的工具：
+					Activity 泄漏的检测。
+					相同字符串的检测。
+	
+	只需要点击activity即可，到instance -> 点击右边按钮，就可以分析了 ->得到analysls Results
+	
+五.	MemoryAnalyzer
+	1.	转换 hpro
+			SDK2.3\platform-tools\hprof-conv.exe,执行： hprof-conv -z 原文件 输出文件 
+			或者使用AS点击右键，export to stand .pro
+	2.	MAT  
+	open heap dump -> 点击柱形图 ->	搜索可能出现内存泄漏的类 ->右键
+	-> mearge shortpath to GC Roots -> exclude all phantom/weak/soft etc.references
+	明显可以看到哪些地方有使用到当前Activity,再一个一个去排除
+
+六.	LeakCanary
+	https://github.com/square/leakcanary 虽然不是很准确，但是值得一用
+
+七.	内存泄漏可能导致的原因
+	1.静态成员、单例
+	2.未关闭、释放的资源
+	3.BitMap
+	4.Thread、Handler
+	5.内部类，匿名内部类

@@ -1,0 +1,76 @@
+一.	图片压缩
+
+		图片内存=图片长上的像素点 * 图片宽上的像素点 * 一个像素点占用的字节数
+		
+		RGB888(int)：R、G、B分量各占8位
+		RGB565(short)：R、G、B分量分别占5、6、5位
+		RGB555(short)：RGB 分量都用5位表示（剩下的1位不用）
+		ARGB8888(int)：A、R、G、B分量各占8位
+		ARGB4444(short)：A、R、G、B分量各占4位
+		
+	1.文件压缩
+		1>	质量压缩 compress ： 由于质量压缩的时候，不会减少图片的像素，只是改变图片的位深和透明度，图片的宽、高、
+		每个像素所占字节都没有改变，所以生成的 Bitmap 所占内存是不会改变的
+		2>	尺寸压缩	：大小改变了，内存减少
+		3>	JPEG/WEBP	:wenP内存会更少
+	
+	2>压缩原理
+		compress -> 
+		nativeCompress -> 
+		/frameworks/base/core/jni/android/graphics/Bitmap.cpp  -> Bitmap_compress
+		-> SkImageEncoder.encodeStream(strm, *bitmap, quality) (此处使用了skia引擎)
+		
+		skia介绍 ：
+			里面的一个参数 7.0 之后设置了 cinfo.optimize_coding = TRUE ，开启哈夫曼编码
+			7.0之前没有此设置
+			
+		哈夫曼编码：
+			采取可变长编码方式，对文件中出现次数多的字符采取比较短的编码，对于出现次数少的字符采取
+			比较长的编码，可以有效地减小总的编码长度
+		
+		总结：
+			安卓中使用的是阉割的 Skia 版本，对 JPEG 的处理是基于 libjpeg，对 PNG 则是基于 libpng，
+			针对jpeg:	https://github.com/libjpeg-turbo/libjpeg-turbo 自行下载编译生成 so 库，进行jni调用
+	3>内存压缩
+		获取 Bitmap ：
+		BitmapFactory.decodeResource  -> 
+		BitmapFactory.decodeResourceStream
+		(里面有一个option.inTargetDensity = res.getDisplayMetrics().densityDpi;,所以不同的darawable内存不同)
+		
+		内存复用：
+			BitmapFactory.Options.inBitmap=xxxxxx(复用的bitmap,即可达到复用的效果)
+			
+		注意点： 
+			1.可被复用的 Bitmap 必须设置 inMutable 为 true。
+
+			2.Android4.4(API 19) 之前只有格式为 jpg、png，同等宽高（要求苛刻），inSampleSize 为 1 的 Bitmap 才可以复用； 
+			Android4.4(API 19) 之前被复用的 Bitmap 的 inPreferredConfig 会覆盖待分配内存的 Bitmap 设置的 inPreferredConfig； 
+			Android4.4(API 19) 之后被复用的 Bitmap 的内存必须大于等于需要申请内存的 Bitmap的 内存；
+
+			3.通过bitmap复用，减少频繁申请内存带来的性能问题。
+
+			4.API-19 的 getAllocationByteCount 
+			一般情况下 getByteCount() 与 getAllocationByteCount() 是相等的； 
+			通过复用 Bitmap 来解码图片，如果被复用的 Bitmap 的内存比待分配内存的 Bitmap 大,那么 getByteCount() 表示新解
+			码图片占用内存的大小（并非实际内存大小,实际大小是复用的那个 Bitmap 的大小），getAllocationByteCount() 表
+			示被复用 Bitmap 占用的内存大小。所以可能 allocation 比 bytecount 大
+	4>框架搭建
+		lruCache-> DiskLruCache -> bitmapt内存复用 ->网络加载
+
+二.	巨图加载
+		原理：
+			主要是通过BitmapRegionDecoder进行加载一部分显示，结合GestureDetector和Scroller，在滑动的时候，去不断改变
+			rect.top，rect.bottom的值，去重绘巨型区域图片
+
+		代码：
+				//isShareable： 输入流是否共享，false 内部拷贝输入流
+				BitmapRegionDecoder decoder = BitmapRegionDecoder.newInstance(inputStream, false);
+
+				Rect rect = new Rect();
+				rect.left = 0;
+				rect.top = 0;
+				rect.right = 100;
+				rect.bottom = 100;
+
+				decoder.decodeRegion(rect, null);
+		

@@ -67,6 +67,11 @@ Parcelable Code Generator (for kotlin )
 
 Translation
 
+singletopTest 单列模式
+
+TingPic 压缩图片  (https://tinypng.com/developers 申请qpiKey之后就能使用了)
+90XXXXX9@qq.com	 	邮箱的api_key: 4lfSy6Dr1zs8BpIbwTcshsZDHfZEgz8S
+
 
 
 
