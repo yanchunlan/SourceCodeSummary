@@ -1,0 +1,95 @@
+一、CPU 和 GPU
+	1.区别
+	
+		图：3_01
+
+
+		黄色的 Control 为控制器，用于协调控制整个 CPU 的运行，包括取出指令、控制其他模块的运行等；
+		绿色的 ALU （ Arithmetic Logic Unit ）是算术逻辑单元，用于进行数学、逻辑运算；
+		橙色的 Cache 和 DRAM 分别为缓存和 RAM ，用于存储信息。
+		
+		从结构图可以看出， CPU 的控制器较为复杂，而 ALU 数量较少。因此 CPU 擅长各种复杂的逻辑
+		运算，但不擅长数学尤其是浮点运算
+		
+	2.在绘制中作用
+	
+	
+							xml中的button -> 
+							LayoutInflater 生成button对象 -> 
+			cpu计算 ----	button变成雷士svg多维向量 ->
+			GPU		----	SGPU进行栅格化（向量->位图），填充图像
+
+二.	卡顿原理
+	
+	1.	60HZ 刷新频率由来
+		人眼感觉60HZ以下人能感觉出来，这是一个分割边界
+	2.	绘制计算
+		Android 系统每隔 16ms 发出 VSYNC 信号 (1000ms/60=16.66ms) ，触发对 UI 进
+		行渲染（1000/60=16）
+	3.	卡顿原理
+		当某一帧画面的渲染计算时间超过 16ms 的时候，垂直同步机制会让显示器硬件等待 CPU 和 GPU 计
+		算完成后再进行渲染操作
+	4.	卡顿优化
+			16ms做的事情：
+				第一件：将 UI 对象转换为一系列多边形和纹理
+				第二件： CPU 传递处理数据到 GPU
+			明显缩短这2部分时间，即可达到优化目的
+				CPU 减少 xml 转换成对象的时间。
+				GPU 减少重复绘制的时间
+				
+三.	布局检测
+
+	Hierarchy Viewer (http://mirrors.zzu.edu.cn/android/repository/)暂时已经废弃
+	Layout Inspector 替代了它
+		Tools > Android > Layout Inspector
+	
+	BlockCanary（https://github.com/markzhai/AndroidPerformanceMonitor）：
+	
+		主要通过监控Handler中的dispatchMessage过程所消耗的时间是否超过阀值来判断是否发生卡顿
+	在sg.target.dispatchMessage之前打印线程，cpu堆栈信息，之后取时间对比，如果超过阈值，就
+	调用服务，发送通知，点击通知展示一个界面并输出日志（如果不经过handler就测试不到了），
+	
+	
+四.	过度绘制
+
+	1.	开发者选项里,有 OverDraw 监测工具,调试 GPU 过度绘制工具
+			蓝色：绘制一次，无过度绘制
+			淡绿：绘制两次
+			淡红：绘制三次
+			深红：绘制四次及以上
+	2.	计算渲染的耗时:
+			view内容改变，会创建 DisplayList，渲染 DisplayList，更新到屏幕上
+			
+			检测：
+				开发者选项里，设置中 GPU 呈现模式分析，旋转柱形图形
+					
+					中间有一根绿色的横线，代表16ms
+				
+					蓝色：测量绘制Display List的时间。
+					红色：OpenGL 渲染 Display List 所需要的时间。 
+					黄色：CPU等待GPU处理的时间。
+	
+	3.	系统已经有的优化
+		OpenGlES会缓存前面绘制的纹理，下次直接从缓存取数据
+			列入：	图片-> 统一打包到texture，下次取直接从纹理取数据
+					文字->转成图片，再加载到GPU
+	
+	4.	自定义View的重叠导致的过渡绘制
+		裁剪画布解决
+			canvas.save();
+			canvas.clipRect((float)c.x,0f,(float)(mDroidCards.get(i+1).x),(float)c.height);
+			canvas.drawBitmap(c.bitmap,c.x,0f,paint);
+			canvas.restore();
+	
+	5.	布局过度绘制
+			
+		1.去掉主题样式的默认背景
+			<item name="android:windowBackground">@null</item>
+		2.去掉容器背景
+			减少重叠绘制
+五.	总结
+
+	布局优化：
+		1.布局是否有可以删除的多层嵌套
+		2.布局是否有多层背景，过度绘制
+		3.自定义控件是都有进行裁剪

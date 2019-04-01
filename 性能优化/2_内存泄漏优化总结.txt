@@ -74,6 +74,11 @@
 
 六.	LeakCanary
 	https://github.com/square/leakcanary 虽然不是很准确，但是值得一用
+	
+	实现原理：
+		application.registerActivity()监听activity->从队列取当前activity的弱引用，如果
+		被回收就说明不存在，如果存在就说明没被回收，就抓取内存dump文件，开启intentService读
+		取内存文件，并发送通知，解析到界面显示
 
 七.	内存泄漏可能导致的原因
 	1.静态成员、单例
