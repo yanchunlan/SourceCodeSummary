@@ -1,4 +1,4 @@
-一.	流程：
+﻿一.	流程：
 
 	服务端	new_apk			---------->			apk.patc
 			old_apk				差分
@@ -31,6 +31,8 @@
 	如果在主包里面有很大的改变的话就需要全量更新
 
 四.	制造差分工具，并生成差分包（利用bsDiff的main函数差分）
+	
+	bsdiff是提取拆分包，用于生成aptch
 
 	查分合并使用：http://www.daemonology.net/bsdiff/  （bsdiff 查分/bspatch合成） 需要依赖bzip2
 	

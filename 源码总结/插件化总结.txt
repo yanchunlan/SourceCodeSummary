@@ -1,0 +1,50 @@
+流程：
+	app
+	pluginlib
+	module // 编译提供三方的apk
+
+
+第三方代理的方式：
+
+
+
+1.	加载插件APK
+
+	1. 提供外部dex的基本信息，目的是加载外部的dex
+	
+		根据apkPath取获取PakeageInfo信息,
+
+	// 1> 创建访问插件APK的classLoader
+			new classLoader()，去把dex加载到当前私有目录 自定义的File文件里面
+			
+		
+			
+	// 2> 创建AssetManager
+			反射获取AssetManager的addAssetPath方法，并调用，把apkPath添加进去，
+			
+
+	// 3> 创建Resource对象
+			根据当前context获取当前resource，并获取当前界面的displayMetrics,configuration
+			再根据反射的AssetManager去new resource,
+	
+	2. 生命周期代理
+		
+		IPlugin 定义了Activity的各种接口
+		
+		PluginActivity ，代理Activity的实现类 ， 如果不是插件跳转过来，就调用系统的生命周期方法，
+		否则调用 插件的生命周期方法
+		
+		实现resouce， loadApk.resource
+		实现assetManager, loadApk.assetManager
+		实现classLoader, loadApk.getClassLoader
+		
+	3.	启动
+	
+		传入className,在跳转到 PluginActivity代理类，去执行插件classLoader.loadclass(),并且执行class的attach,oncreate方法
+		if(plugin== IPlugin ) 
+			就执行三方里面的启动方法
+	
+		
+		
+		
+	

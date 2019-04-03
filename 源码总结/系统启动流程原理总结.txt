@@ -1,0 +1,55 @@
+一、虚拟机的启动
+	（如果root了，就可以使用xpose去hook 代码）
+	->	\system\core\init -> main 
+	->	第一次启动，执行\frameworks\base\cmds所有文件，包括开启虚拟机的文件 app_process
+	->	app_process  ->	main
+	->	com.android.internal.os.ZygoteInit(frameworks\base\core\java\com\android\internal\os)
+	->	AppRuntime继承AndroidRuntime（\frameworks\base\core\jni\start）,开启虚拟机startVm
+	->	JNI_CreateJavaVM(\art\runtime\jni_internal.cc)创建了p_env，p_vm (虚拟机在Linux是一个结构体)
+	
+	//JNIEnv *env 实例化 
+	*p_env = Thread::Current()->GetJniEnv(); （ 在\art\runtime 下的 thread.h 中）
+	//实例化虚拟机的地方 
+	*p_vm = runtime->GetJavaVM();
+	
+二.	加载java文件
+	
+	->	AndroidRuntime 
+	->	env->FindClass(libnativehelper\include\nativehelper\jni.h)
+	(java 中 双亲委托机制 ClassLoader 进行加载 java 文件，最底层的实现也是使用 FindClass 这个方法)
+	->	DefineClass （class_linker.cc (\art\runtime)）
+	->	LoadClass
+		区分InsertClass 和 LoadClass:
+			InsertClass(descriptor, klass.Get(), hash); 有一个参数是 hash，这样会把类进行缓存，在 
+			DefineClass 执行 InsertClass 之前，会先进行这个判断，如果已经加载的就不再进行加载。
+			LoadClass(self, dex_file, dex_class_def, klass); 是真正的去进行加载 Class
+	->	DexFile 获取class
+		(通过 DexFile 去获取到 ClassData。因为在类还没加载的时候，class 是以 dex格式 存在在 磁盘 文
+		件下，这时候需要先把 dex 转为 class，再把 class 加载到内存中,然后通过 LoadClassMembers 进行
+		加载类的信息，分配内存。LoadClassMembers 中分别对 ArtField 和 ArtMethod 进行初始化)
+		
+三.	实列（修改系统开机动画）
+
+	第一次启动init（\frameworks\base\cmds）
+	->	bootanimation(开机动画)
+		1>入口\frameworks\base\cmds\bootanimation\bootanimation_main.cpp
+		2>创建线程池，创建BootAnimation
+		3>readyToRun 里面获取SYSTEM_ENCRYPTED_BOOTANIMATION_FILE、OEM_BOOTANIMATION_FILE、
+		SYSTEM_BOOTANIMATION_FILE开机的资源文件
+		4>threadLoop,判断开机资源文件是否为空，为空的话则调用 android（2默认图片），不为空则
+		调用 movie 方法，会开启动画效果
+	
+	资源准备：
+		1>	540 宽度 
+			960 高度 
+			7 帧率 一秒播放多少帧 
+			p 标识符 
+			0 循环次数 无限循环 
+		
+		2>	bootanimation.zip 不需要压缩，仅仅是存储
+			root权限之后，直接把它放到bootanimation.zip上面即可
+			文件权限不够的时候，执行 mount -rw -o remount /system 
+			
+	总结：原理没错，但是有时候会挂，看运气吧
+		
+		

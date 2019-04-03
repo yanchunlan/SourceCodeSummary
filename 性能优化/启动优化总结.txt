@@ -1,0 +1,58 @@
+一.	启动黑白屏
+	主要是因为theme设置没有背景就是黑屏，设置白色背景就是白屏
+	想到的优化：
+		1> 直接设置启动页的logo
+			<item name="android:windowBackground">@drawable/bg</item>
+		2> 设置背景透明，但是会影响activity透明动画,故排除
+			<item name="android:windowIsTranslucent">true</item>
+		3> 去除背景
+			<item name="android:windowDisablePreview">true</item>
+	最佳优化：
+		启动时候，设置背景logo，平时activity就去除背景就可以了
+
+二.	启动时间
+	冷启动：就是第一次启动app
+	热启动：就是从后台回到当前界面
+	
+	adb shell am start -W 应用包名/全类名
+		ThisTime：启动一连串 Activity 的时候，最后一个 Activity 启动时间。
+		TotalTime：新应用启动的时间，包括新进程的启动和 Activity 的启动，但不包括前
+		一个应用 Activity pause 的时间。
+		WaitTime：总的时间，包括前一个应用 Activity pause 的时间和新应用启动的时间。
+
+三.	启动原理
+	查看activity任务栈:
+		adb shell dumpsys activity activities 
+		
+	Launcher -> 
+	OnClick -> 
+	startActivitySafely -> 
+	Launcher 的 startActivity -> 
+	Activity 中的 startActivity ->
+	...
+	...
+	...
+	-> Application 构造函数
+	-> Application.attachBaseContext()
+	-> Application.onCreate()
+	-> Activity 构造函数
+	-> Activity.setTheme()
+	-> Activity.onCreate()
+	-> Activity.onStart
+	-> Activity.onResume
+	-> Activity.onAttachedToWindow
+	-> Activity.onWindowFocusChanged
+四.	trance 文件分析
+	Debug.startMethodTracing(file.getAbsolutePath());
+	...
+	Debug.stopMethodTracing();
+		Invocation Count：被调用次数
+		Inclusive Time：花费的时间，包括里面各个方法下花费的时间
+		Exclusive Time：花费的时间，不包括里面各个方法下花费的时间
+	
+	总结：
+	
+	在 App 启动的时候，我们可以把一些耗时的操作放在子线程中进行操作。特别是初
+	始化一些第三方库文件，单这些操作没有创建 handler、没有操作 UI、对异步要求不高
+	的时候，就可以把他放在子线程中进行操作。还有一些单例模式，有些单例模式初始化也
+	比较复杂，耗时，可以采用懒加载方法进行加载
