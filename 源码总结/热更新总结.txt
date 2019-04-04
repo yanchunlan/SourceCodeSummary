@@ -145,3 +145,10 @@
 		loadDexFile, 最终它调用DexFile.loadDex(),加载dex
 	缺点：
 		涉及dex文件的重新解压缩合并等处理，消耗内存大，耗时长，在系统低内存时容易导致热更新失败
+		
+	流程：
+		下载更新包->copy到当前目录
+		classLoader->pastList->dexElement
+		->makeDexElements创建新的数组
+		-> 合并数组，并把加载的dex放到数组的前面
+		->再重置dexElement数组到pathList

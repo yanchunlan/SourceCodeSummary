@@ -1,0 +1,28 @@
+1.	setting -> editor -> file and code templates -> file header :
+	/**
+	 * author:  ycl
+	 * date:  ${DATE} ${TIME}
+	 * desc:  
+	 */
+	 
+2.	setting -> editor -> Live templates -> AndroidLog :
+
+	1>	kd			klog.d
+		com.xianghe.ivy.utils.KLog.d("$content$");
+		java -> statement					shorten FQ names
+		
+	2>	ke			klog.e
+		com.xianghe.ivy.utils.KLog.e("$content$");
+		java -> statement					shorten FQ names
+	2>	ki			klog.i
+		com.xianghe.ivy.utils.KLog.i("$content$");
+		java -> statement					shorten FQ names
+		
+3.	setting -> editor -> general ->	Auto import
+	add unambig......
+	optimize import ......
+	
+4.	setting -> editor -> code style -> java -> code generation:
+		field  				m
+		static field        s
+		parametor			m
