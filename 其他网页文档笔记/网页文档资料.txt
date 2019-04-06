@@ -1,0 +1,39 @@
+﻿工具：
+
+	tinyPNC：https://tinypng.com/
+	gif压缩：https://www.iloveimg.com/zh-cn/download/2w0s69wb5hc3tAxl7wy0wbq2hbf13rkqb2nyb711nfc3ph2qpsqccsmt22v9xf6ml0tdAmw3pvy86dyc8k99gjk4y6fxq9vrt1pc0jql7xy7hlhj9Abx5h4gzA983gngvmmxwx0lfxsw5n5rcxzpx9t2k7k61tmbn1kf41s95hs4zn7Awrnq
+	json: https://www.bejson.com/
+
+study:
+
+	阿里巴巴矢量图: http://www.iconfont.cn/search/index?searchType=icon&q=refresh&page=1
+	Developers: https://developer.android.google.cn/ndk/guides/
+	AndroidDevelopers 工具下载：http://www.androiddevtools.cn/
+	kotlin中文学习： http://www.kotlincn.net/docs/reference/
+	动脑： https://ke.qq.com/course/130901
+	nexus : http://127.0.0.1:8081/nexus/#welcome
+	LooperJing博客： https://www.jianshu.com/u/ce54e5c21032
+	测试总结博客：https://mp.weixin.qq.com/s/mMMcuuEHgbY67_UoyNq8gQ
+	模块化组件化博客：https://mp.weixin.qq.com/s/Tw-04it4_G4AgUmRO8imaw
+	bat大厂面试：https://mp.weixin.qq.com/s/p3l9wr4DX976Lr62-dYe8w
+	c函数库：http://www.kuqin.com/clib/
+	c函数手册：http://c.biancheng.net/cpp/u/hanshu/
+	NDK开发之旅： https://www.jianshu.com/p/0c948db795ab
+	ffmpeg博客： https://blog.csdn.net/king1425/article/list/3
+	csdn课堂：https://edu.csdn.net/course/detail/6842
+	java知识查找网：http://www.java1234.com/
+	云盘精灵 ：https://www.yunpanjingling.com/
+	资源搜索：http://magnet.chongbuluo.com/
+	源码：http://androidxref.com/
+	dart学习：https://www.dartlang.org/tools/sdk#install
+
+ffmpeg:https://edu.csdn.net/course/detail/8036
+https://edu.csdn.net/course/detail/7417
+https://www.shiguangkey.com/course/1352
+百度云干货：https://www.jianshu.com/p/e4f9fe3d98a1
+音视频学习：https://www.cnblogs.com/renhui/p/7452572.html
+openGL(湖广武王):https://blog.csdn.net/junzia/article/category/6462864
+jvm:http://www.cnblogs.com/leefreeman/category/1058724.html
+libiconv:https://blog.csdn.net/ydyang1126/article/details/65441441
+
+

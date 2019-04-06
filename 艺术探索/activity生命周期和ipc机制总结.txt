@@ -1,0 +1,74 @@
+一、Activity生命周期和启动模式
+	1.activity生命周期分析
+		1.1 正常情况
+			1> 7 大生命周期 onCreate，onRestart，onStart，onResume，onPause，onStop，onDestroy
+			2> 几种情况：
+				1.针对一个特定的Activity，第一次启动，回调如下：onCreate ——> onStart ——> onResume
+				2.当用户打开新的Activity或者切换到桌面的时候，回调如下：onPause ——> onStop ——> 这里有一种特殊的情况就是，如果新的Activity采取了透明的主题的话，那么当前Activity不会回调onStop
+				3.当用户再次回到原来的Activity，回调如下：onRestart ——> onStart ——> onResume
+				4.d当用户按back键的时候回调如下：onPause ———> onStop ——> onDestroy
+				5.当Activity被系统回收的时候再次打开，生命周期回调方法和1是一样的，但是你要注意一下就是只是生命周期一样，不代表所有的进程都是一样的，这个问题等下回详细分析
+				6.从整个生命周期来说，onCreate和onDestroy是配套的,分别标示着Activity的创建和销毁，并且只可能有一次调用，从Activity是否可见来说，onStart和onStop是配套的，随着用户的操作和设备屏幕的点亮和熄灭，这两个方法可能被调用多次，从Activity是否在前台来说，onResume和onPause是配套的，随着用户操作或者设备的点亮和熄灭，这两个方法可能被多次调用
+			注意：
+				(1)onStart和onResume，onPause和onStop 区别： 可见性
+				(2)当前Activity为A，如果用户打开了一个新的Activity为B，那么B的onResume和A的onPause谁先执行尼? ：先Pause在onCreate，onStart，onResume
+				Activity->Instrumentation->Binder->AMS->ActivityStack
+				->pauseBackStacks 之后再执行startPaUSINGlOCAKED 
+				-> ActivityThread 的 scheduleLaunchActivity-> handlerLaunchActivity ->  
+				执行 PerformLaunchActivity（其onCreate和onStart被调用），再执行handlerResumeActivity（onResume调用）
+
+		1.2 异常情况
+			1>系统配置改变导致的异常
+				onPause->onSaveInstanceState ->onStop->onDestroy --->onCreate -> onRestoreInstanceState
+				保存原理：
+					Activity->onSaveInstanceState 委托window保存数据->委托顶级容器ViewGroup，DecorView 到最顶级
+				->通知他的子元素来保存数据，分别执行onSaveInstanceState保存（类似于textView源码onSaveInstanceState里面就保存了文字内容和选中状态）
+			2>资源不足被杀死
+				防止被杀死：
+					使用开启服务保活等等
+					locale（语言改变）,orientation（方向改变），keyboardHidden（键盘弹起）
+					android:configChanges="orientation"
+	2.启动模式
+		2.1 LaunchMode
+			standard:标准模式(ApplicationContext去启动standard模式的Activity的时候就会报错,是因为ApplicationContext没有任务栈)
+			singleTop:顶部就不创建，调用onNewIntent
+			singTask：栈内复用模式，有就直接调用他，并把其上面的弹出，调用onNewIntent
+			singleInstance:一个栈只有一个
+				taskAffinity 任务栈的意思
+		2.2 Flags
+			FLAG_ACTIVITY_NEW_TASK: singTask 一样
+			FLAG_ ACTIVITY_ SINGLE _ TOP: singTop 一样
+			FLAG_ ACTIVITY_ CLEAR _ TOP: 清栈，一般配合FLAG_ACTIVITY_NEW_TASK使用
+			FLAG_ ACTIVITY_ EXCLUDE_ FROM _ RECENTS： 不存在activitys列表中，类似于加了 android:excludeFromRecents="true"
+	3.intentFilter
+		3.1 action的匹配规则
+			action的匹配需求就是intent中的action存在且必和过滤规则一样的action,action区分大小写
+		3.2 category的匹配规则
+			可以没有category，但是如果你一旦有category，不管有几个，每个都要能和过滤规则中的任何一个category相同
+		     （代码中默认也会添加 android intent categor.DEFAULT ，xml中就需要自己添加了）
+		3.3 data匹配规则
+			data由两部分组成，mimeType和URI，
+				前者是媒体类型，比如image/jpeg等，可以表示图片等，
+				而URI包含的数据可就多了，下面的URI的结构：
+
+    				<scheme>://<host>"<port>/[<path>|<pathPrefix>|<pathPattern>]
+			注意：代码中需要setDataAndType ，不能调用setData在调用setType,因为这两个方法彼此会清除对方的值
+二、IPC机制
+	1. 多进程模式
+		1.1> 多进程的开启
+			android:process 或者native层fork进程
+		1.2> 运行机制
+			系统要在创建新的进程同时分配独立的虚拟机，所以这个过程其实就是启动一个应用的过程
+	2. IPC 概念
+		2.1> Serializable
+			里面有io操作，通过writeObject,readObject去序列化，反序列化对象
+				serialVersionUID 主要用于反序列化找到相应的对象在反序列化，没有就会导致反序列化失败，
+				或者反序列化的时候 有增删对象，改变类名都会反序列化失败
+		2.2> Parcelable
+			内部writeToParcel和readParcel,都是有Paicel内部包装了可序列化的数据，可以在Binder中自由传输
+
+		上面2者的区别：  Serializable 需要大量I/O操作
+			Parcelable 主要用在内存序列化上
+			如果是存储存储设备或者网络传输，尽量用Serializable 
+		2.3> Binder
+

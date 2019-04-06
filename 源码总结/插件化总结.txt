@@ -44,6 +44,8 @@
 		if(plugin== IPlugin ) 
 			就执行三方里面的启动方法
 	
+	
+其他URL：https://blog.csdn.net/lyb2518/article/details/79178386
 		
 		
 		
