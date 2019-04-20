@@ -1,4 +1,4 @@
-流程：
+﻿流程：
 	app
 	pluginlib
 	module // 编译提供三方的apk
@@ -8,7 +8,7 @@
 
 
 
-1.	加载插件APK
+1.	加载插件APK --- dynamic-load-apk
 
 	1. 提供外部dex的基本信息，目的是加载外部的dex
 	
