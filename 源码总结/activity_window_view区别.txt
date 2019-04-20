@@ -1,0 +1,37 @@
+activity中window,ViewD的创建过程
+
+->	scheduleLaunchActivity
+->	handleLaunchActivity
+	1.	WindowManagerGlobal.initialize()
+	2.	performLaunchActivity
+		->	 mInstrumentation.newActivity
+		->	r.packageInfo.makeApplication
+		->	 activity.attach						
+			-> 创建当前PhoneWindow对象
+			 mWindow.setWindowManager // 传入Ibinder,知道view是属于哪个Activieity,,
+			 // WindowManagerService 就是通过这个 IBinder 来管理 Activity 里的 View
+			 
+			 
+		->	mInstrumentation.callActivityOnCreate
+			->	setContentView
+			->	installDecor //根据不同的 Theme，创建不同的 DecorView，DecorView 是一个 FrameLayout
+			
+	
+	3.	handleResumeActivity
+		->	performResumeActivity
+			->	activity.performResum
+			
+		->	activityResumed
+			->	r.activity.makeVisible(); 
+			->	wm.addView() 
+			...
+			...
+			
+总结
+	Window 是什么？
+		Window 是 Android 中窗口的宏观定义，主要是管理 View 的创建，以及与 
+		ViewRootImpl 的交互，将 Activity 与 View 解耦。
+
+	Activity 与 PhoneWindow 与 DecorView 之间什么关系？
+		一个 Activity 对应一个 Window 也就是 PhoneWindow，一个 PhoneWindow 持有一个
+		 DecorView 的实例，DecorView 本身是一个 FrameLayout。
