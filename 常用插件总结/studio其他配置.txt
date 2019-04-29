@@ -26,3 +26,5 @@
 		field  				m
 		static field        s
 		parametor			m
+
+5.	setting -> editor -> Android Logcat 设置log控制台颜色
