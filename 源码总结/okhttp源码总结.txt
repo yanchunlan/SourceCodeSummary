@@ -1,0 +1,78 @@
+一.	创建HttpClient
+
+	HttpClient是框架的入口，使用建造者模式来创建。
+	主要作用是创建调度器、创建Http连接池、添加拦截器。
+	1.Dispatcher
+		Dispatcher：调度器，管理所有的请求任务
+
+		enqueue 执行请求任务需要先检查最大请求数和相同的host的最大请求数，如果没超
+		过就加入运行队列，使用ExecutorService来执行；如果超过了，就加入等待队列。
+		promoteCalls 当一个请求完成时，就执行等待队列中的任务。
+	2.HttpConnectionPool
+		HttpConnectionPool：连接池，用来缓存、复用Http连接。
+
+		cleanup 每次添加Http连接时，都检查清理无效的连接。
+
+二、创建Request
+
+	Request是请求信息，主要作用是保存请求头、请求方法、请求地址、请求体。
+	body  拼接请求参数
+	
+三、创建Response
+
+	响应是对请求的回复，包含状态码、HTTP头和主体部分。
+
+四、创建Call
+	
+五、调用Call
+
+	1.调用过程
+	enqueue(Callback callback) -> AsyncCall(是一个Runnable，用来获取响应，执行回调函数)
+	-> getResponse (获取响应，是使用责任链的模式层层调动的。可以理解为递归。)
+	
+	/**
+	Response getResponse() throws IOException {
+		ArrayList<Interceptor> interceptors = new ArrayList<>();
+		interceptors.addAll(client.interceptors());
+		interceptors.add(new InterceptorRetry());
+		interceptors.add(new InterceptorHeaders());
+		interceptors.add(new InterceptorConnection());
+		interceptors.add(new InterceptorCallService());
+		InterceptorChain interceptorChain = new InterceptorChain(interceptors, 0, this, null);
+		return interceptorChain.proceed();
+	}*/
+	
+	->  callback.onResponse/onFailure
+
+	2.责任链
+	责任链会调用拦截器，而每个拦截器都会调用下一个拦截器获取Response，调用之
+	前做请求初始化操作，调用之后做响应处理操作
+		InterceptorRetry:请求失败时，重新请求，内部调用下一拦截器（chain.proceed();）
+		InterceptorHeaders：添加请求头信息，内部调用下一拦截器（chain.proceed();）
+		InterceptorConnection: 通过Socket创建Http连接，使用连接池来获取Http连接，内部调用下一拦截器
+		InterceptorCallService：发送Http请求，直接返回response
+	3.创建Http连接
+		HttpConnection：使用Socket建立http连接，支持Https协议
+		createSocket 创建socket，支持Https协议
+		HttpCodec：封装http协议，读写http请求
+		readHeaders：  读取响应头
+		readLine：  按行读取http响应数据
+		readChunked：  按块读取http响应数据
+		
+六.	源码中的拦截器
+	interceptors.addAll(client.interceptors());
+    interceptors.add(retryAndFollowUpInterceptor);
+    interceptors.add(new BridgeInterceptor(client.cookieJar()));
+    interceptors.add(new CacheInterceptor(client.internalCache()));
+    interceptors.add(new ConnectInterceptor(client));
+	
+	1）在配置 OkHttpClient 时设置的 interceptors； 
+	2）负责失败重试以及重定向的 RetryAndFollowUpInterceptor； 
+	3）负责把用户构造的请求转换为发送到服务器的请求、把服务器返回的响应转换为用户友好的响应的 BridgeInterceptor； 
+	4）负责读取缓存直接返回、更新缓存的 CacheInterceptor； 
+	5）负责和服务器建立连接的 ConnectInterceptor；（创建了一个 HttpCodec 对象，它利用 Okio 对 Socket 的读写）
+	6）配置 OkHttpClient 时设置的 networkInterceptors； 
+	7）负责向服务器发送请求数据、从服务器读取响应数据的 CallServerInterceptor。
+	
+	
+	

@@ -1,7 +1,7 @@
 1.	setting -> editor -> file and code templates -> file header :
 	/**
 	 * author:  ycl
-	 * date:  ${DATE} ${TIME}
+	 * date:  ${YEAR}/${MONTH}/${DAY} ${TIME}
 	 * desc:  
 	 */
 	 
