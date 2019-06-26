@@ -27,6 +27,6 @@
 		static field        s
 		parametor			m
 
-5.	setting -> editor -> Android Logcat 设置log控制台颜色
+5.	setting -> editor -> Color Scheme -> Android Logcat 设置log控制台颜色
 6.	adb: F:\androidStudio3_4\sdk\platform-tools 配置在环境变量path中，可以使用adb查看是否成功
 7.	ndk-stack: F:\ndk\android-ndk-r15b-windows-x86_64\android-ndk-r15b 配置在环境变量，可以使用ndk-stack查看成功
