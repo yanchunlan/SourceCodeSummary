@@ -1,0 +1,83 @@
+1.	线程基础
+	thread，Runnable的区别
+	
+2.	多线程之间共享数据
+	threadLocal ：多个类在同一个线程中共享同一份数据
+	
+3.	线程的原子性操作类
+	AtomicBoolean，AtomicXXXX
+	
+4.	初始线程池
+	new thread 缺点：
+		每次new Thread新建对象性能差。
+		线程缺乏统一管理，可能无限制新建线程，相互之间竞争，及可能占用过多系统资源导致死机或oom。
+		缺乏更多功能，如定时执行、定期执行、线程中断。
+	线程池优点：
+		重用存在的线程，减少对象创建、消亡的开销，性能佳。
+		可有效控制最大并发线程数，提高系统资源的使用率，同时避免过多资源竞争，避免堵塞。
+		提供定时执行、定期执行、单线程、并发数控制等功能。
+		
+	newFixedThreadPool 创建一个定长线程池，可控制线程最大并发数，超出的线程会在队列中等待。
+	newSingleThreadExecutor 创建一个单线程化的线程池，它只会用唯一的工作线程来执行任务，保证所有任务按照指定顺序(FIFO, LIFO, 优先级)执行。
+	newCachedThreadPool创建一个可缓存线程池，如果线程池长度超过处理需要，可灵活回收空闲线程，若无可回收，则新建线程。
+	newScheduledThreadPool 创建一个定长线程池，支持定时及周期性任务执行。
+
+5.	Callable、Future 和FutureTask
+	线程无法获取结果，通过Callable和Future，在任务执行完毕之后得到任务执行结果
+	Future是一个接口，无法直接用来创建对象，所以就存在了FutureTask了，FutureTask是Future接口的一个唯一实现类
+	使用：
+		ExecutorService es = Executors.newSingleThreadExecutor();
+		Callable call=new Callable{xxxx}
+		
+		// 1 第一种
+		Future<Integer> future = es.submit(call);
+		
+		// 2 第二种  实际第一种内部也是使用的第二种
+		 FutureTask<Integer> futureTask = new FutureTask<>(call);
+		Future<Integer> future = es.submit(futureTask);
+		
+		es.shutdown();
+		...
+		future.get()	----- > （获取结果）
+
+6.	CompletionService
+	CompletionService的一个实现是ExecutorCompletionService，它是Executor和BlockingQueue功能的融合体，Executor完成计算任务，
+	BlockingQueue负责保存异步任务的执行结果
+	在执行大量相互独立和同构的任务时，可以使用CompletionService，可以为任务的执行设置时限，主要是通过BlockingQueue的poll(long time,TimeUnit unit)
+	为任务执行结果的取得限制时间，如果没有完成就取消任务
+
+7.	lock
+	1>	synchronized 
+		释放的2种情况：
+			1）获取锁的线程执行完了该代码块，然后线程释放对锁的占有；
+			2）线程执行发生异常，此时JVM会让线程自动释放锁。
+		如果读写文件，读读文件不冲突，读写，写写冲突，就实现不了了。如果用synch,就要等它执行完，很麻烦
+	2>	lock
+		1）Lock不是Java语言内置的，synchronized是Java语言的关键字，因此是内置特性。Lock是一个类，通过这个类可以实现同步访问；
+		2）Lock和synchronized有一点非常大的不同，采用synchronized不需要用户去手动释放锁，当synchronized方法或者synchronized代码块执
+		行完之后，系统会自动让线程释放对锁的占用；而Lock则必须要用户去手动释放锁，如果没有主动释放锁，就有可能导致出现死锁现象
+		
+		a>ReentrantLock
+			 Lock lock = new ReentrantLock();
+			 lock.lock();
+			 lock.unlock();
+		b>ReentrantReadWriteLock
+			它表示两个锁，一个是读操作相关的锁，称为共享锁；一个是写相关的锁，称为排他锁
+			（1）公平选择性：支持非公平（默认）和公平的锁获取方式，吞吐量还是非公平优于公平。
+			（2）重进入：读锁和写锁都支持线程重进入。
+			（3）锁降级：遵循获取写锁、获取读锁再释放写锁的次序，写锁能够降级成为读锁。
+			
+			 ReadWriteLock rwl = new ReentrantReadWriteLock();
+			 rwl.readLock().lock();
+			 rwl.readLock().unlock();
+			 
+			 rwl.writeLock().lock();
+			 rwl.writeLock().unlock();
+	3>	锁的相关概念
+		1）可重入锁
+		synchronized和ReentrantLock都是可重入锁，可重入性在我看来实际上表明了锁的分配机制：基于线程的分配，而不是基于方法调用的分配
+		2）可中断锁
+		synchronized就不是可中断锁，而Lock是可中断锁
+		lockInterruptibly 就是可以中断锁的用法
+		3）公平性
+		
