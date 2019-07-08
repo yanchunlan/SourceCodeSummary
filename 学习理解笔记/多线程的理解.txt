@@ -79,5 +79,63 @@
 		2）可中断锁
 		synchronized就不是可中断锁，而Lock是可中断锁
 		lockInterruptibly 就是可以中断锁的用法
-		3）公平性
+		3）公平锁
+		请求锁的顺序来获取锁,synchronized是非公平锁,ReentrantLock和ReentrantReadWriteLock，默认是非公平锁，但可以设置为公平锁,
+		其中都实现了FairSync extends Sync，NonfairSync extends Sync公平锁，非公平锁。
+
+8.	条件对象Condition
+	Condition的await，signal，signalAll，对应Object的wait,notify,notifyAll，不过object捆绑synchronized，
+	Condition与互斥锁/共享锁捆绑使用的
+	原理：
+		内部有一个同步队列，等待队列，等待就加入等待队列，释放就加入同步队列
+	注意：signal 唤醒一个，signalAll唤醒所有，实际上signal比较危险，一次只解除一个线程状态，其他线程容易导致死锁
+	案例：
+		1>生产者，消费者模式，实质上是生产，消费2个线程，lock锁住代码，其中使用了2个condication分别控制生产，消费
+		2>3个线程，依次打印ABC，使用一个lock,3个condition解决，当A执行就B.signal,当b执行就csignal，xxxx
+
+### 同步工具类 start ###
+9.	Semaphore 信号量
+	acquire 阻塞，直到有许可证可以获得，然后拿到许可，release方法增加一个许可证，这可能会释放一个阻塞的acquire方法
+	Semaphore是信号量，用于管理一组资源。其内部是基于AQS的共享模式，AQS的状态表示许可证的数量，在许可证数量不够时，线程将会被挂起；而一旦
+	有一个线程释放一个资源，那么就有可能重新唤醒等待队列中的线程继续执行
+	
+	acquire:获取一个许可
+	acquire(int n):获取n个许可
+	release:释放一个许可
+	release(int n):释放n个许可
+
+10.	CyclicBarrier
+	它允许一组线程互相等待，直到达到某个公共屏障点（先让组内执行再等待全部执行后，再继续执行）
+	
+	可重用
+	底层是使用ReentrantLock和Condition实现的
+	总结：
+		1.CyclicBarrier可以用于多线程计算数据，最后合并计算结果的应用场景。
+		2.这个等待的await方法，其实是使用ReentrantLock和Condition控制实现的。
+		3.CyclicBarrier可以重复使用。
 		
+11.	CountDownLatch
+	同步工具类，它允许一个或多个线程一直等待，直到其他线程执行完后再执行。
+	例如，应用程序的主线程希望在负责启动框架服务的线程已经启动所有框架服务之后执行
+	
+	await:	如果当前count大于0,当前线程将会wait,直到count等于0或者中断
+	oolean await:使当前线程在锁存器倒计数至零之前一直等待，除非线程被中断或超出了指定的等待时间
+	countDown： 递减锁存器的计数，如果计数到达零，则释放所有等待的线程。
+	getCount：获得计数的数量
+	
+	CountDownLatch和CyclicBarrier区别:
+		CountDownLatch和CyclicBarrier都能够实现线程之间的等待，只不过它们侧重点不同：
+		CountDownLatch一般用于某个线程A等待若干个其他线程执行完任务之后，它才执行；
+		CyclicBarrier一般用于一组线程互相等待至某个状态，然后这一组线程再同时执行；
+		CountDownLatch是不能够重用的，而CyclicBarrier是可以重用的。
+
+12.	Exchange
+	第一个线程先执行exchange 方法，它等待第二个线程也执行exchange，当两个线程都到达同步点时，这两个线程就可以交换数据
+	
+	String exchange(V x):用于交换，启动交换并等待另一个线程调用exchange
+	String exchange(V x,long timeout,TimeUnit unit)：用于交换，启动交换并等待另一个线程
+	调用exchange，并且设置最大等待时间，当等待时间超过timeout便停止等待
+### 同步工具类 end ###
+
+13.	自定义线程池
+	
