@@ -1,0 +1,2 @@
+ssh-keygen -t rsa
+ssh -vT git@github.com

@@ -138,4 +138,18 @@
 ### 同步工具类 end ###
 
 13.	自定义线程池
-	
+	主要是线程与队列的结合
+14.	读写锁分离模式（读，写的锁的定义）
+15. feature设计模式（返回线程池的结果）
+15. Guarded Suspension设计模式
+		Request：表示客户端请求
+		RequestQueue：用于保存客户端请求队列
+		ClientThread：客户端进程
+		ServerThread：服务器进程
+16. 使用ThreadLocal重新设计一个上下文设计模式
+	防止对象多次被new
+17. Producer and Consumer设计模式
+18. 两阶段终止模式(Two-Phase Termination Patter)
+	主要是线程使用标识控制不再执行，并调用线程的interrupt
+19.	Worker Thread模式
+	主要是一边生产，一边消费
