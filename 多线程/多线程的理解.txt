@@ -82,7 +82,9 @@
 		3）公平锁
 		请求锁的顺序来获取锁,synchronized是非公平锁,ReentrantLock和ReentrantReadWriteLock，默认是非公平锁，但可以设置为公平锁,
 		其中都实现了FairSync extends Sync，NonfairSync extends Sync公平锁，非公平锁。
-
+	4>	源码
+		主要继承AbstractQueuedSynchronizer，内部有一个node head,node tail,和一个ConditionObject 等待队列，其中当wait之后,线程
+		加入等待队列，当signal后，从等待队列移到同步队列，继续竞争，其中node 分别是同步队列的头尾，方便竞争的时候增删。		
 8.	条件对象Condition
 	Condition的await，signal，signalAll，对应Object的wait,notify,notifyAll，不过object捆绑synchronized，
 	Condition与互斥锁/共享锁捆绑使用的
@@ -95,6 +97,10 @@
 
 ### 同步工具类 start ###
 9.	Semaphore 信号量
+	信号量维护了一个许可集，我们在初始化Semaphore时需要为这个许可集传入一个数量值，该数量值代表同一时间能访问共享资
+	源的线程数量。线程可以通过acquire()方法获取到一个许可，然后对共享资源进行操作，注意如果许可集已分配完了，那么线
+	程将进入等待状态，直到其他线程释放许可才有机会再获取许可，线程释放一个许可通过release()方法完成
+
 	acquire 阻塞，直到有许可证可以获得，然后拿到许可，release方法增加一个许可证，这可能会释放一个阻塞的acquire方法
 	Semaphore是信号量，用于管理一组资源。其内部是基于AQS的共享模式，AQS的状态表示许可证的数量，在许可证数量不够时，线程将会被挂起；而一旦
 	有一个线程释放一个资源，那么就有可能重新唤醒等待队列中的线程继续执行
@@ -103,6 +109,12 @@
 	acquire(int n):获取n个许可
 	release:释放一个许可
 	release(int n):释放n个许可
+
+	AQS中通过state值来控制对共享资源访问的线程数，每当线程请求同步状态成功，state值将会减1，如果超过限制数量的线程将被封
+	装共享模式的Node结点加入同步队列等待，直到其他执行线程释放同步状态，才有机会获得执行权，而每个线程执行完成任务释放同
+	步状态后，state值将会增加1，这就是共享锁的基本实现模型。至于公平锁与非公平锁的不同之处在于公平锁会在线程请求同步状态
+	前，判断同步队列是否存在Node，如果存在就将请求线程封装成Node结点加入同步队列，从而保证每个线程获取同步状态都是先到先
+	得的顺序执行的。非公平锁则是通过竞争的方式获取，不管同步队列是否存在Node结点，只有通过竞争获取就可以获取线程执行权
 
 10.	CyclicBarrier
 	它允许一组线程互相等待，直到达到某个公共屏障点（先让组内执行再等待全部执行后，再继续执行）

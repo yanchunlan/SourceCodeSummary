@@ -1,0 +1,30 @@
+一.	无锁的概念
+	无锁的执行者-CAS
+	
+二.	鲜为人知的UNsafe类
+
+三.	并发包中的原子操作类（Atomic类系列）
+	其源码实质上就是UNsafe的引用
+	1.	原子更新基本类型
+		AtomicBoolean：原子更新布尔类型
+		AtomicInteger：原子更新整型
+		AtomicLong：原子更新长整型
+	2.	原子更新引用
+		AtomicReference
+	3.	原子更新数组
+		AtomicIntegerArray：原子更新整数数组里的元素
+		AtomicLongArray：原子更新长整数数组里的元素
+		AtomicReferenceArray：原子更新引用类型数组里的元素
+	4.	原子更新属性
+		AtomicIntegerFieldUpdater：原子更新整型的字段的更新器。
+		AtomicLongFieldUpdater：原子更新长整型字段的更新器。
+		AtomicReferenceFieldUpdater：原子更新引用类型里的字段。
+	5.	CAS的ABA问题及其解决方案
+		1). AtomicStampedReference
+			AtomicStampedReference原子类是一个带有时间戳的对象引用，在每次修改后，
+			AtomicStampedReference不仅会设置新值而且还会记录更改的时间。
+			当AtomicStampedReference设置对象值时，对象值以及时间戳都必须满足期望值才能写入成功，
+			这也就解决了反复读写时，无法预知值是否已被修改的窘境
+		2).	AtomicMarkableReference类
+		AtomicMarkableReference维护的是一个boolean值的标识，也就是说至于true和false两种切换状态，
+		这种方式并不能完全防止ABA问题的发生，只能减少ABA问题发生的概率

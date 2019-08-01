@@ -1,0 +1,23 @@
+一.	阻塞队列概要
+	阻塞队列与我们平常接触的普通队列(LinkedList或ArrayList等)的最大不同点，在于阻塞队列支出阻塞添加和阻塞删除方法。
+
+	阻塞添加:
+		所谓的阻塞添加是指当阻塞队列元素已满时，队列会阻塞加入元素的线程，直队列元素不满时才重新唤醒线程执行元素加入操作。
+
+	阻塞删除:
+		阻塞删除是指在队列元素为空时，删除队列元素的线程将被阻塞，直到队列不为空再执行删除操作(一般都会返回被删除的元素)
+二.	ArrayBlockingQueue
+	1.	内部就是一个数组，ReentrantLock lock，和2个条件Condition，控制，类似于生产者，消费者模式
+	2.	存在公平锁，非公平锁
+三.	LinkedBlockingQueue
+	是一个由链表实现的有界队列阻塞队列，但大小默认值为Integer.MAX_VALUE,使用时候，建议手动传值
+	1.	内部存在node,2个ReentrantLock lock与Condition，
+	2.	分别使用了takeLock 和 putLock 对并发进行控制，添加和删除操作并不是互斥操作，可以同时进行
+	3.	当添加速度大于移除速度时，在无界的情况下，可能会造成内存溢出等问题
+四.	总结
+	区别：
+	1.队列大小有所不同，ArrayBlockingQueue必须指定大小，LinkedBlockingQueue默认Integer.MAX_VALUE（可指定）
+	2.数据存储容器不同，ArrayBlockingQueue使用数组，LinkedBlockingQueue使用node节点链表
+	3.ArrayBlockingQueue采用数组，插入或删除不会产生或销毁实例，LinkedBlockingQueue会生成额外的对象
+	4.添加移除的锁不同，ArrayBlockingQueue添加移除使用同一个锁，LinkedBlockingQueue使用2个锁，提高队列的吞吐量
+	可以并行处理，提高了队列的并发性能
