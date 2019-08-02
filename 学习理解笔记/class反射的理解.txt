@@ -1,0 +1,95 @@
+一.	Class的加载及其获取方式
+	jVM加载类，是第一次使用的时候动态加载，
+	1.	原理：
+		类加载器首先会检查这个类的Class对象是否已被加载(类的实例对象创建时依据Class对象
+		中类型信息完成的)，如果还没有加载，默认的类加载器就会先根据类名查找.class文件(
+		编译后Class对象被保存在同名的.class文件中)，在这个类的字节码文件被加载时，它们
+		必须接受相关验证，以确保其没有被破坏并且不包含不良Java代码(这是java的安全机制
+		检测)，完全没有问题后就会被动态加载到内存中，此时相当于Class对象也就被载入内存
+		了(毕竟.class字节码文件保存的就是Class对象)，同时也就可以被用来创建这个类的所
+		有实例对象
+	2.	加载方式：
+		new XXX,Class.forName("xxx"),都会加载类信息
+		class.forName(会加载类)
+		xxx.getClass ，顶级类Object继承而来的
+		xxx.class ，字面常量的方式获取Class对象
+		
+		其中字面量不会触发类的初始化(只是加载)：
+			加载loading -->  链接(验证vertification，准备preparation，解析resolution) --> 初始化initialization
+			
+			a)加载：类加载过程的一个阶段：通过一个类的完全限定查找此类字节码文件，并利用字节码文件创建一个Class对象
+			b)链接：验证字节码的安全性和完整性，准备阶段正式为静态域分配存储空间，注意此时只是分配静态成员变量的
+				存储空间，不包含实例成员变量，如果必要的话，解析这个类创建的对其他类的所有引用。
+			c)初始化：类加载最后阶段，若该类具有超类，则对其进行初始化，执行静态初始化器和静态初始化成员变量。
+	3.	总结
+		a)获取Class对象引用的方式3种，通过继承自Object类的getClass方法，Class类的静态方法forName以及字面常量的方式”.class”。
+		b)其中实例类的getClass方法和Class类的静态方法forName都将会触发类的初始化阶段，而字面常量获取Class对象的方式则不会触发初始化。
+		c)初始化是类加载的最后一个阶段，也就是说完成这个阶段后类也就加载到内存中(Class对象在加载阶段已被创建)，此时可以对类进行各种必
+		要的操作了（如new对象，调用静态成员等），注意在这个阶段，才真正开始执行类中定义的Java程序代码或者字节码。
+二.	理解泛化的class对象引用
+	class A
+	class<Integer> B
+	class<?>
+		明显指定<?>更好，第一个可以任意赋值，第二个指定了<integer>类型，后面肯定会移除
+	1.	类型装换
+		强制转换（B）A
+		class类型转换class.cast(A)
+	2.	类型判断
+		instanceof
+		class.isInstance
+	3.	constructor类及其用法
+			static Class<?>		forName(String className)							返回与带有给定字符串名的类或接口相关联的 Class 对象。
+			Constructor<T>		getConstructor(Class<?>... parameterTypes)			返回指定参数类型、具有public访问权限的构造函数对象
+			Constructor<?>[]	getConstructors()									返回所有具有public访问权限的构造函数的Constructor对象数组
+			Constructor<T>		getDeclaredConstructor(Class<?>... parameterTypes)	返回指定参数类型、所有声明的（包括private）构造函数对象
+			Constructor<?>[]	getDeclaredConstructor()							返回所有声明的（包括private）构造函数对象
+			T					newInstance()										创建此 Class 对象所表示的类的一个新实例。
+		
+		关于Constructor类本身一些常用方法：
+			Class<T>	getDeclaringClass()				返回 Class 对象，该对象表示声明由此 Constructor 对象表示的构造方法的类,其实就是返回真实类型（不包含参数）
+			Type[]		getGenericParameterTypes()		按照声明顺序返回一组 Type 对象，返回的就是 Constructor对象构造函数的形参类型。
+			String		getName()						以字符串形式返回此构造方法的名称。
+			Class<?>[]	getParameterTypes()				按照声明顺序返回一组 Class 对象，即返回Constructor 对象所表示构造方法的形参类型
+			T			newInstance(Object... initargs)	使用此 Constructor对象表示的构造函数来创建新实例
+			String		toGenericString()				返回描述此 Constructor 的字符串，其中包括类型参数。
+			
+	4.	Field类及其用法
+	
+			Field	getDeclaredField(String name)	获取指定name名称的(包含private修饰的)字段，不包括继承的字段
+			Field[]	getDeclaredField()				获取Class对象所表示的类或接口的所有(包含private修饰的)字段,不包括继承的字段
+			Field	getField(String name)			获取指定name名称、具有public修饰的字段，包含继承字段
+			Field[]	getField()						获取修饰符为public的字段，包含继承字段
+		
+		其他常用的方法：
+			void		set(Object obj, Object value)	将指定对象变量上此 Field 对象表示的字段设置为指定的新值。
+			Object		get(Object obj)					返回指定对象上此 Field 表示的字段的值
+			Class<?>	getType()						返回一个 Class 对象，它标识了此Field 对象所表示字段的声明类型。
+			boolean		isEnumConstant()				如果此字段表示枚举类型的元素则返回 true；否则返回 false
+			String		toGenericString()				返回一个描述此 Field（包括其一般类型）的字符串
+			String		getName()						返回此 Field 对象表示的字段的名称
+			Class<?>	getDeclaringClass()				返回表示类或接口的 Class 对象，该类或接口声明由此 Field 对象表示的字段
+			void		setAccessible(boolean flag)		将此对象的 accessible 标志设置为指示的布尔值,即设置其可访问性
+	5.	Method类及其用法
+			Method		getDeclaredMethod(String name, Class<?>... parameterTypes)	返回一个指定参数的Method对象，该对象反映此 Class 对象所表示的类或接口的指定已声明方法。
+			Method[]	getDeclaredMethod()									返回 Method 对象的一个数组，这些对象反映此 Class 对象表示的类或接口声明的所有方法，包括公共、保护、默认（包）访问和私有方法，但不包括继承的方法。
+			Method		getMethod(String name, Class<?>... parameterTypes)	返回一个 Method 对象，它反映此 Class 对象所表示的类或接口的指定公共成员方法。
+			Method[]	getMethods()										返回一个包含某些 Method 对象的数组，这些对象反映此 Class 对象所表示的类或接口（包括那些由该类或接口声明的以及从超类和超接口继承的那些的类或接口）的公共 member 方法。
+		
+		invoke(Object obj,Object... args) 可以实现调用，其他：
+			Object		invoke(Object obj, Object... args)	对带有指定参数的指定对象调用由此 Method 对象表示的底层方法。
+			Class<?>	getReturnType()						返回一个 Class 对象，该对象描述了此 Method 对象所表示的方法的正式返回类型,即方法的返回类型
+			Type		getGenericReturnType()				返回表示由此 Method 对象所表示方法的正式返回类型的 Type 对象，也是方法的返回类型。
+			Class<?>[]	getParameterTypes()					按照声明顺序返回 Class 对象的数组，这些对象描述了此 Method 对象所表示的方法的形参类型。即返回方法的参数类型组成的数组
+			Type[]		getGenericParameterTypes()			按照声明顺序返回 Type 对象的数组，这些对象描述了此 Method 对象所表示的方法的形参类型的，也是返回方法的参数类型
+			String		getName()							以 String 形式返回此 Method 对象表示的方法名称，即返回方法的名称
+			boolean		isVarArgs()							判断方法是否带可变参数，如果将此方法声明为带有可变数量的参数，则返回 true；否则，返回 false。
+			String		toGenericString()					返回描述此 Method 的字符串，包括类型参数。
+	6.	反射包中的Array类
+			Class<?>	getComponentType()	返回表示数组元素类型的 Class，即数组的类型
+			boolean		isArray()			判定此 Class 对象是否表示一个数组类。
+			
+			static Object	set(Object array, int index)	返回指定数组对象中索引组件的值。
+			static int		getLength(Object array)			以 int 形式返回指定数组对象的长度
+			static object	newInstance(Class<?> componentType, int... dimensions)	创建一个具有指定类型和维度的新数组。
+			static Object	newInstance(Class<?> componentType, int length)			创建一个具有指定的组件类型和长度的新数组。
+			static void		set(Object array, int index, Object value)				将指定数组对象中索引组件的值设置为指定的新值。
