@@ -1,0 +1,72 @@
+一.	单列模式
+	三大要素：线程安全，延迟加载，序列化与反序列化安全
+	饿汉
+		private static Singleton = new Singleton();
+		public static getSignleton(){
+			return singleton;
+		}
+	饿汉变种
+		private static Singleton instance = null;  
+		static {  
+		instance = new Singleton();  
+		}  
+		public static Singleton getInstance() {  
+			return this.instance;  
+		}  
+	不加锁懒汉
+		private static Singleton singleton = null;
+		public static Singleton getSingleton() {
+			if(singleton == null) singleton = new Singleton();
+			return singleton;
+		}
+	加锁懒汉
+		private static volatile Singleton singleton = null;
+		public static Singleton getSingleton(){
+			synchronized (Singleton.class){
+				if(singleton == null){
+					singleton = new Singleton();
+				}
+			}
+			return singleton;
+		}    
+	双重校验锁
+		private static volatile Singleton singleton = null;
+		public static Singleton getSingleton(){
+			if(singleton == null){
+				synchronized (Singleton.class){
+					if(singleton == null){
+						singleton = new Singleton();
+					}
+				}
+			}
+			return singleton;
+		}    
+	静态内部类
+		private static class Holder {
+			private static Singleton singleton = new Singleton();
+		}
+		public static Singleton getSingleton(){
+			return Holder.singleton;
+		}
+	枚举
+		public static class Resource {}
+		public enum SomeThing {
+			INSTANCE;
+			private Resource instance;
+			SomeThing() {
+				instance = new Resource();
+			}
+			public Resource getInstance() {
+				return instance;
+			}
+		}
+	容器实现单列
+		private static Map<String, Object> objMap = new HashMap<String, Object>();
+		public static void registerService(String key, Object instance) {
+			if (!objMap.containsKey(key)) {
+				objMap.put(key, instance);
+			}
+		}
+		public static Object getService(String key) {
+			return objMap.get(key);
+		}
