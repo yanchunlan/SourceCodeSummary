@@ -1,0 +1,25 @@
+一.	前言
+
+	代理，是一个中间者的角色，它屏蔽了访问方和委托方之间的直接接触。
+
+二.	静态代理
+
+	代理类需要每次都要手工创建。
+	interface	
+	impl	implment	interface
+	proxy  里面使用了 impl的方法
+
+三.	动态代理
+	根据委托类自动生成
+	 ICar iCar = new Benz();
+
+     InvocationHandler handler = new CarHandler(iCar);// 仅仅是提供你给代理类
+     // 代理类动态创建
+     ICar proxy = (ICar) Proxy.newProxyInstance(ICar.class.getClassLoader(),
+                new Class[]{ICar.class},
+                handler);
+
+     proxy.move();
+
+四.	动态代理+工厂
+	仅仅只是对代理类的重封装
