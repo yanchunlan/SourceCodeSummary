@@ -1,0 +1,4 @@
+﻿jenkins流程再此：	https://cloud.tencent.com/developer/article/1176177
+			https://blog.csdn.net/ddnosh/article/details/84714813
+
+Travis使用:		https://blog.csdn.net/ddnosh/article/details/84640821

@@ -16,6 +16,8 @@ ADB idel
 
 genymotion
 
+SQLScout
+数据库调试
 
 Android Studio Prettify
 自动书写findViewById,
@@ -73,6 +75,10 @@ TingPic 压缩图片  (https://tinypng.com/developers 申请qpiKey之后就能使用了)
 90XXXXX9@qq.com	 	邮箱的api_key: 4lfSy6Dr1zs8BpIbwTcshsZDHfZEgz8S
 
 Markdown navigator 支持Markdown
+
+Freeline	Android的超快速构建工具,可以替代Instant Run(不支持kotlin)
+
+jenkins control plugin	自动打包工具插件
 
 
 

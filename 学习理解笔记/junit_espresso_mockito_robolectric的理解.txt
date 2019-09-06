@@ -1,0 +1,50 @@
+一.	关于测试
+	AS新建了android_test:需要连接安卓设备
+	test：直接ide运行即可，不需要设备
+二.	JUnit
+	在test文件夹下
+	
+	主要是几个关键Annotation，@Before，@Test
+	具体可以看手册： http://www.matools.com/api/junit
+三.	espresso
+	在android_test文件夹下
+	
+	androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+	
+	@RunWith: 关联测试的类
+	如下：
+	@Test
+    public void runClick(){
+        onView(withText("点击获取城市感冒指数")).perform(click());
+        onView(withId(R.id.wendu)).check(matches(withText("点击获取城市今天温度")));
+    }
+	
+四.	Mockito
+	在test文件夹下
+	
+	可以支持类的创建，不需要单独在测试环境创建类
+	列如：
+		List mockedList = mock(List.class);
+        mockedList.add("one");
+        mockedList.clear();
+        verify(mockedList).add("one");
+        verify(mockedList).clear();
+		
+五.	Robolectric
+	在test文件夹下
+	针对Android SDK的测试框架
+	列如：	
+		@Before
+		public void setUp() {
+			activity = Robolectric.setupActivity(WeatherActivity.class);
+		}
+
+		@Test
+		public void testToSettingPage(){
+			activity.toSettingPage();
+			Intent expectedIntent = new Intent(activity, SettingActivity.class);
+			Intent actualIntent = ShadowApplication.getInstance().getNextStartedActivity();
+			Assert.assertEquals(expectedIntent.getComponent(), actualIntent.getComponent());
+		}
+	启动了一个Activity,可以在下面测试是否真的启动的它
+	
