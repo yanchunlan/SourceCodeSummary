@@ -1,0 +1,70 @@
+内存优化
+	一.	产生
+		1.	移动设备发展
+		2.	内存问题
+			1.	内存不足导致2个问题
+				异常
+				卡顿
+			2.	2个误区
+				内存占用越少越好。Android bitmap分配
+				Native 内存不用管。类似于Fresco 图片库把bitmap的内存放置在native内存中
+		3.	测量方法
+			1.	java内存分配
+				跟踪堆内存使用情况，使用 Allocation Tracker 和 MAT
+			2.	Native 内存分配
+				google建议使用 AddressSanitize，
+				Android Developer 加入了 Malloc 调试和Malloc 钩子
+		4.	总结
+			自定义的 Allocation Tracker
+			1.	学会Substrate hook框架
+			2.	Facebook开源的工具类fbjni，主要提供了工具类，ref utils ，Global JniEnv
+			3.	ndk_dlopen 提供了force dlopen 机制
+	二.	解决
+		1.	内存优化探讨
+			1.	设备分级
+				1.	设备分级。小设备，不使用高级动画，特性
+				2.	缓存管理。OnTrimMemory管理
+				3.	进程模型。减少进程，减少常驻
+				4.	安装包大小。代码，资源，图片，so库体积缩减
+			2.	bitmap优化
+				1.	统一图片库
+				2.	统一监控
+					1.	大图片监控
+					2.	重复图片监控
+					3.	图片总内存
+				3.	内存泄漏
+					1.	java内存泄漏
+						列如文件100M,裁剪后30M，使用7zip压缩后，再10M上传
+					2.	OOM监控
+						美团有Probe（https://static001.geekbang.org/con/19/pdf/593bc30c21689.pdf）
+						缺陷容易导致二次奔溃
+					3.	native内存泄漏监控
+						Malloc 调试（Malloc Debug）和 Malloc 钩子（Malloc Hook）可以使用，但是不稳定
+						微信也有尝试：https://mp.weixin.qq.com/s/KtGfi5th-4YHOZsEmTOsjg?
+					4.	so无法重编
+						使用了 PLT Hook 拦截库的内存分配函数，Native hook方式
+					5.	so可重编
+						GCC 的“-finstrument-functions”参数给所有函数插桩
+			3.	内存监控
+				1.	采集方式
+					在前台的时候，每 5 分钟采集一次 PSS、Java 堆、图片总内存
+				2.	计算指标
+					1.	内存异常率
+					2.	触顶率
+					3.	GC监控
+			4.	总结
+				使用 sqaure 的HAHA库，其中核心方法为：
+					// 打开hprof文件
+					final HeapSnapshot heapSnapshot = new HeapSnapshot(hprofFile);
+					// 获得snapshot
+					final Snapshot snapshot = heapSnapshot.getSnapshot();
+					// 获得Bitmap Class
+					final ClassObj bitmapClass = snapshot.findClass("android.graphics.Bitmap");
+					// 获得heap, 只需要分析app和default heap即可
+					Heap heap = snapshot.getHeaps();
+					// 从heap中获得所有的Bitmap实例
+					final List<Instance> bitmapInstances = bitmapClass.getHeapInstances(heap.getId());
+					// 从Bitmap实例中获得buffer数组
+					ArrayInstance buffer = HahaHelper.fieldValue(((ClassInstance) bitmapInstance).getValues(), "mBuffer");
+				整个思路就是通过"mBuffer"的hash值判断哪些Bitmap是重复的。
+					

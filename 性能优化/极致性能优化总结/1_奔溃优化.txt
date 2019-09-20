@@ -1,0 +1,63 @@
+奔溃优化
+	一.	奔溃的产生
+		1.	Android的2种奔溃（java奔溃,Native奔溃）
+			1.Native 崩溃的捕获流程
+				编译端->客户端->服务端
+			2.Native 崩溃捕获的难点
+				情况一：文件句柄泄漏，导致创建日志文件失败，怎么办？
+				情况二：因为栈溢出了，导致日志生成失败，怎么办？
+				情况三：整个堆的内存都耗尽了，导致日志生成失败，怎么办？
+				情况四：堆破坏或二次崩溃导致日志生成失败，怎么办？
+			3. 选择合适的崩溃服务
+				腾讯的Bugly、阿里的啄木鸟平台、网易云捕、Google的Firebase
+		2.	如何客观地衡量崩溃
+			安全模式防止奔溃（https://mp.weixin.qq.com/s?__biz=MzUxMzcxMzE5Ng==&mid=2247488429&idx=1&sn=448b414a0424d06855359b3eb2ba8569&source=41#wechat_redirect）
+		3.	如何客观地衡量稳定性
+			1. 使用 FileObserver 监听/data/anr/traces.txt的变化
+				海外使用 Google Play 服务，国内微信利用Hardcoder（https://mp.weixin.qq.com/s/9Z8j3Dv_5jgf7LDQHKA0NQ?）
+			2. 监控消息队列的运行时间
+				属于卡顿，不属于奔溃
+		4.	总结
+			使用Breakpad完成native的奔溃捕获，并使用工具读出其意思
+	二.	奔溃的分析
+		1.	奔溃现场
+			1.	奔溃信息
+				进程名、线程名
+				崩溃堆栈和类型
+			2. 系统信息
+				Logcat，系统的event logcat记录在/system/etc/event-log-tags
+				机型、系统、厂商、CPU、ABI、Linux 版本等
+				设备状态：是否 root、是否是模拟器
+			3. 内存信息
+				系统剩余内存。系统内存状态，读取文件 /proc/meminfo
+				应用使用内存。PSS 和 RSS 通过 /proc/self/smap 计算
+				虚拟内存。通过/proc/self/status得到
+			4. 资源信息
+				文件句柄 fd。限制数量可以通过 /proc/self/limits得到
+				线程数
+				JNI。DumpReferenceTables 统计 JNI 的引用表分析
+			5. 应用信息
+				崩溃场景
+				关键操作路径
+				其他自定义信息
+				其他获取类似磁盘空间、电量、网络使用等特定信息
+		2.	崩溃分析
+			1.	确定重点
+				1. 确认严重程度
+				2. 崩溃基本信息
+					java 崩溃
+					Native 崩溃
+						比较常见的是有 SIGSEGV 和 SIGABRT，前者一般由于空指针、非法指针造成，后者主要因为 ANR 和调用abort() 退出所导致
+					ANR
+				3. Logcat
+				4. 各个资源情况
+			2.	查找共性
+				机型、系统、ROM、厂商、ABI，是不是因为安装了 Xposed，是不是只出现在 x86 的手机，是不是只有三星这款机型，是不是只在 Android 5.0 的系统
+			3.	尝试复现
+				采用增加日志或使用 Debugger、GDB
+			4.	系统崩溃
+				1. 查找可能的原因
+				2. 尝试规避
+				3. Hook 解决（分为 Java Hook 和 Native Hook）
+			5.	总结
+				TimeoutException是由系统的 FinalizerWatchdogDaemon抛出，通过hook解决

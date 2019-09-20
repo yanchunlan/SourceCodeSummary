@@ -1,0 +1,6 @@
+
+卸载应用：adb shell pm uninstall -k --user 0  xxxxx(包名)
+
+查看包名：adb shell dumpsys window w |findstr \/ |findstr name=
+
+恢复卸载应用（>8.0可用）：adb shell pm install-existing —user 0 your_package_name
