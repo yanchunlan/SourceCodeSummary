@@ -1,0 +1,61 @@
+卡顿
+一.	基础知识
+	1.	cpu性能
+	2.	卡顿问题分析指标
+		cpu使用率
+		cpu饱和度
+	3.	android卡顿排查工具
+		1.	Traceview
+			利用 Android Runtime 函数调用的 event事件，将函数运行的耗时和调用关系写入 trace 文件中
+		2.	Uber开源的Nanoscope(十分适合做启动耗时自动化分析)
+			直接修改虚拟机源码，在ArtMethod执行入口和执行结束位置增加埋点代码，将所有的信息先写到内存，等到 trace 结束后才统一生成结果文件
+		3.	systrace
+			利用了 Linux 的ftrace调试工具，相当于在系统各个关键位置都添加了一些性能探针
+			自动实现：可以使用编译时给每个函数插桩解决
+		4.	Simpleperf
+			可以看到所有的 Native 代码的耗时，
+		总结：
+			Simpleperf：分析native代码耗时
+			系统调用：systrace
+			整个程序执行流程耗时：Traceview，systrace
+	4.	可视化方法
+		androidStudio3.2以上的profiler
+		1.	call chart
+			按照函数的执行顺序展示
+		2.	flame chart（火焰图）
+			可以比较快速的看到那个维度耗时多
+	5.	总结：
+			系统打印CPU信息到日志，是使用ProcessCpuTracker.java，通过检查几个文件查询系统的cpu使用率
+二.	监控卡顿
+	1.	消息队列
+		利用替换Looper 的 Printer实现，或者线程定时发送1s监控消息
+	2.	插桩
+		目的是监听函数执行的耗时
+		做法：在函数的入口，出口，加入耗时监控的代码
+			a> 避免方法数暴增
+				编译时给每个方法分配id
+			b> 过滤简单的函数(类似于微信的matix)
+				缺点:无法监控系统的函数
+	3.	profilo
+		1.	集成atrace功能
+		2.	快速获取java堆栈
+			native奔溃捕获java堆栈，发送sigpof信号，获取搭到线程，通过线程对象获取ManagedStack
+			，在从其中获取ShadowFrame，QuickFrame获取到调用栈，unwind出java的堆栈
+		3.	其他监控
+			Android Vitals
+			1.	帧率
+				getWindow().getDecorView().getViewTreeObserver().addOnDrawListener
+			2.	生命周期监控
+				监控生命周期的启动和耗时，判断是否频繁的被拉起
+				可以采用Hook方式，但是9.0后被禁止，就最好使用编译时插桩Aspect、ASM 和 ReDex
+		3.	线程监控
+			1.	线程数量
+				hook 线程的 nativeCreate() 函数
+			2.	线程时间
+				监控线程的用户时间 utime、系统时间 stime 和优先级
+		总结：
+			profilo的实现原理？
+			（JVM的AsyncGetCallTrace，再适配Android runtime实现，systrace 使用的是 Linux 的 ftrace，Simpleperf 参考了 Linux 的 perf 工具
+				
+				
+		

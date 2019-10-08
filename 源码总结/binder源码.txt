@@ -1,9 +1,20 @@
-Android系统Binder机制中的四个组件Client、Server、Service Manager和Binder驱动程序的关系如下图所示：
-	
-	client  -- ipc--  server         serverManager
-		|				|					|
-		|				|					|
-		|				|					|
-				binder driver
-				 /dev/binder
-	
+一.	流程（binder_01.png）
+	Java应用层:	AMP.startService	->	AMS.startService
+	Java IPC层:	framework层的Binder客户类BinderProxy	->	服务类Binder
+	Native IPC层:	BpBinder,JavaBBinder	->	BBinder
+	Kernel物理层:	Binder Driver(共享)
+二.	起点
+	（运行在app所在进程）
+	activity.startService
+	->contextWarpper.startService
+	->contextImpl.startService
+	->activityManagerProxy.startService
+	（运行在系统进程）
+	->activityManagerNative.onTransact
+	->activityManagerServer.startService
+三.	bind ipc 原理
+	1.	注册服务：首先AMS注册到ServiceManager。该过程：AMS所在进程(system_server)是客户端，ServiceManager是服务端。
+	2.	获取服务：Client进程使用AMS前，须先向ServiceManager中获取AMS的代理类AMP。该过程：AMP所在进程(app process)是客户端，ServiceManager是服务端。
+	3.	使用服务： app进程根据得到的代理类AMP,便可以直接与AMS所在进程交互。该过程：AMP所在进程(app process)是客户端，AMS所在进程(system_server)是服务端。
+四.	通信过程
+	AMP.startService(Parcel.obtain(); 内部是调动android_os_Parcel_create创建对象)	->	
