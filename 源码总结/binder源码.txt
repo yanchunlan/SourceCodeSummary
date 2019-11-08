@@ -17,4 +17,129 @@
 	2.	获取服务：Client进程使用AMS前，须先向ServiceManager中获取AMS的代理类AMP。该过程：AMP所在进程(app process)是客户端，ServiceManager是服务端。
 	3.	使用服务： app进程根据得到的代理类AMP,便可以直接与AMS所在进程交互。该过程：AMP所在进程(app process)是客户端，AMS所在进程(system_server)是服务端。
 四.	通信过程
-	AMP.startService(Parcel.obtain(); 内部是调动android_os_Parcel_create创建对象)	->	
+	1.	第一部分（startService）
+	AMP.startService
+	->
+	Parcel.java –> android_os_Parcel.cpp –> Parcel.cpp；
+	开始Parcel.obtain(); 内部是调动android_os_Parcel_create创建对象,
+	writeString -> android_os_Parcel_writeString -> writeString16
+	->	
+	 mRemote.transact(START_SERVICE_TRANSACTION, data, reply, 0);
+	2.	第二部分（分析mRemote）
+	ActivityManagerProxy
+	->	
+	ActivityManagerNative.getDefault()(->IBinder b = ServiceManager.getService(“activity”)),
+	IActivityManager am = asInterface(b);
+	->
+	IActivityManager in = (IActivityManager)obj.queryLocalInterface(descriptor);
+	(同一进程，返回本地的binder对象，不同进程返回远程代理对象BinderProxy)
+	return new ActivityManagerProxy(obj);（创建amp）
+	->
+	BinderProxy.transact(int code, Parcel data, Parcel reply, int flags)
+	->
+	transactNative(code, data, reply, flags)
+	->
+	android_os_BinderProxy_transact(android_util_Binder.cpp)
+	->
+	 IBinder* target = (IBinder*) env->GetLongField(obj, gBinderProxyOffsets.mObject);
+	 ...
+     status_t err = target->transact(code, *data, reply, flags);
+	->
+	上面分析gBinderProxyOffsets.mObject：
+		其保存的是BpBinder对象，
+		BpBinder::transact(BpBinder.cpp)
+		->
+		IPCThreadState::self()->transact(IPCThreadState.cpp)
+		(writeTransactionData写入数据，
+		waitForResponse等待收到应答消息，后调用talkWithDriver跟驱动交互)
+		->
+		IPC.writeTransactionData（IPCThreadState.cpp 讲数据写入mOut）
+		IPC.waitForResponse(收到任一BR_命令，处理后便会退出waitForResponse()的状态)
+		IPC.talkWithDriver（binder_write_read 结构体是真正与其交互的结构，通过ioctl
+		与mDriverFD通信，是真正与Binder驱动进行数据读写交互的过程）
+	3.	第三部分（分析Binder driver）
+	binder_ioctl（Binder.c）
+	获取binder_proc结构体，再从中查找binder_thread，如果当前线程已经加入proc线程队列就返回，
+	否则创建加入binder_ioctl_write_read
+	->
+	binder_ioctl_write_read(将用户空间bwr结构体拷贝到内核空间,然后执行binder_thread_write()操作)
+	->
+	binder_thread_write(不停的写数据，cm==BC_TRANSACTION/BC_REPLY,调用binder_transaction)
+	->
+	binder_transaction
+	(1.查询目标进程的过程： handle -> binder_ref -> binder_node -> binder_proc
+	2.BINDER_WORK_TRANSACTION添加到目标队列target_list,
+	3.binder_transaction_data中ptr.buffer和ptr.offsets拷贝到目标进程的binder_buffer->data
+	4.BC_TRANSACTION且非oneway, 则将当前事务添加到thread->transaction_stack
+	5.BINDER_WORK_TRANSACTION添加到目标队列(此时为target_proc->todo队列)
+		将BINDER_WORK_TRANSACTION_COMPLETE添加到当前线程thread->todo队列
+	6.唤醒目标进程target_proc开始执行事务)
+	->proc/thread是指当前发起方的进程信息，而binder_proc是指目标接收端进程
+	->
+	binder_alloc_buf  分配内存
+	->
+	binder_thread_read
+	（1. 当wait_for_proc_work = false, 则进入线程的等待队列thread->wait, 直到thread->todo队列
+	有事务才往下执行  ->  获取并处理thread->todo队列中的事务;将相应的cmd和数据写回用户空间
+	  2. 当wait_for_proc_work = true, 则进入线程的等待队列proc->wait, 直到proc->todo队列有事务
+	  才往下执行;  ->   获取并处理proc->todo队列中的事务;将相应的cmd和数据写回用户空间）
+	->
+	binder_thread_write
+	->
+	binder_transaction
+	(执行完binder_thread_write方法后, 通过binder_transaction()首先写入BINDER_WORK_TRANSACTION_COMPLETE写入当前线程.
+	这时bwr.read_size > 0, 回到binder_ioctl_write_read方法, 便开始执行binder_thread_read();
+	在binder_thread_read()方法, 将获取cmd=BR_TRANSACTION_COMPLETE, 再将cmd和数据写回用户空间;
+	一次Binder_ioctl完成,接着回调用户空间方法talkWithDriver(),刚才的数据以写入mIn.
+	这时mIn有可读数据, 回到【小节2.10】IPC.waitForResponse()方法,完成BR_TRANSACTION_COMPLETE过程.
+	如果本次transaction采用非oneway方式, 这次Binder通信便完成, 否则还是要等待Binder服务端的返回。)
+	4.	第四部分
+	由于之前binder_transaction 除了向自己的所在的线程，也向系统线程写入了数据
+	binder创建
+	ProcessState::self()->startThreadPool();
+	->IPCThreadState::self()->joinThreadPool();
+	->IPC.getAndExecuteCommand()
+	->IPC.talkWithDriver()
+	->IPC.executeCommand()
+	
+	1.	数据减少相应的强弱引用
+		 Parcel.cpp	
+		 ->	ipcSetDataReference
+		 ->	freeDataNoInit
+		 ->	releaseObjects
+		 ->	release_object
+		 
+	2.	释放局部变量Parcel buffe
+		Parcel.cpp	
+		->executeCommand
+		
+		IPCThreadState.cpp
+		->freeBuffer
+		
+		Binder.cpp ::BBinder
+		->BBinder.transact
+		
+		android_util_Binder.cpp
+		->JavaBBinder.onTransact
+		
+		addService  
+		->  writeStrongBinder 
+		->  mObject  
+		->  ActivityManagerNative  
+		->	AMN.execTransact  
+		->  Binder.execTransact (异常处理传给调用者)
+		->	AMN.onTransact
+		->	AMS.startService
+		
+	5.	第五部分
+		IPC.sendReply 
+		写入数据mOut，再waitForResponse，等待BR_TRANSACTION_COMPLETE
+		IPC.talkWithDriver -> binder_ioctl -> binder_ioctl_write_read -> binder_thread_write
+		->	binder_transaction -> binder_thread_read -> IPC.waitForResponse
+		->	IPC.freeBuffer(BC_FREE_BUFFER写入mOut,再talkWithDriver())
+		->	binder_thread_write
+		->	binder_thread_read
+		
+五.	总结
+	copy once便是指binder_transaction()过程把binder_transaction_data->data拷贝到目标进程的buffer
+		

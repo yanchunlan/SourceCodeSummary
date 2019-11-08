@@ -1,0 +1,13 @@
+一.	关于Task
+	看 Task 继承的父类，一般来说，会继承 DefaultTask，IncrementalTask
+	看 @TaskAction 注解的方法，此方法就是这个 Task 做的事情
+
+二.	判断增量Task的方法
+	首先这个 Task 要继承 IncrementalTask，
+	其次看 isIncremental 方法，如果返回 true，说明支持增量，返回 false 则不支持
+	然后看 doFullTaskAction 方法，是全量的时候执行的操作
+	最后看 doIncrementalTaskAction 方法，这里是增量的时候执行的操作
+	
+三.	plugin的自定义有2种方法
+	一种是只能本地使用，modeName必须为buildsrc
+	一种是可以上传到maven,需要实现resource,groovy文件夹，并配置好上传地址，路径

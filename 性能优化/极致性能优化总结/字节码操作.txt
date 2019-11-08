@@ -1,0 +1,46 @@
+一. 介绍
+	1. 字节码结构
+		魔数(Magic Number): 判断是否是类文件
+		版本号(version)
+		常量池(Constant Pool)：常量池计数器和常量池数据区
+		访问标识(access_flag):
+		当前类名(this_class): 存索引
+		父类名称(super_class): 存索引
+		接口信息(interfaces): 存索引
+		字段表(fields)：field_count 和 fields_info 信息
+		方法表(methods)：methods_count 和 method_info 信息
+		附加属性(attributes): 属性的基本信息
+	2.	字节码操作
+		主要是JVM的操作数栈
+	3.	查看工具
+		Asm Bytecode Outline
+		jclasslib Bytecode viewer IngoKegel
+	4.	框架
+		CGLIB ->  Asm
+		Aspectj
+		java proxy
+		instrumentation -> javassist
+	5.	ASM
+		1. 分类
+		Core API
+			1>.	ClassReader：用于读取已经编译好的.class文件。
+			2>.	ClassWriter：用于重新构建编译后的类，如修改类名、属性以及方法，也可以生成新的类的字节码文件。
+			3>.	各种Visitor类：如上所述，CoreAPI根据字节码从上到下依次处理，对于字节码文件中不同的区域有不同的Visitor，
+			比如用于访问方法的MethodVisitor、用于访问类变量的FieldVisitor、用于访问注解的AnnotationVisitor等。为了
+			实现AOP，重点要使用的是MethodVisitor。
+		tree API
+			整个存内存，消耗内存多，编程简单
+	6.	步骤
+		ASM: 
+			ClassVisitor -> visitMethod ->  visitCode/visitInsn 插入字节码
+		javassist:
+			ClassPool -> CtClass -> CtMethod ->  ctMethod.insertBefore/insertAfter  ->  ctClass.writeFile ->  ctClass.detach
+	7.	动态修改字节码
+		asm 可以做热部署，当classLoader加载类之后再次加载类
+		动态修改asm应用范围：
+			热部署：不部署服务而对线上服务做修改，可以做打点、增加日志等操作。
+			Mock：测试时候对某些服务做Mock。
+			性能诊断工具：比如bTrace就是利用Instrument，实现无侵入地跟踪一个正在运行的JVM，监控到类和方法级别的状态信息
+	
+		
+		
