@@ -42,5 +42,10 @@
 			Mock：测试时候对某些服务做Mock。
 			性能诊断工具：比如bTrace就是利用Instrument，实现无侵入地跟踪一个正在运行的JVM，监控到类和方法级别的状态信息
 	
-		
+	8.	工具
+		ASM:
+			https://github.com/Leaking/Hunter/blob/master/README_ch.md
+			https://github.com/BryanSharp/hibeaver
+		javassist:
+			https://github.com/didi/DroidAssist/blob/master/README_CN.md
 		
