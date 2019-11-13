@@ -1,0 +1,52 @@
+一.	基本知识
+	Dagger、ButterKnife 根据apt
+	Kotlin 的编译器
+	1.	使用场景
+		1>	代码生成
+			Dagger、ButterKnife,Protocol Buffers,ORM 编译生成代码
+		2>	代码监控
+		3>	代码修改
+			无埋点，网易的HubbleData、51 信用卡的埋点实践
+		4>	代码分析
+			findBug也使用了插桩技术
+		
+		流程：
+			java -> 字节码 .class  -> .dex
+		
+		java字节码与dalvik字节码区别：
+			1>	体系结构
+				Java 虚拟机是基于栈实现，而 Android 虚拟机是基于寄存器实现。
+			在 ARM 平台，寄存器实现性能会高于栈实现
+			2>	格式结构
+				Class 文件,有自己单独的常量池以及其他一些公共字段,Dex中全
+				部Class共用同一个常量池和公共字段
+			3>	指令优化
+				Dalvik 字节码对大量的指令专门做了精简和优化
+二.	编译插桩三种方法
+	1.	Aspectj
+		内部是BCEL实现，成熟稳定，使用简单
+		作品：360 的性能监控框架ArgusAPM
+		使用最佳：沪江的AspectJX，Jake Wharton的Hugo
+	2.	ASM
+		AspectJ 可以处理50%场景，ASM处理100%场景
+		
+		拓展：
+			1.	每一条 Java 虚拟机线程都有自己私有的 Java 虚拟机栈，这个栈与线程同时创建，
+		用于存储栈帧（Stack Frame）
+			2.	栈帧包含本地变量表（Local Variable Array）、操作数栈（Operand Stack）和
+		常量池引用（Constant Pool Reference）
+			本地变量表
+			操作数栈
+			数据交换
+			异常处理
+	3.	ReDex
+		修改dex做逆向，或者手动书写 Smali 代码然后编译回去
+		四种修改dex的库：
+			ASMDEX，开发者是 ASM 库的开发者，但很久未更新了。
+			Dexter，Google 官方开发的 Dex 操作库，更新很频繁，但使用起来很复杂。
+			Dexmaker，用来生成 Dalvik 字节码的代码。
+			Soot，修改 Dex 的方法很另类，是先将 Dalvik 字节码转成一种 Jimple three-address code，
+			然后插入 Jimple Opcode 后再转回 Dalvik 字节码，具体可以参考例子
+三.	总结
+	ASM处理工具：Hunter（https://github.com/Leaking/Hunter），Hibeaver（https://github.com/BryanSharp/hibeaver）
+	Javassist处理工具：DroidAssist（https://github.com/didi/DroidAssist）

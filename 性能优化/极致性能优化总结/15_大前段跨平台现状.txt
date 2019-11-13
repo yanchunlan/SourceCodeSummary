@@ -1,0 +1,31 @@
+跨平台现状
+	1.	web
+		由浏览器内核和javascript引擎组成
+		1>	性能现状：
+			1.	启动白屏时间
+				WebView初始化太久了，白屏很久
+			2.	相应流畅度
+			有些动画，各种效果达不到原生
+		2>	内核渲染流程
+			Native 时间
+			网络时间
+			渲染时间
+		3>	优化方法
+			1.	加快请求速度
+				预解析 DNS、减少域名数、减少 HTTP 请求数、CDN 分发、请求复用、懒加载、Gzip 压缩、图片格式压缩
+			2.	代码优化
+			3.	SSR
+		客户端优化方法
+			1.	WebView 预创建
+			2.	缓存
+				Memory Cache > Client Cache >= Http Cache > Net Cache
+	2.	React Native 和 Weex
+		1.	Facebook - 2015 - React Native
+			React Native 最终会生成对应的自定义原生控件，走的是系统原生的渲染流程。
+		2.	阿里 - 2016 - Weex
+			上层 DSL 使用的是 Vue
+		3.	京东 - JDReact
+		4.	携程 - Ctrip React Native
+	3.	小程序
+		滴滴的Chameleon和京东的Taro框架解决小程序框架问题
+		

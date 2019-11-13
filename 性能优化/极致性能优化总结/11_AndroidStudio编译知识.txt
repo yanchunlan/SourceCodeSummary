@@ -1,0 +1,69 @@
+一.	关于编译
+	java -> .class -> dex
+	1.	基本知识
+		Facebook 的Buck（https://github.com/facebook/buck），
+		Google 的Bazel（https://github.com/bazelbuild/bazel）。
+		作用：
+			1.	统一编译工具，不同平台
+			2.	代码组织管理架构
+				Google 使用的是Piper，Facebook 是基于HG
+			3.	极致的性能追求
+				涉及相关的针对性的优化
+	2.	编译速度
+		增量编译（incremental build）最好，
+		1>	2个需求：
+				1.	编译时间
+				2.	安装时间
+			3个问题
+				1.	多进程问题
+				2.	Split APK 安装问题
+				3.	javac 问题
+				现实中阿里的Freeline，蘑菇街的极速编译牺牲了正确性，所以更快，Instant Run 作为官方方案，
+			它优先保证的是 100% 的正确性
+		
+		2>	觉得比较好的编译方案：
+			1.	无需安装
+				类似于tinker，把修改的每次依赖到最前方，《微信 Android 热补丁实践演进之路》中的 Qzone 方案
+			2.	Oatmeal
+				安装包优化，ReDex 中的黑科技：Oatmeal
+			3.	关闭 JIT
+				AndroidManifest 中 android:vmSafeMode=“true”
+		3>	现阶段编译优化的建议：
+			1.	更换编译机器
+				直接用mac或者其他
+			2.	Build Cache
+				缓存保存在远端，每个项目缓存分开
+			3.	升级 Gradle 和 SDK Build Tools
+				最新的工具必定更快
+			4.	使用 Buck
+				当然目前最火的应该是 Flutter 中Hot Reload秒级编译
+	3.	代码优化
+		1.	ProGuard
+			混淆、裁剪、优化（内联、修饰符、合并类和方法等 30 多种）
+		2.	d8
+			as3.1已经是默认工具了，作用是.class”编译为Dex ，取代之前的dx工具
+		3.	R8
+			目的是“.class”文件变成 Dex，取代d8和ProGuard，现在处于试验
+		4.	ReDex
+			Facebook 的内部使用的ReDex，已经做到了，直接是操作dex文件了
+			1>	Interdex：类重排和文件重排、Dex 分包优化。
+			2>	Oatmeal：直接生成的 Odex 文件。
+			3>	StripDebugInfo：去除 Dex 中的 Debug 信息
+	4.	持续交互
+		Gradle、Buck、Bazel太狭义，广义的应该是打包构建、Code Review、代码工程管理、代码扫描等
+		目前有这种类型的有Jenkins、GitLab CI、Travis CI ，GitHub，腾讯的 RDM、阿里的摩天轮、大众点评的MCI
+		持续集成看法：
+			1.	自定义代码检查
+				类似于Findbugs，美团的 Android 漏洞扫描工具 Code Arbiter
+			2.	第三方代码检查
+				Coverity，Facebook 开源的Infer
+			3.	Code Review
+				GitLab、Phabricator，Gerrit
+二.	总结
+	对于 Android Build System，Desugar、Dexlayout、JVM TI、App Bundle等都很有用
+	看编译相关的视频，写总结
+	https://v.youku.com/v_show/id_XMzYwMDQ3MDk2OA==.html?spm=a2h0k.11417342.soresults.dtitle
+	https://v.youku.com/v_show/id_XMzU5ODExNzQzMg==.html?spm=a2h0k.11417342.soresults.dtitle
+	
+	
+		

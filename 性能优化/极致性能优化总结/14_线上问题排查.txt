@@ -1,0 +1,21 @@
+一.	用户日志
+	1.	排查方式
+		1.	本地复现
+		2.	发临时包或者灰度包
+	2.	日志定位
+		1.	xlog(微信的) https://github.com/Tencent/mars#mars_cn
+			后更名mars，
+		2.	logan（美团的） https://github.com/Meituan-Dianping/Logan
+		3.	Holmes（美团动态化日志系统）
+	3.	动态调试
+		JDWP 传输通道
+		JDI前段展示
+	4.	动态部署
+		精细化
+		场景
+		可重复，可回退
+	5.	远程控制
+		
+二.	总结
+	唯一标识，google方案 https://developer.android.com/training/articles/user-data-ids?hl=zh-cn
+	阿里的 UTDID、腾讯 MTA ID

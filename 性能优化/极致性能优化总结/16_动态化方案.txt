@@ -1,0 +1,34 @@
+动态化方案的实践
+一.	常见的动态化方案
+
+	百度	dynamicLoadApk
+	阿里	atlas,tangram,andFix
+	腾讯	tinker
+	google	flutter,Android app bundles
+	faceBook	yoga
+	其他	美团robust,360RePlugin,滴滴VirtualAPK
+	
+	1.	分类：
+		1.	Web 容器增强
+			PWA、腾讯的 VasSonic、淘宝的 zCache 以及大部分的小程序方案
+		2.	虚拟运行环境
+			React Native、Weex、快应用
+		3.	业务插件化
+			阿里的 Atlas、360 的 RePlugin、滴滴的 VirtualAPK
+			热修复也算的话，微信的 Tinker、美团的 Robust、阿里的 AndFix
+		4.	布局动态化
+			阿里的 Tangram、Facebook 的 Yoga
+	2.	选择
+		1.	业务类型
+		2.	团队技术栈和代码的历史包袱
+		各有千秋，对于运营，阿里有一个PopLayer，可以再任意界面弹出H5 的部署容器
+二.	Native 动态化方案
+	1.	热修复和插件化
+		tinker参考了Instant Run 的编译方案，
+		但是Android 8.0 以上的设备将会使用Apply Changes替代之前的 Instant Run 方案
+		1.	热修复
+			Android Q 增加了替换 Classloader 的接口 instantiateClassloader，可以直接替换classLoader和四大组件
+		2.	插件化
+			使用AppComponentFactory API，可以实现插件化的四大组件代理
+		3.	布局动态化
+			天猫开源的Tangram（基于底层的VirtualView做二次开发也可以）
