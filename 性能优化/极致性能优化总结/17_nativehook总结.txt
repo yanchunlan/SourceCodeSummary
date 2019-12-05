@@ -1,0 +1,31 @@
+一.分类
+	GOT/PLT Hook ，Trap Hook ，Inline Hook
+	1.	GOT/PLT Hook
+		替换某个 SO 的外部调用，通过将外部函数调用跳转成我们的目标函数
+		1>	ELF 格式
+			.plt。该节保存过程链接表（Procedure Linkage Table）。
+			.got。该节保存着全局的偏移量表。
+		2>	链接过程
+		3>	GOT/PLT Hook 实践
+			1.	微信 Matrix 开源库的ELF Hook，它使用的是 GOT Hook，主要使用它来做性能监控。
+			2.	爱奇艺开源的的xHook，它使用的也是 GOT Hook。
+			3.	Facebook 的PLT Hook。
+	2.	Trap Hook
+		函数内部的 Hook,在目标函数前断住程序，修改内存、程序段，继续执行
+		1>	ptrace(断点调试):
+			ptrace 提供了一种让一个程序（tracer）观察或者控制另一个程序（tracee）执行流程，
+		以及修改被控制程序内存和寄存器的方法，主要用于实现调试断点和系统调用跟踪
+		2>	如何 Hook
+			主动 raise signal，然后使用 signal handler 来实现类似的 Hook 效果
+		3>	Trap Hook 实践
+			在“卡顿优化（下）”中, Facebook 的Profilo，就是通过定期发送 SIGPROF 信号来实现卡顿监控的
+	3.	Inline Hook
+		跟 Trap Hook 一样，Inline Hook 也是函数内部调用的 Hook。它直接将函数开始
+		（Prologue）处的指令更替为跳转指令，使得原函数直接跳转到 Hook 的目标函数
+		函数，并保留原函数的调用接口以完成后续再调用回来的目的
+		1.	Inline Hook 实践
+			1.	Cydia Substrate。在Chapter3中，我们就使用它来 Hook 系统的内存分配函数
+			2.	adbi。支付宝在GC 抑制中使用的 Hook 框架，不过已经好几年没有更新了
+二.	总结
+	修复系统 Bug、线上监控 Native 内存分配
+	

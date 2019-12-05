@@ -1,4 +1,4 @@
-卡顿
+﻿卡顿
 一.	基础知识
 	1.	cpu性能
 	2.	卡顿问题分析指标
@@ -26,6 +26,19 @@
 			可以比较快速的看到那个维度耗时多
 	5.	总结：
 			系统打印CPU信息到日志，是使用ProcessCpuTracker.java，通过检查几个文件查询系统的cpu使用率
+			原理如下：
+			系统CPU信息:	/proc/stat		System TOTAL: 2.1% user + 16% kernel + 9.2% iowait + 0.2% irq + 0.1% softirq + 72% idle
+			CPU核数:		/proc/cpuinfo	CPU Core: 8
+			负载:			/proc/loadavg	Load Average: 8.74 / 7.74 / 7.36
+			各线程负载：
+				进程CPU使用情况：					/proc/[pid]/stat
+				获得进程下面各个线程的CPU使用情况：	/proc/[pid]/task/[tid]/stat
+					Threads:
+					  43% 23493/singleThread(R): 6.5% user + 36% kernel faults：3094
+					  3.2% 23485/RenderThread(S): 2.1% user + 1% kernel faults：329
+					  0.3% 23468/.sample.io.test(S): 0.3% user + 0% kernel faults：6
+					  0.3% 23479/HeapTaskDaemon(S): 0.3% user + 0% kernel faults：982
+					  ...
 二.	监控卡顿
 	1.	消息队列
 		利用替换Looper 的 Printer实现，或者线程定时发送1s监控消息
@@ -54,8 +67,31 @@
 			2.	线程时间
 				监控线程的用户时间 utime、系统时间 stime 和优先级
 		总结：
-			profilo的实现原理？
+			Facebook 的profilo的实现原理？
 			（JVM的AsyncGetCallTrace，再适配Android runtime实现，systrace 使用的是 Linux 的 ftrace，Simpleperf 参考了 Linux 的 perf 工具
-				
-				
-		
+		sample :
+			使用 PLTHook 技术来获取 Atrace 的日志
+			###（linker文件夹里面就是pltHoook的库）
+三.	分析案列
+	1.	java分析
+		1>	获取java线程状态
+			Thread.getState()
+		2>	获得所有线程堆栈
+			Thread.getAllStackTraces()
+	2.	SIGQUIT 信号实现（查看ANR日志）
+		1>	Native 线程状态
+			Android 9.0 就定义了 27 种线程状态
+		2>	获得 ANR 日志
+			监控到卡顿，主动向系统发送 SIGQUIT 信号，等待/data/anr/traces.txt文件生成
+	3.	hook实现
+		1>	libart.so、dlsym调用ThreadList::ForEach方法，拿到所有的 Native 线程对象
+		2>	遍历线程对象列表，调用Thread::DumpState方法
+		3>	fork 子进程实现，在子进程中实现此逻辑
+		4>	加入CPU 使用率和调度信息，内存相关信息，I/O 和网络相关
+	4.	卡顿分析
+		1>	卡顿率
+			UV 卡顿率 = 发生过卡顿 UV / 开启卡顿采集 UV
+			PV 卡顿率 = 发生过卡顿 PV / 启动采集 PV
+		2>	卡顿树
+	总结：使用PLTHook 获取线程的堆栈信息，（线程创建就抛出异常打印栈信息）
+		###（linker文件夹里面就是pltHoook的库）

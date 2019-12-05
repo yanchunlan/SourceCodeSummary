@@ -1,0 +1,89 @@
+﻿一.	启动优化
+	1.	启动分析
+		1.	启动过程分析
+			1>	预览窗口显示
+			2>	闪屏显示
+			3>	主页显示
+			4>	界面可操作
+		2.	启动问题分析
+			1>	点击图标很久都不响应
+				禁用了预览窗口或者指定了透明的皮肤
+			2>	首页显示太慢
+				闪屏广告、热修复框架、插件化框架、大前端框架，所有准备工作都需要集中在启动阶段完成
+			3>	首页显示后无法操作
+				尽量多的工作都通过异步化延后执行
+	2.	启动优化
+		1.	优化工具
+			支持哪些 systrace 类型：	python systrace.py --list-categories
+		2.	优化方式
+			可以分为闪屏优化、业务梳理、业务优化、线程优化、GC 优化和系统调用优化
+			1>	闪屏优化
+				>6.0/7.0,预览窗口实现成闪屏,
+				合并闪屏和主页面的 Activity,减少一个 Activity 带来 100 毫秒优化
+			2>	业务梳理
+				针对不同的业务做懒加载处理
+			3>	业务优化
+				插件化框架，启动过程各种反射、各种 Hook,或者一个算法的优化
+			4>	线程优化
+				1.	查看sched：
+						proc/[pid]/sched: 
+						nr_voluntary_switches： 
+						主动上下文切换次数，因为线程无法获取所需资源导致上下文切换，最普遍的是IO。 
+						nr_involuntary_switches： 
+						被动上下文切换次数，线程被系统强制调度导致上下文切换，例如大量线程在抢占CPU。
+				2.	检查线程间的锁
+					很多启动框架，用 Pipeline 机制，根据业务优先级规定业务初始化时机。比如微信内部使用的mmkernel、阿里最近开源的Alpha启动框架
+			5>	GC优化
+				1.	查看启动GC时间：python systrace.py dalvik -b 90960 -a com.sample.gc
+				
+				2.	Debug.startAllocCounting 也可以监控GC优化：
+					// GC使用的总耗时，单位是毫秒
+					Debug.getRuntimeStat("art.gc.gc-time");
+					// 阻塞式GC的总耗时
+					Debug.getRuntimeStat("art.gc.blocking-gc-time");
+				3.	频繁创建的对象，网络库和图片库中的 Byte 数组、Buffer 可以复用
+					实在需要频繁创建对象，可以考虑移到 Native 实现
+			6>	系统调用优化
+	3.	总结
+		systrace + 函数插桩 卡顿排查工具，原理是使用了ASM在方法中插桩实现
+二.	启动进阶
+	1.	I/O 优化
+	2.	数据重排
+		Linux 文件系统从磁盘读文件，会以block单位磁盘读取，如果下次读文件在页缓存中，将直接从页缓存中读取
+		1>	类重排
+			复写 ClassLoader得到，再通过ReDex的Interdex调整类在Dex排列顺序，用010 Editor查看效果
+		2>	资源文件重排
+			修改Kernel源码，单独编译一个特殊的ROM
+			目的：
+				1>	统计
+				2>	度量
+				3>	自动化
+			用 Frida 实现获得 Android 资源加载顺序的方法,修改 7zip 源码实现支持传入文件列表顺序,再使用010 Editor 查看效果
+	3.	类的加载
+		类加载中有一个verify class步骤，通过hook去除，但是不建议在ART平台使用
+		// Dalvik Globals.h
+		gDvm.classVerifyMode = VERIFY_MODE_NONE;
+		// Art runtime.cc
+		verify_ = verifier::VerifyMode::kNone;
+	4.	黑科技
+		1.	保活
+			让冷启动变热启动，列如：微信的 Hardcoder 方案和 OPPO 推出的Hyper Boost方案
+		2.	插件化和热修复
+			插件化问题存在2个问题
+			1>	稳定性
+				Android P 推出的 non-sdk-interface 调用限制，之后的适配只会越来越难，成本越来越
+			2>	性能
+				使用了插件化和热修复就不能享受runtime优化，
+				Tinker加载补丁后，启动速度降低了5%-10%
+				加固后启动速度也会降低
+	5.	启动监控
+		1.	实验室监控
+			统计耗时需要知道结束的点，
+			1>	80% 绘制，超过80%代表启动结束（排除闪屏）
+			2>	图像识别，有80%相识度就认为启动结束
+		2.	线上监控
+			1>	Android Vitals（https://developer.android.google.cn/topic/performance/vitals/launch-time）可以对应用冷启动、温启动时间做监控
+			2>	Facebook 会利用 Profilo 工具对启动的整个流程耗时做监控，并且在后台直接对不同的版本做自动化对比，监控新版本是否有新增耗时的函数
+	6.	总结
+		Dalvik 去掉 verify(可以分析 Dalvik 虚拟机加载 Dex 和类的流程)
+		外部dex需要dexlib2获取class类，再使用pathClassloader.loadClass加载外部类的流程，

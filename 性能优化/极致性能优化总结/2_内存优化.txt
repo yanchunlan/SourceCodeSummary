@@ -1,4 +1,4 @@
-内存优化
+﻿内存优化
 	一.	产生
 		1.	移动设备发展
 		2.	内存问题
@@ -15,10 +15,13 @@
 				google建议使用 AddressSanitize，
 				Android Developer 加入了 Malloc 调试和Malloc 钩子
 		4.	总结
+			监控对象创建的内存分配大小，堆栈信息
+			原理如下：
 			自定义的 Allocation Tracker
 			1.	学会Substrate hook框架
 			2.	Facebook开源的工具类fbjni，主要提供了工具类，ref utils ，Global JniEnv
 			3.	ndk_dlopen 提供了force dlopen 机制
+				### 主要是hook内存对象分配时候的 RecordAllocation 函数，通过它获取分配内存的类名和分配内存大小
 	二.	解决
 		1.	内存优化探讨
 			1.	设备分级
@@ -53,6 +56,8 @@
 					2.	触顶率
 					3.	GC监控
 			4.	总结
+				分析内存文件hprof快速判断内存中是否存在重复的图片，并且将这些重复图片的PNG、堆栈等信息输出
+				原理如下：
 				使用 sqaure 的HAHA库，其中核心方法为：
 					// 打开hprof文件
 					final HeapSnapshot heapSnapshot = new HeapSnapshot(hprofFile);

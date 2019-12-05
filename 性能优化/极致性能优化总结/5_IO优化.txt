@@ -1,0 +1,220 @@
+一.	IO的基本知识
+	1.	文件系统
+		1>	虚拟文件系统（VFS）
+			厂商把文件系统从 ext4 切换到 F2FS，应用程序也不用做任何修改
+		2>	文件系统（File System
+			ext4、F2FS 都是具体文件系统实现，
+			所有文件系统的列表：/proc/filesystems
+		3>	页缓存（Page Cache）
+			读文件的时候会，看它是不是在Page Cache中，如果在就不读取磁盘
+			
+		查看缓存的内存占用情况：/proc/meminfo
+			MemTotal: 2866492 kB
+			MemFree: 72192 kB
+			Buffers: 62708 kB // Buffer Cache
+			Cached: 652904 kB // Page Cache
+	2.	磁盘
+		read() 的数据没有在页缓存，就需要磁盘发起I/O，经过内核的通用块层、I/O 调度层、设备驱动层，最硬件设备处理
+		1>	通用块层
+			接收上层发出的磁盘请求，并发出I/O请求
+		2>	I/O 调度层
+			根据设置的调度算法对请求合并和排序,关键参数队列长度和调度算法
+			/sys/block/[disk]/queue/nr_requests // 队列长度，一般是 128。
+			/sys/block/[disk]/queue/scheduler // 调度算法
+		3>	块设备驱动层
+			选择对应的驱动程序通过操控硬件设备完成最终的 I/O 请求
+	3.	Android I/O
+		1>	1.	Android 闪存
+			手机使用闪存作为存储设备，也就是ROM
+			2.	2个疑问
+				1>	文件为何损坏
+					1.	应用程序
+						应用程序代码设计考虑不当导致的
+					2.	文件系统
+						做了保护措施，列如：system 分区保证只读不可写，增加异常检查和恢复机制，ext4 的 fsck、f2fs 的 fsck.f2fs 和 checkpoint 机制
+					3.	磁盘
+						手机上闪存，在资料传输过程可能会发生电子遗失等现象导致数据错误
+				2>	I/O 有时候为什么会突然很慢
+					1.	内存不足
+						手机内存不足，系统回收 Page Cache 和 Buffer Cache 的内存，导致性能低下
+					2.	写入放大
+						1个 page 页的写入操作将会引起整个块数据的迁移，这就是典型的写入放大现象
+				系统为了缓解磁盘粹片的问题，可以引入fstrim/TRIM 机制，在锁屏，充电等时机触发磁盘碎片整理
+		2>	io的性能评估
+				Facebook 和支付宝采用编译单独 ROM 的方法来评估 I/O 性能，我们可以定制源码，追踪io
+			1.	I/O 性能指标
+				吞吐量和 IOPS
+			1.	I/O 测量
+				除了定制源码，还可以
+				1>	使用 proc
+					proc/self/schedstat: 
+						se.statistics.iowait_count：IO 等待的次数 
+						se.statistics.iowait_sum： IO 等待的时间
+					如果是rom的机器，开启内核的io监控，dmesg查看
+						echo 1 > /proc/sys/vm/block_dump
+						dmesg -c grep pid
+							.sample.io.test(7540): READ block 29262592 on dm-1 (256 sectors)
+							.sample.io.test(7540): READ block 29262848 on dm-1 (256 sectors)
+				2>	使用 strace
+					strace -ttT -f -p [pid]
+						read(53, "*****************"\.\.\., 1024) = 1024       <0.000447>
+						read(53, "*****************"\.\.\., 1024) = 1024       <0.000084>
+						read(53, "*****************"\.\.\., 1024) = 1024       <0.000059>
+					
+					strace -c -f -p [pid]
+						% time     seconds  usecs/call     calls    errors  syscall
+						------ ----------- ----------- --------- --------- ----------------
+						 97.56    0.041002          21      1987             read
+						  1.44    0.000605          55        11             write
+				3>	使用 vmstat
+					//清除Buffer和Cache内存缓存
+					echo 3 > /proc/sys/vm/drop_caches
+					//每隔1秒输出1组vmstat数据
+					vmstat 1
+
+					//测试写入速度，写入文件/data/data/test，buffer大小为4K，次数为1000次
+					dd if=/dev/zero of=/data/data/test bs=4k count=1000
+	4.	总结
+		IO的理解，和遇到的IO问题
+二.	IO的应用场景
+	1.	IO的三种方式
+		标准io -> file system文件系统 —> page Cache 页缓存 -> 磁盘
+		mmap						  -> page Cache 页缓存 -> 磁盘
+		直接Io											   -> 磁盘
+		1>	标准io
+			页缓存中被修改的内容称为脏页，内核通过flush 线程定期写入数据到磁盘，
+			/proc/sys/vm 文件或者 sysctl -a | grep vm 命令可以得到：
+				// flush每隔5秒执行一次
+				vm.dirty_writeback_centisecs = 500  
+				// 内存中驻留30秒以上的脏数据将由flush在下一次执行时写入磁盘
+				vm.dirty_expire_centisecs = 3000 
+				// 指示若脏页占总物理内存10％以上，则触发flush把脏数据写回磁盘
+				vm.dirty_background_ratio = 10
+				// 系统所能拥有的最大脏页缓存的总大小
+				vm.dirty_ratio = 20
+			若想快速写入，就采用同步锁机制，应用程序中使用sync、fsync、msync等系统调用
+			结论：
+				标准io，因为copy到内存了一次，所以必定会多一次copy,目的是保证读数据比磁盘读取更快
+		2>	直接io
+			没有页缓存的概念，产生的负面影响有：
+			1.	读造成磁盘的同步读，导致进程需要时间很长
+			2.	写操作，需要同步执行，导致应用等待
+			使用：
+				open()文件的时候指定O_DIRECT，只在io开销大的时候使用
+		3>	mmap
+			系统加载dex，使用mmap,(微信的高性能日志 xlog也是会用的mmap)
+			1.	好处：
+				1.	减少系统调用
+					一次mmap,后续就是内存操作
+				2.	减少数据拷贝
+					mmap只需要copy一次，且不需要拷贝回用户空间
+				3.	可靠性高
+					可以依靠内核线程定期写回磁盘，也可以使用msync同步写
+			2.	缺点：
+				1.	虚拟内存增大
+					apk,dex,so,都是通过mmap读取，容易导致虚拟内存不足oom
+				2.	磁盘延迟
+					出现缺页延迟，用mmap消除系统开销就不行，（启动优化类重排目的也是减少缺页中断导致的io延迟）
+			3.	使用情况：
+				用户日志，数据上报，都是使用mmap，binder内部也是mmap(利用mmap,binder通信只需要一次copy,比socket,管道通信少一次数据拷贝过程)
+	2.	多线程阻塞io和nio
+		1>	多线程阻塞io
+			文件读写被IO影响，过多的线程会导致整体性能下降，
+			大多数时间，读取文件是小文件，使用io线程还是新开线程没有意义
+		2>	nio
+			多线程阻塞式 I/O 会增加系统开销，NIO 可以减少系统开销，列如：Chrome 网络库
+			缺点：
+				应用程序实现变得更复杂，异步改造不容易
+			优点：
+				NIO不是减少读取文件的耗时，而是提升应用整体的 CPU 利用率，在cpu忙时，线程等待磁盘做部分cpu操作，推荐Square 的Okio	
+	3.	小文件系统
+		通过inode存储目录：
+			文件读取的时间 = 找到文件的 inode 的时间 + 根据 inode 读取文件数据的时间
+			1>	对于FAT32 系统，低端机外置sd卡使用它，目录太多一个退出就导致anr
+			2>	对于 ext4 系统，使用目录hash索引方式查找，查找和打开文件耗时也大
+		Google 的 GFS、淘宝开源的TFS、Facebook 的 Haystack，微信SFS的小文件管理系统，等等都是为了解决存储索引设计的文件系统
+		这种框架涉及：
+			VFS支持
+			文件的索引和校验机制
+			文件的分片
+	4.	总结
+			写测试用例，理解不同的Io的使用场景
+三.	监控线上IO
+	1.	IO跟踪
+		1>	java hook
+			6.0 FileInputStream 调用流程：
+				java : FileInputStream -> IoBridge.open -> Libcore.os.open 
+				-> BlockGuardOs.open -> Posix.open
+			找到Libcore.java中BlockGuardOs 是一个hook点
+				public static Os os = new BlockGuardOs(new Posix());
+				// 反射获得静态变量
+				Class<?> clibcore = Class.forName("libcore.io.Libcore");
+				Field fos = clibcore.getDeclaredField("os");
+			动态代理
+				// 动态代理对象
+				Proxy.newProxyInstance(cPosix.getClassLoader(), getAllInterfaces(cPosix), this);
+
+				beforeInvoke(method, args, throwable);
+				result = method.invoke(mPosixOs, args);
+				afterInvoke(method, args, result);
+			缺点：
+				1.	性能极差
+					使用动态代理和 Java 的大量字符串操作
+				2.	无法监控 Native 代码
+					微信中大量io操作无法监控
+				3.	兼容性差
+					Java Hook 需要每个android版本兼容,特别是Android P 增加对非公开 API 限制
+		2>	native hook
+			Profilo 用了plt hook 性能比GOT Hook 好，但是兼容性没它好
+			
+			从libc.so选择hook的函数，open，read，write，close，
+			
+			微信的Matrix选择的是libjavacore.so、libopenjdkjvm.so、libopenjdkjvm.so可以覆盖所有java层的io操作，具体在io_canary_jni.cc（https://github.com/Tencent/matrix/blob/master/matrix/matrix-android/matrix-io-canary/src/main/cpp/io_canary_jni.cc#L161）
+			Profilo 中atrace.cpp（https://github.com/facebookincubator/profilo/blob/master/cpp/atrace/Atrace.cpp#L172）也不错，直接遍历加载全部library,一并替换
+			android 7.0 之后还需要替换 open64，__read_chk，__write_chk 三个方法
+		3>	监控内容
+			名字、原始大小、打开文件的堆栈、使用线程，这次操作所花时间，Buffer多大，连续读完的，还是随机的读取
+	2.	线上监控
+		1.	主线程io
+			连续读写时间超过 100 毫秒,CPU 使用率、其他线程信息,内存信息
+		2.	读写 Buffer 过小
+			文件系统block单位，磁盘page单位读写，buffer太小，导致多次无用的系统调用和内存拷贝
+			大小最好是根据文件保存挂载的目录的block size 确认buffer大小，数据库中国男的pageSzie就是这样确认的
+				buffer size < block size  4kb
+				read/write >5 次，上报
+			列如 ObjectOutputStream 和 ZipOutputStream：
+				ObjectOutputStream 使用的 buffer size 小，
+				ZipOutputStream使用Stored存储，会使用上层传入的 buffer size，
+							使用Deflater存储，使用 DeflaterOutputStream 的 buffer size，默认是512byte
+				使用了BufferInputStream 或者 ByteArrayOutputStream 就性能上升了
+			查看文件预读大小：
+				/sys/block/[disk]/queue/read_ahead_kb
+			利用/proc/sys/vm/block_dump 或者/proc/diskstats 统计磁盘读写次数：					
+				/proc/diskstats
+				块设备名字|读请求次数|读请求扇区数|读请求耗时总和\.\.\.\.
+				dm-0 23525 0 1901752 45366 0 0 0 0 0 33160 57393
+				dm-1 212077 0 6618604 430813 1123292 0 55006889 3373820 0 921023 3805823
+		3.	重复读
+			Page Cache释放：
+				echo 3 > /proc/sys/vm/drop_caches
+			为减少上报，增加条件：
+				重复读取次数超过 3 次，并且读取的内容相同
+				读取期间文件内容没有被更新，也就是没有发生过 write
+			一般都需要做内存缓存，特别是配置文件数据模块的加载
+		4.	资源泄漏
+			Android 框架中的 StrictMode（CloseGuard.java），REPORTER可以利用
+				1>	利用反射，把 CloseGuard 中的 ENABLED 值设为 true。
+				2>	利用动态代理，把 REPORTER 替换成我们定义的 proxy。
+			MyCloseGuard,对希望增加监控资源，手动添加埋点代码
+	3.	IO与启动优化
+		1>	大文件使用 mmap 或者 NIO 方式
+		2>	安装包不压缩
+		3>	Buffer 复用
+			使用okio
+		4>	存储结构和算法的优化
+		Multidex 优化,发现classes2.dex从apk解压，又压缩到classes2.zip，多做一次无用的解压缩和压缩
+		ZIP 源码，能构造出符合ZIP的文件，就可以将 classses2.dex的压缩流搬到 classes2.zip，并将其使用在Tinker 的资源合成中，https://github.com/Tencent/tinker/tree/master/third-party/tinker-ziputils
+	4.	总结
+		接入 I/O Canary，寻找应用中有无io相关的问题
+		Matrix 只监控主线程I/O情况，
+			

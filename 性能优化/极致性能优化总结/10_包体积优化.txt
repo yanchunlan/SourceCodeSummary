@@ -1,0 +1,162 @@
+一.	如何减少安装包大小
+	1.	安装包背景知识
+		1.	为何优化安装包
+			1>	下载转化率
+				越小就下载很快了
+			2>	推广成本
+				厂商提供预装大小有限
+			3>	应用市场
+				app Store >150M ,只能wifi下载
+				Google play 安装100M,只能 APK 扩展文件方式 上传
+		2.	包体积与应用性能
+			1>	安装时间
+				文件拷贝、Library 解压、编译 ODEX、签名校验比较耗时
+			2>	运行内存
+				Resource 资源、Library 以及 Dex 类加载占据内存
+			3>	ROM空间
+				安装包解压肯定变大，闪存空间不足，容易出现写入放大问题
+			4>	业务梳理
+				删除无用或者低价值的业务
+			5>	开发模式升级
+				采用小程序、H5 这样开发模式
+	2.	包体积优化
+		主要是Dex、Resource、Assets、Library 以及签名信息这五部分组成
+		1.	代码
+			1>	proguard
+				keep四大组件和view的部分方法，主要是xml中引用到它
+				如果想把非 exported 的四大组件以及 View 混淆，需要解决如下：
+				1.	xml替换
+					代码更改后，更改AndroidManifest和xml引用的名称
+				2.	代码替换
+					混淆后的代码，变量和方法体定义的字符串也更改
+				as3.0的新dex编译器D8和新混淆工具R8,但是R8替换混淆还是处于试验阶段
+			2>	去除debug信息或行号
+				DebugItem包含的信息：
+					调试的信息：函数的参数变量和所有的局部变量
+					排查问题的信息：所有的指令集行号和源文件行号的对应关系
+				在proguard中通过下面方式保留行号信息：
+					-keepattributes SourceFile, LineNumberTable
+				去除debugInfo 看《Android 包大小极致压缩》（https://mp.weixin.qq.com/s/_gnT2kjqpfMFs0kqAg4Qig）
+				实际上参考了 Facebook 的一个开源编译工具ReDex（https://github.com/facebook/redex）
+				其中去除debug是StripDebugInfoPass完成，如下
+					{
+					  "redex" : {
+						"passes" : [
+						  "StripDebugInfoPass"
+						]
+					  },
+					  "StripDebugInfoPass" : {
+						"drop_all_dbg_info" : "0",     // 去除所有的debug信息，0表示不去除
+						"drop_local_variables" : "1",  // 去除所有局部变量，1表示去除
+						"drop_line_numbers" : "0",     // 去除行号，0表示不去除
+						"drop_src_files" : "0",        
+						"use_whitelist" : "0",
+						"drop_prologue_end" : "1",
+						"drop_epilogue_begin" : "1",
+						"drop_all_dbg_info_if_empty" : "1"
+					  }
+					}
+			3>	dex分包
+					使用010Editor查看dex,《Dex 文件格式详解》（https://www.jianshu.com/p/f7f0a712ddfe）
+					主要是一个dex中因为在其他dex调用方法b,就在此dex加入了不需要的方法b的id，导致dex冗余
+					dex的冗余信息导致：
+						1.	method id 爆表
+							超过65535个了，导致方法冗余
+						2.	信息冗余
+							method ，string_ids、type_ids、proto_ids冗余
+					微信有依赖分析的工具 Builder，ReDex有贪心算法计算局部最优解，CrossDexDefMinimizer(https://github.com/facebook/redex/blob/master/opt/interdex/CrossDexRefMinimizer.cpp)
+					Redex中使用这个优化的配置如下：
+					{
+					  "redex" : {
+						"passes" : [
+						  "InterDexPass"
+						]
+					  },
+					  "InterDexPass" : {
+						"minimize_cross_dex_refs": true,
+						"minimize_cross_dex_refs_method_ref_weight": 100,
+						"minimize_cross_dex_refs_field_ref_weight": 90,
+						"minimize_cross_dex_refs_type_ref_weight": 100,
+						"minimize_cross_dex_refs_string_ref_weight": 90
+					  }
+					}
+			4>	dex压缩
+				Facebook App的一个class.dex 只是一个壳，代码放置在assets里，所有的dex合并为secondary.dex.jar.xzs，并通过XZ压缩
+				XZ 压缩算法存在的问题：
+					1.	首次启动解压
+						不采用 Zstandard 或者 Brotli 呢？主要是压缩率与解压速度的权衡
+					2.	ODEX 文件生成
+						为解决耗时太久，使用了Redex的oatmeal（https://github.com/facebook/redex/tree/master/tools/oatmeal）
+						oatmeal 是需要分版本适配
+			5>	native library
+				1.	Library 压缩
+					最好使用XZ 或者 7-Zip 压缩，Facebook 有一个 So 加载的开源库SoLoader(https://github.com/facebook/SoLoader)
+				2.	Library 合并与裁剪
+					1>	Library 合并
+						<android 4.3,lib是有限制，编译过程，可将其合并为一个（https://github.com/fbsamples/android-native-library-merging-demo）
+					2>	Library 裁剪
+						Buck 里relinker，就是分析代码中找到无用symbol,删除它，类似于Library的ProGuard Shrinking功能
+	3.	包体积监控
+		1>	大小监控
+			版本跟版本体积对比，体积增大，考虑优化空间
+		2>	依赖监控
+			监控新增aar及aar依赖
+		3>	规则监控
+			对包体积的监控规则抽象，例如无用资源、大文件、重复文件、R 文件等
+			微信使用 apkChecker 对包体积监控（https://mp.weixin.qq.com/s/tP3dtK330oHW8QBUwGUDtA）
+	4.	总结
+		使用ReDex优化包体积，主要解决
+			strip debuginfo
+			分包优化
+二.	资源优化
+	ProGuard核心是 Shrink、Optimize 和 Obfuscate，也就是裁剪、优化和混淆
+	1.	AndResGuard 工具
+		1>	资源混淆
+			资源和文件的名字混淆成短路径
+			1.	resources.arsc 混淆
+				混淆后的路径，可以减少文件大小
+			2.	metadata 签名文件	
+				签名文件 MF 与 SF记录文件路径，使用短路径可减少文件大小
+			3.	ZIP 文件索引
+				记录了每个文件 Entry 的路径、压缩算法、CRC、文件大小，使用短路径，可以减少记录文件路径的字符串大小
+		2>	极限压缩
+			1.	更高的压缩率
+				Zip 算法，7-Zip 的大字典优化
+			2.	压缩更多的文件
+				对 resources.arsc、PNG、JPG 以及 GIF 等文件的强制压缩
+				### 思考为何android不压缩这些文件：
+				1>	压缩效果并不明显
+					本身已经压缩，在压缩也没多大作用
+				2>	读取时间与内存的考虑
+					文件未压缩，通过mmap读取，不需要一次性放置内存
+				所以此处知道，压缩和首次读取冲突了，所以之前使用了XZ 或者 7-Zip 压缩，第一次启动需要解压
+	2.	更好的办法
+		1.	资源合并
+			资源文件合并为大文件，类似于换肤框架，
+			1>	资源解析
+				替换系统的PNG、JPG 以及 XML 文件转换为 Bitmap 或者 Drawable方法
+				getResouces().getDrawable	——>	CustomResManager.getDrawable
+			2>	资源管理
+				用时加载，mmap加载“Big resource File”，再实现资源资源缓存池ResourceCache，仿照glide图片库
+		2.	无用资源
+			AndResGuard 中的资源混淆是 ProGuard 的 Obfuscate
+			1>	lint
+				Remove All Unused Resources 删除无用资源
+				缺点：无法裁剪代码
+			2>	shrinkResources
+				配合 minifyEnabled=true 一起使用
+				缺点：
+					1.	没有处理 resources.arsc 文件
+						导致大量无用的 String、ID、Attr、Dimen 等资源并没有被删除
+					2.	没有真正删除资源文件
+						Drawable、Layout 无用资源,没有真正删掉，仅仅换为空文件
+				Studio 不把这些资源真正删掉,ResourceUsageAnalyzer注释知道原因（https://android.googlesource.com/platform/tools/base/+/studio-master-dev/build-system/gradle-core/src/main/java/com/android/build/gradle/tasks/ResourceUsageAnalyzer.java）
+				编译流程：
+					1.	由于 Java 代码需要用到资源的 R.java 文件，所以我们就需要把 R.java 提前准备好。
+					2.	在编译 Java 代码过程，已经根据 R.java 文件，直接将代码中资源的引用替换为常量，例如将 R.String.sample 替换为 0x7f0c0003。
+					3.	.ap_ 资源文件的同步编译，例如 resources.arsc、XML 文件的处理等。
+				如果删除无用资源了，就会导致resources.arsc 和 R.java 文件会改变，之前替换的id就找不到了，所以仅仅是把Drawable 和 Layout 文件置空文件
+			3>	realShrinkResources
+				keep 住保留资源的 ID，太复杂
+	3.	总结
+		熟系AndResGuard原理，并看 Matrix 的assets识别出无用资源UnusedAssetsTask（https://github.com/Tencent/matrix/blob/master/matrix/matrix-android/matrix-apk-canary/src/main/java/com/tencent/matrix/apk/model/task/UnusedAssetsTask.java）
