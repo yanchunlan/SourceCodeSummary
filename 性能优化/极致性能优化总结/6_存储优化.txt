@@ -1,7 +1,70 @@
-一.	Android的存储基础
+一.	存储认识
 	1.	Android的分区
-		
+		/proc/partitions 或者 df 命令，查看的各个分区情况
+		1>	/system 分区
+			存放所有 Google 提供的 Android 组件的地方
+		2>	/data 分区
+			用户数据存放,
+			系统升级和恢复的时候会擦除整个 /system 分区;恢复出厂设置，会擦除/data 
+		3>	/vendor 分区
+			存放厂商特殊系统修改的地方
 	2.	Android 存储安全
 		1>	权限控制
-		1>	数据加密
+			每个应用都在自己的应用沙盒内运行,其他应用没有给权限就不能访问
+		2>	数据加密
+			Android 有两种设备加密方法：全盘加密和文件级加密
+			>=4.4 全盘加密;	>=7.0 基于文件的加密
 	3.	常见的数据存储方法
+		存储就是把特定的数据结构转化成可以被记录和还原的格式
+		1>	关键要素
+			正确性
+			时间开销
+			空间开销
+			安全
+			开发成本
+			兼容性
+		2>	存储选项
+			SharedPreferences，ContentProvider，文件，数据库
+			1.	SharedPreferences 的使用
+				7种问题：
+				1>	跨进程不安全
+					由于没有使用跨进程的锁,频繁读写导致数据丢失，万分之一概率
+				2>	加载缓慢
+					SharedPreferences文件的加载使用了异步线程,且无优先级，主线程读取数据就需要等待文件加载线程的结束
+					建议提前用异步线程预加载启动过程用到的 SP 文件
+				3>	全量写入
+					commit()/apply(),改动一点，就全部写入，多次写入一个文件也没有合并再修改
+				4>	卡顿
+					onPause等，系统强制SharedPreferences写入磁盘，但是又是异步，如果未完成，就会ANR,卡顿等
+				彻底搞懂 SharedPreferences（https://juejin.im/entry/597446ed6fb9a06bac5bc630）
+			#优化：
+				复写 Application 的 getSharedPreferences 方法替换系统默认实现，比如优化卡顿、合并多次 apply 操作、支持跨进程操作等
+				微信的MMKV（https://github.com/Tencent/MMKV）
+					实现原理（https://github.com/Tencent/MMKV/wiki/design）
+					性能测试报告（https://github.com/Tencent/MMKV/wiki/android_benchmark_cn）
+				mmkv优点：
+					1>	使用mmap，性能更加高效
+					2>	使用文件锁保证跨进程安全
+					3>	使用了photoBuffer格式
+					4>	不支持加密，权限校验，不适合存放敏感数据
+			2.	ContentProvider 的使用
+				为什么SharedPreferences没有跨进程，就是为了希望大家使用ContentProvider跨进程
+				1>	启动性能
+					ContentProvider 的生命周期默认在 Application onCreate()
+					AndroidManifest 中的 multiprocess开启，可以把Provider放置在本进程，但是也有多实例
+				2>	稳定性
+						ContentProvider 在进行跨进程数据传递时，利用了 Android 的 Binder 和匿名共享内存机制。
+					简单来说，就是通过 Binder 传递 CursorWindow 对象内部的匿名共享内存的文件描述符。这样在
+					跨进程传输中，结果数据并不需要跨进程传输，而是在不同进程中通过传输的匿名共享内存文件
+					描述符来操作同一块匿名内存，这样来实现不同进程访问相同数据的目的
+						ContentProvider比binder传递大小大
+				3>	安全性
+					比较笨重，适合传输大的数据
+	4.	总结
+		复写 Application 的 getSharedPreferences 方法替换系统默认实现
+二.	优化存储
+	
+	
+	
+	
+三.	sqlite使用及优化
