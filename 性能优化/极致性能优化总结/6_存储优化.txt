@@ -44,7 +44,7 @@
 					性能测试报告（https://github.com/Tencent/MMKV/wiki/android_benchmark_cn）
 				mmkv优点：
 					1>	使用mmap，性能更加高效
-					2>	使用文件锁保证跨进程安全
+					2>	使用文件锁保证跨进程安全（看了介绍还是有些许不懂，待后期有时间再研究）
 					3>	使用了photoBuffer格式
 					4>	不支持加密，权限校验，不适合存放敏感数据
 			2.	ContentProvider 的使用
@@ -62,9 +62,106 @@
 					比较笨重，适合传输大的数据
 	4.	总结
 		复写 Application 的 getSharedPreferences 方法替换系统默认实现
+		修改了apply的实现，将多个apply方法在内存中合并，而不是多次提交
+		当然待实现的 --- 还可以替换它的存储结构、增加加密等其他自定义
 二.	优化存储
-	
-	
-	
-	
+	1.	对象的序列化
+		1>	Serializable
+			1.	Serializable 的原理
+				通过ObjectInputStream 和 ObjectOutputStream 来实现，用到大量反射，临时变量，序列化后文件比class文件大
+			2.	Serializable 的进阶
+				1>	writeObject 和 readObject
+					通过它，可以对某些字段加密，序列化的加密
+				2>	writeReplace 和 readResolve
+					可实现版本兼容，可以把老版本的序列化对象转换成新版本的对象类型
+				序列化：	-> writeReplace -> writeObject
+				反序列化：	-> readObject -> readResolve
+			3.	Serializable 的注意事项
+				1>	不被序列化的字段
+					static 变量,transient修饰，或者writeReplace/readResolve自定义序列化存储
+				2>	serialVersionUID
+					类的版本号,建议显示声明，因为隐式，若类有变化会导致serialVersionUID改变导致InvalidClassException
+				3>	构造方法
+					反序列不会执行构造，若逻辑依赖构造会有问题，当然可以自定义的反序列化修改
+		2>	Parcelable
+			目的是解决 Android 中大量跨进程通信的性能问题
+			1.	Parcelable 的永久存储
+				marshall 接口可以实现数据的永久存储，unmarshall不永久存储
+			2.	Parcelable 的注意事项
+				永久存储有2个问题：
+					1>	系统版本的兼容性
+						不同的版本，厂商修改，Parcel.cpp实现可能不同，导致差异，所以存在兼容性问题
+					2>	数据前后兼容性
+						类的版本出现升级，需要自己维护
+				一般持久化存储，选择Serializable
+		3>	Serial（Twitter 开源的高性能序列化方案）
+			优点：
+				1>	无反射
+				2>	控制强
+					开发者对于序列化过程的控制较强，可定义哪些 Object、Field 需要被序列化
+				3>	有很强的 debug 能力，可以调试序列化的过程
+				4>	有很强的版本管理能力，可以通过版本号和 OptionalFieldException 做兼容
+	2.	数据的序列化
+		1>	JSON
+			优点：
+				1.	相比对象序列化方案，速度更快，体积更小。
+				2.	相比二进制的序列化方案，结果可读，易于排查问题。
+				3.	使用方便，支持跨平台、跨语言，支持嵌套引用
+			android自带的json,Google的Gson,阿里巴巴的fastJson,美团的mson
+			自研的优点：
+				1.	便利性。
+					例如支持 JSON 转换成 JavaBean 对象，支持注解，支持更多的数据类型等
+				2.	性能。
+					减少反射，减少序列化过程内存与 CPU 的使用
+			Gson 的兼容性最好，数据量大的时候，Fastjson 的性能更好
+		2>	Protocol Buffers
+			优点：
+				1.	性能
+					使用了二进制编码压缩，相比 JSON 体积更小，编解码速度也更快，protocol-buffers 编码规则（https://developers.google.com/protocol-buffers/docs/encoding）
+				2.	兼容性
+					跨语言和前后兼容性都不错，也支持基本类型的自动转换，但是不支持继承与引用类型
+				3.	使用成本
+					Protocol Buffers 的开发成本很高，需要定义.proto 文件，并用工具生成对应的辅助类。辅助类特有一些序列化的辅助方法，
+					所有要序列化的对象，都需要先转化为辅助类的对象，这让序列化代码跟业务代码大量耦合，是侵入性较强的一种方式
+			复杂，生产方法多，可以修改自动代码生产工具修改，列如微信，xxx extends com.tencent.mm.protocal.protobuf 只需要实现op（xx）即可
+			#google 还推荐使用FlatBuffers（https://www.race604.com/flatbuffers-intro/）
+	3.	存储监控
+		1>	性能监控
+			1.	正确性
+				列如 自研的SharedPreferences，自研的 SP 文件头部会有专门的校验字段，比如文件长度、关键位置的 CRC 信息等，
+				可以识别出更多的文件损坏场景。在识别出文件损坏之后，我们还可以进一步做数据修复等工作
+			2.	时间开销
+				主要是初始化耗时与读写耗时，系统的SharedPreferences初始化，文件越大耗时越久，而自研的不会这样
+			3.	空间开销
+				主要是内存空间和ROM空间，内存空间需要考虑 GC 和峰值内存，ROM 空间需要考虑做清理逻辑，例如数据超过 1000 条或者 10MB 后会触发自动清理或者数据合并
+		2>	ROM 监控
+			文件遍历在api26之后使用FileVisitor替代 ListFiles
+			监控指标，文件总大小/总文件数量（大小>400MB->空间异常率，数量>1000->数量异常率）
+			做用户存储树，剪枝算法，保留最大的3个文件夹，每个文件夹保留5个随机文件，并且可远程操控，可以获取用户完整存储树，并可以支持下方清理规则
+	4.	总结
+		谈谈对 对象序列化/数据序列化方案 的体会
 三.	sqlite使用及优化
+	1.	SQLite 的那些事儿
+		创业团队的Realm、Google 的LevelDB,腾讯的WCDB
+		深入研究 SQLite 的源码，从 SQLite 的 PRAGMA 编译选项、Cursor 实现优化，到 SQLite 源码的优化
+		1>	ORM
+			出名的ORM框架有greenDAO和 Google 官方的Room，其中为了与javapck互动，WCDB 选择 Room 作为 ORM 框架
+		2>	进程与线程并发
+			常见的SQLiteDatabaseLockedException就是因为并发导致
+			1.	多进程并发
+				
+			2.	多线程并发
+		3>	查询优化
+			1.	索引优化
+			2.	页大小与缓存大小
+			3.	其他优化
+			4.	其他优化
+	2.	SQLite 的其他特性
+		1>	损坏与恢复
+		2>	加密与安全
+		3>	全文搜索
+	2.	SQLite 的监控
+		1>	本地测试
+		2>	耗时监控
+		3>	智能监控
+	4.	总结

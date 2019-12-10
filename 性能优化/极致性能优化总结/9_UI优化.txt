@@ -1,0 +1,72 @@
+一.	概念
+	1.	UI 渲染的背景知识
+		1>	屏幕与适配
+			手机屏幕分类:	LCD液晶显示器/OLED有机发光二极管
+			Android推荐的做法dp适配，但有问题：
+				1.	不同分辨率，控件大小不一致性
+				2.	效率，设计师px,开发人员确是dp
+			主流适配：
+				1.	限制符适配方案
+					https://mp.weixin.qq.com/s?__biz=MzAxMTI4MTkwNQ==&mid=2650826381&idx=1&sn=5b71b7f1654b04a55fca25b0e90a4433&chksm=80b7b213b7c03b0598f6014bfa2f7de12e1f32ca9f7b7fc49a2cf0f96440e4a7897d45c788fb&scene=21#wechat_redirect
+				2.	今日头条适配方案（通过反射修正系统的 density 值）
+					https://mp.weixin.qq.com/s/oSBUA7QKMWZURm1AHMyubA
+		2>	CPU 与 GPU
+			图像 -> cpu计算-> 栅格化 -> Skia 绘制			
+		3>	OpenGL 与 Vulkan
+			早期版本为何有些绘制api不支持，就是因为opengles版本受限制
+			android 7.0 -> opengles 3.2并添加Vulkan支持
+	2.	Android 渲染的演进
+		Android 的各个图形组件的作用：
+			画笔：Skia 或者 OpenGL。 skia使用cpu,opengl使用gpu
+			画纸: Surface。 surface -> SurfaceFlinger -> view -> window
+			画板: Graphic Buffer。 < 4.1使用双缓冲，>4.1 使用三缓冲
+			显示：SurfaceFlinger。将 WindowManager 提供的所有 Surface，通过硬件合成器 Hardware Composer 合成并输出到显示屏
+		1>	Android 4.0：开启硬件加速
+			未开启硬件加速的时候，渲染流程：
+				view.draw -> surface ->	canvas.draw -> skia -> Graphic Buffer -> SurfaceFlinger -> display
+			Surface。每个 View 都由某一个窗口管理，而每一个窗口都关联有一个 Surface。
+			Canvas。通过 Surface 的 lock 函数获得一个 Canvas，Canvas 可以简单理解为 Skia 底层接口的封装。
+			Graphic Buffer。SurfaceFlinger 会帮我们托管一个BufferQueue，我们从 BufferQueue 中拿到 Graphic Buffer，然后通过 Canvas 以及 Skia 将绘制内容栅格化到上面。
+			SurfaceFlinger。通过 Swap Buffer 把 Front Graphic Buffer 的内容交给 SurfaceFinger，最后硬件合成器 Hardware Composer 合成并输出到显示屏	
+			1.	硬件加速绘制
+				3.0 开始支持硬件加速，4.0默认开启加速
+				view.draw -> surface ->	canvas.draw -> opengl render -> gpu -> Graphic Buffer -> SurfaceFlinger -> display
+				核心就是我们通过 GPU 完成 Graphic Buffer 的内容绘制。此外硬件绘制还引入了一个 DisplayList 的概念，每个 View 内部都有一个 
+				DisplayList，当某个 View 需要重绘时，将它标记为 Dirty。当需要重绘时，仅仅只需要重绘一个 View 的 DisplayList，而不是像
+				软件绘制那样需要向上递归。这样可以大大减少绘图的操作数量，因而提高了渲染效率
+		2>	Android 4.1：Project Butter
+			优化无止境，2012 i/o宣布Project Butter黄油计划
+			1.	VSYNC 信号
+				收到VSYNC中断，就准备buffer数据，应用在 VSYNC 边界绘制SurfaceFlinger 是 VSYNC 边界合成。可消除卡顿，提升图形的视觉表现
+			2.	三缓冲机制 Triple Buffering
+			3.	数据测量
+		3>	Android 5.0：RenderThread
+		4>	未来
+	3.	总结
+二.	优化
+	1.	UI 渲染测量
+		1>	gfxinfo
+		2>	SurfaceFlinger
+		3>	SurfaceFlinger
+	2.	UI 优化的常用手段
+		1>	尽量使用硬件加速
+		2>	Create View 优化
+			1.	使用代码创建
+			2.	异步创建
+			3.	View 重用
+		3>	measure/layout 优化
+			1.	减少 UI 布局层次
+			2.	优化 layout 的开销
+			3.	背景优化
+	3.	UI 优化的进阶手段
+		1>	Litho：异步布局
+			1.	异步布局﻿
+			2.	界面扁平化
+			3.	优化 RecyclerView﻿
+		2>	Flutter：自己的布局 + 渲染引擎
+		3>	RenderThread 与 RenderScript
+	4.	总结
+		1. 在系统的框架下优化
+		2. 利用系统新的特性
+		3. 突破系统的限制
+	5.	课后练习
