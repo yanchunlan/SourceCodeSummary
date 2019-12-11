@@ -39,34 +39,84 @@
 			1.	VSYNC 信号
 				收到VSYNC中断，就准备buffer数据，应用在 VSYNC 边界绘制SurfaceFlinger 是 VSYNC 边界合成。可消除卡顿，提升图形的视觉表现
 			2.	三缓冲机制 Triple Buffering
+				三个 Graphic Buffer
 			3.	数据测量
+				Systrace，Traceview，系统增加了检测绘制过度工具
 		3>	Android 5.0：RenderThread
+			GL 命令执行都放到这个线程，减少主线程的绘制压力
 		4>	未来
+			Vulkan 必然是一个方向
+			UI 渲染的优化2个方向：
+				压榨硬件的性能，让 UI 可以更加流畅
+				改进或者增加更多的分析工具，帮助我们更容易地发现以及定位问题
 	3.	总结
+		硬件加速问题：
+			内存消耗
+			兼容问题
+		libhwui.so 相关的崩溃，发现是系统内部 RenderThread 与主线程数据同步的 Bug，通过规避的方法解决，
+		可能是view复用，或者两个动画同时播放导致，解决是hook加上xlog日志，寻找清楚场景
 二.	优化
 	1.	UI 渲染测量
-		1>	gfxinfo
+		测试工具：Profile GPU Rendering 和 Show GPU Overdraw （https://developer.android.com/studio/profile/inspect-gpu-rendering）
+		问题定位工具：Systrace 和 Tracer for OpenGL ES，（https://developer.android.com/topic/performance/vitals/render）
+			as3.0 后推荐Graphics API Debugger（GAPID） 替代Tracer for OpenGL ES
+		上面的工具难以自动化，下面主要是为了解决自动化
+		1>	gfxinfo 
+			输出包含各阶段发生的动画以及帧相关的性能信息: 	adb shell dumpsys gfxinfo 包名
+			最近 120 帧每个绘制阶段的耗时信息: 	adb shell dumpsys gfxinfo 包名 framestats
 		2>	SurfaceFlinger
-		3>	SurfaceFlinger
+			4.1之后，每个surface有3个Graphic Buffer
+			系统 SurfaceFlinger 相关的信息：	adb shell dumpsys SurfaceFlinger
 	2.	UI 优化的常用手段
+		16 ms（= 1000 ms／60 fps）
 		1>	尽量使用硬件加速
+			1.	不支持的 API，系统就需要通过 CPU 软件模拟绘制，这也是渐变、磨砂、圆角等效果渲染性能比较低的原因
+			2.	SVG不支持硬件加速，提前将其转换为bitmap,对于其他圆角、渐变等场景，改为 Bitmap 实现,bitmap管理可采用glide的原理
 		2>	Create View 优化
 			1.	使用代码创建
+				用于修改不频繁场景，X2C不支持xml直接转换为java
 			2.	异步创建
+				提前创建view，需要把looper的MessageQueue 替换成 UI 线程 Looper 的 Queue，在创建完 View 后我们需要把线程的 Looper 恢复成原来的
 			3.	View 重用
+				在不同 Activity 或者 Fragment 使用的 View 缓存机制，进入缓存池的 View 都已经“净身出户，无之前的状态
 		3>	measure/layout 优化
 			1.	减少 UI 布局层次
+				<ViewStub> <Merge>
 			2.	优化 layout 的开销
+				ConstraintLayout 替代 RelativeLayout 或者 weighted LinearLayout
 			3.	背景优化
+				尽量不要重复去设置背景，主题背景也是
+		针对textview的PrecomputedText 可以异步进行measure/Layout
 	3.	UI 优化的进阶手段
-		1>	Litho：异步布局
+		1>	Litho（Facebook基于Yoga研发）：异步布局
 			1.	异步布局﻿
+				measure 和 layout在后台线程执行
 			2.	界面扁平化
+				使用了Yoga，布局层次就降低了
 			3.	优化 RecyclerView﻿
-		2>	Flutter：自己的布局 + 渲染引擎
+				原生的按照 viewType 来进行缓存和回收
+				但是Litho，按照 text、image 和 video 独立回收的，这可以提高缓存命中率、降低内存使用率、提高滚动帧率
+				缺点：
+					加大了 UI 开发的复杂性，代码使用Java/Kotlin编写，无法做到AS预览
+				或者使用Litho 中的 RecyclerCollectionComponent 和 Sections 来优化自己的 RecyelerView 的性能
+		2>	Flutter（Google）：自己的布局 + 渲染引擎
+			《Flutter》（https://github.com/flutter/flutter）
+			《Flutter 原理与实践》（https://tech.meituan.com/2018/08/09/waimai-flutter-practice.html）
+				1.	首先 UI Runner 会执行 root isolate（可以简单理解为 main 函数。需要简单解释一下 isolate 的概念，isolate 是 Dart 虚拟机中一种执行并发代码实现，Dart 虚拟机实现了 Actor 的并发模型，与大名鼎鼎的 Erlang 使用了类似的并发模型。如果不太了解 Actor 的同学，可以简单认为 isolate 就是 Dart 虚拟机的“线程”，Root isolate 会通知引擎有帧要渲染）。
+				2.	Flutter 引擎得到通知后，会告知系统我们要同步 VSYNC。
+				3.	得到 GPU 的 VSYNC 信号后，对 UI Widgets 进行 Layout 并生成一个 Layer Tree。
+				4.	然后 Layer Tree 会交给 GPU Runner 进行合成和栅格化。
+				5.	GPU Runner 使用 Skia 库绘制相关图形。
 		3>	RenderThread 与 RenderScript
+			RenderThead 实现动画的异步渲染（https://mp.weixin.qq.com/s?__biz=MzUyMDAxMjQ3Ng==&mid=2247489230&amp;idx=1&amp;sn=adc193e35903ab90a4c966059933a35a&source=41#wechat_redirect）
+			RenderScript 可以对图片进行各种操作处理
 	4.	总结
 		1. 在系统的框架下优化
+			布局优化、使用代码创建、View 缓存
 		2. 利用系统新的特性
+			硬件加速、RenderThread、RenderScript
 		3. 突破系统的限制
+			Litho，Flutter
 	5.	课后练习
+		1.	使用 Litho 实现一个信息流界面。
+		2.	使用 Flutter 写一个 Hello World，分析安装包的体积。

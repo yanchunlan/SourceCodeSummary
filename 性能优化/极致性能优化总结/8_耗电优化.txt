@@ -1,13 +1,51 @@
 一.	分析
 	1.	背景知识
 		1>	电池技术
+			1.	电池容量
+			2.	充电时间
+			3.	寿命
+			4.	安全性
 		2>	电量和硬件
+			硬件性能过剩，导致其消耗电量
+			保证应用能有更好的体验，出现了高通的CPU Boost、微信的 Hardcode 以及各个厂商的合作通道
 		3>	电量和应用程序
+			Android 系统的电量计算：
+				从手机中导出/system/framework/framework-res.apk文件。
+				使用反编译工具（如 apktool）对导出文件framework-res.apk进行反编译。
+				查看power_profile.xml文件在framework-res反编译目录路径：/res/xml/power_profile.xml。
+			系统的电量消耗情况：
+				adb shell dumpsys batterystats > battery.txt
+				// 各个Uid的总耗电量，而且是粗略的电量计算估计。
+				Estimated power use (mAh):
+					Capacity: 3450, Computed drain: 501, actual drain: 552-587
+					...
+					Idle: 41.8
+					Uid 0: 135 ( cpu=103 wake=31.5 wifi=0.346 )
+					Uid u0a208: 17.8 ( cpu=17.7 wake=0.00460 wifi=0.0901 )
+					Uid u0a65: 17.5 ( cpu=12.7 wake=4.11 wifi=0.436 gps=0.309 )
+					...
+				// reset电量统计
+				adb shell dumpsys batterystats --reset
+			当测试或者其他人反馈耗电问题时，bug report结合Battery Historian是最好的排查方法
 	2.	Android 耗电的演进历程
 		1>	野蛮生长：Pre Android 5.0
+			多进程、fork native 进程以及广播拉起等各种保活盛行，导致：
+				耗电与安装应用程序的数量有关
+				App 耗电量与 App 使用时间无关
+				电量问题排查复杂
 		2>	逐步收紧：Android 5.0～Android 8.0
+			5.0开启Volta 项目，改变电池续航，dumpsys batteryst统计电量数据
+			6.0 清理后台应用，广播，导致问题：
+				1.	省电模式不够省电
+						屏幕关闭还能获取位置，网络请求
+				2.	用户对应用控制力度不够
+						用户不能简单的对某些应用做更加细致的电量和后台行为的控制，其实国内很多的厂商已经提前实现了
+				3.	Target API 开发者响应不积极
+						大部分内用用坚持不把 Target API 升级到 Oreo 以上
 		3>	最严限制：Android 9.0
+			Google 对电源管理引入了几个更加严格的限制
 	3.	总结
+		日常开发的耗电问题，怎么定位，修复的，一起讨论下
 二.	优化和监控
 	1.	耗电优化
 		1>	什么是耗电优化

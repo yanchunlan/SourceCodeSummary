@@ -149,19 +149,62 @@
 		2>	进程与线程并发
 			常见的SQLiteDatabaseLockedException就是因为并发导致
 			1.	多进程并发
-				
+				通过文件锁来控制多进程的并发
 			2.	多线程并发
+				SQLite 锁的粒度都是数据库文件级别，并没有实现表级甚至行级的锁,
+				使用 WCDB 在初始化的时候可以指定连接池的大小
+				为了提高并发性能，我们还可以打开WAL（Write-Ahead Logging）模式
 		3>	查询优化
 			1.	索引优化
+				1>建立正确的索引。	
+					选择最高效的索引
+				2>单列索引、多列索引与复合索引的选择。	
+					复合索引直接在索引表返回查询结果
+				3>索引字段的选择。	
+					整型类型索引效率会远高于字符串索引，主键尽量不要用复杂字段
 			2.	页大小与缓存大小
+				每个表对应的数据在整个 DB 文件中都是通过一个一个的页存储
+				SQLite 页缓存，加快下次读取速度。页大小默认是 1024Byte，缓存大小默认是 1000 页
+					建议大家在新建数据库的时候，就提前选择 4KB 作为默认的 page size 以获得更好的性能
 			3.	其他优化
-			4.	其他优化
+				慎用“select*”，需要使用多少列，就选取多少列。
+				正确地使用事务。
+				预编译与参数绑定，缓存被编译后的 SQL 语句。
+				对于 blob 或超大的 Text 列，可能会超出一个页的大小，导致出现超大页。建议将这些列单独拆表，或者放到表字段的后面。
+				定期整理或者清理无用或可删除的数据，例如朋友圈数据库会删除比较久远的数据，如果用户访问到这部分数据，重新从网络拉取即可。
+			复习：
+				引进 ORM，可以大大的提升我们的开发效率。通过 WAL 模式和连接池，可以提高 SQLite 的并发性能。通过正确的建立索引，
+				可以提升 SQLite 的查询速度。通过调整默认的页大小和缓存大小，可以提升 SQLite 的整体性能
 	2.	SQLite 的其他特性
 		1>	损坏与恢复
+			《信移动端数据库组件 WCDB 系列（二） — 数据库修复三板斧》（https://mp.weixin.qq.com/s/Ln7kNOn3zx589ACmn5ESQA）
+			《微信 SQLite 数据库修复实践》(https://mp.weixin.qq.com/s/N1tuHTyg3xVfbaSd4du-tw)
 		2>	加密与安全
+			一个是防注入，一个是加密。防注入可以通过静态安全扫描的方式，而加密一般会使用 SQLCipher 支持
+			SQLite 的加解密都是以页为单位，默认会使用 AES 算法加密，加 / 解密的耗时跟选用的密钥长度有关
+			《微信移动数据库组件WCDB（四） — Android 特性篇》（https://mp.weixin.qq.com/s/NFnYEXSxAaHBqpi7WofSPQ）
 		3>	全文搜索
+			《微信全文搜索优化之路》（https://mp.weixin.qq.com/s/AhYECT3HVyn1ikB0YQ-UVg）
+		我们需要根据自己的项目情况综合考虑。假如某个数据库存储的数据并不重要，这个时候万分之一的数据损坏率我们并不会关心。
+		同样是否需要使用数据库加密，也要根据存储的数据是不是敏感内容
 	2.	SQLite 的监控
 		1>	本地测试
+			每写一个 SQL 语句，都应该先在本地测试
 		2>	耗时监控
+			1.	集成自己的监控，自己增加监控的模块
+			2.	WCDB 增加了SQLiteTrace的监控模块，有以下三个接口：onConnectionPoolBusy/onDatabaseCorrupted/onSQLExecuted
+				通过这些接口监控数据库 busy、损耗以及执行耗时。针对耗时比较长的 SQL 语句，需要进一步检查是 SQL 语句写得不好，还是需要建立索引
 		3>	智能监控
+			<Matrix SQLiteLint -- SQLite 使用质量检测>(https://mp.weixin.qq.com/s/laUgOmAcMiZIOfM2sWrQgw)
+			美团SQLAdvisor 
+				<SQL解析在美团的应用>(https://tech.meituan.com/2018/05/20/sql-parser-used-in-mtdp.html)
+				<美团SQL优化工具SQLAdvisor开源>(https://tech.meituan.com/2017/03/09/sqladvisor-pr.html)
 	4.	总结
+		掌握了 SQLite 数据库并发的机制，在某些时候我们可以更好地决策应该拆数据表还是拆数据库。新建一个数据库好处是可以隔离其他库并发或者损坏的情况，
+		而坏处是数据库初始化耗时以及更多内存的占用。一般来说，单独的业务都会使用独立数据库，例如专门的下载数据库、朋友圈数据库、聊天数据库。但是数
+		据库也不宜太多，我们可以有一个公共数据库，用来存放一些相对不是太大的数据。在了解 SQLite 数据库损坏的原理和概率以后，我们可以根据数据的重要
+		程度决定是否要引
+		入恢复机制。我还讲了如何实现数据库加密以及对性能的影响，我们可以根据数据的敏感程度决定是否要引入加密
+	5.	课后
+		尝试接入 WCDB，对比测试系统默认 SQLite 的性能。尝试接入Matrix SQLiteLint（https://github.com/Tencent/matrix/tree/master/matrix/matrix-android/matrix-sqlite-lint）
+		《全面解析SQLite》（https://github.com/AndroidAdvanceWithGeektime/Chapter14/blob/master/%E5%85%A8%E9%9D%A2%E8%A7%A3%E6%9E%90SQLite.pdf）
