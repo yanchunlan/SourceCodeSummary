@@ -49,8 +49,35 @@
 二.	优化和监控
 	1.	耗电优化
 		1>	什么是耗电优化
+			1.	后台优化
+				例如长时间获取 WakeLock、WiFi 和蓝牙的扫描
+			2.	符合系统的规则，让系统认为你耗电是正常的
+				Android 系统目前比较关心后台 Alarm 唤醒、后台网络、后台 WiFi 扫描以及部分长时间 WakeLock 阻止系统后台休眠
 		2>	优化难点
+			1.	缺乏现场，无法复现
+			2.	信息不全，难以定位
+			3.	无法评估结果
 		3>	优化方法
+			可能耗电原因：
+				1.	某个需求场景
+					推送，保活等
+				2.	代码的 Bug
+					GPS 没有关闭、WakeLock 没有释放
+			优化思路：
+				1.	找到需求场景的替代方案
+					定时推送，使用foreground service 或者引导用户加入白名单，
+					《Android 后台调度任务与省电》（https://blog.dreamtobe.cn/2016/08/15/android_scheduler_and_battery/）
+				2.	符合 Android 规则
+					耗电监控是未充电在监控，我们需在充电可以做耗电工作
+					适配最新的api,因为高版本有耗电的限制
+						IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+						Intent batteryStatus = context.registerReceiver(null, ifilter);
+
+						//获取用户是否在充电的状态或者已经充满电了
+						int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+						boolean isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL;
+				3.	异常情况监控
+					后台网络、Alarm 以及 JobSheduler 事件出现异常，需要做类似Android Vitals的监控
 	2.	耗电监控
 		1>	Android Vitals
 		2>	监控什么
