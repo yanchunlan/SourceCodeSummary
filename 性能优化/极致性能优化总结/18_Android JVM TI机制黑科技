@@ -1,0 +1,43 @@
+地址（https://time.geekbang.org/column/article/74484）
+一.	介绍
+	开发虚拟机监控工具使用的编程接口，它可以监控 JVM 内部事件的执行，也可以控制 JVM 的某些行为，可以实现调试、监控、线程分析、覆盖率分析工具等
+二.	能做的事情
+	1.	线程相关事件 -> 监控线程创建堆栈、锁信息
+		ThreadStart ：线程在执行方法前产生线程启动事件。
+		ThreadEnd：线程结束事件。
+		MonitorWait：wait 方法调用后。
+		MonitorWaited：wait 方法完成等待。
+		MonitorContendedEnter：当线程试图获取一个已经被其他线程持有的对象锁时。
+		MonitorContendedEntered：当线程获取到对象锁继续执行时。
+	2.	类加载准备事件 -> 监控类加载
+		ClassFileLoadHook：在类加载之前触发。
+		ClassLoad：某个类首次被加载。
+		ClassPrepare：某个类的准备阶段完成。
+	3.	异常事件 -> 监控异常信息
+		Exception：有异常抛出的时候。
+		ExceptionCatch：当捕获到一个异常时候。
+	4.	调试相关
+		SingleStep：步进事件，可以实现相当细粒度的字节码执行序列，这个功能可以探查多线程下的字节码执行序列。
+		Breakpoint：当线程执行到一个带断点的位置，断点可以通过 JVMTI SetBreakpoint 方法来设置。
+	5.	方法执行
+		FramePop：当方法执行到 retrun 指令或者出现异常时候产生，手动调用 NofityFramePop JVM TI 函数也可产生该事件。
+		MethodEntry：当开始执行一个 Java 方法的时候。
+		MethodExit：当方法执行完成后，产生异常退出时。
+		FieldAccess：当访问了设置了观察点的属性时产生事件，观察点使用 SetFieldAccessWatch 函数设置。
+		FieldModification：当设置了观察点的属性值被修改后，观察点使用 SetFieldModificationWatch 设置。
+	6.	GC -> 监控 GC 事件与时间
+		GarbageCollectionStart：GC 启动时。
+		GarbageCollectionFinish：GC 结束后。
+	7.	对象事件 -> 监控内存分配
+		ObjectFree：GC 释放一个对象时。
+		VMObjectAlloc：虚拟机分配一个对象的时候。
+	8.	其他
+		NativeMethodBind：在首次调用本地方法时或者调用 JNI RegisterNatives 的时候产生该事件，通过该回调可以将一个 JNI 调用切换到指定的方法上。
+三.	JVM TI 实现原理
+	以 VmObjectAlloc 事件为例，当我们通过 SetEventNotificationMode 函数设置 JVMTI_EVENT_VM_OBJECT_ALLOC 回调的时候，
+	最终会调用到 art::Runtime::Current() -> GetHeap() -> SetAllocationListener(listener);
+四.	JVM TI Agent 开发
+	1.	JVM TI 事件监控
+	2.	JVM TI 字节码增强
+五.	总结
+	

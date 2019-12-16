@@ -80,6 +80,80 @@
 					后台网络、Alarm 以及 JobSheduler 事件出现异常，需要做类似Android Vitals的监控
 	2.	耗电监控
 		1>	Android Vitals
+			1.	监控方案与规则
+				Alarm Manager wakeup 唤醒过多(https://developer.android.com/topic/performance/vitals/wakeup)
+				频繁使用局部唤醒锁(https://developer.android.google.cn/topic/performance/vitals/wakelock)
+				后台网络使用量过高(https://developer.android.com/topic/performance/vitals/bg-network-usage)
+				后台 WiFi scans 过多(https://developer.android.com/topic/performance/vitals/bg-wifi)
+				Vitals 以每小时超过 10 次作为规则,很麻烦，跟 Battery Historian 一样，只能拿到 wakeup 标记组件，拿不到手机是否充电、剩余电量
 		2>	监控什么
+			1.	监控信息
+				后台耗电监控为主，如Alarm wakeup、WakeLock、WiFi scans、Network监控，GPS，Sensor等
+			2.	现场信息
+				完整的堆栈信息，具体代码操作了什么，手机状态前后台时间、CPU 状态
+			3.	提炼规则
+				不同监控的事项或者参数都不一样
 		3>	如何监控耗电
+			1.	Java Hook
+				1>	WakeLock
+					WakeLock 用来阻止 CPU、屏幕甚至是键盘的休眠。类似 Alarm、JobService 也会申请 WakeLock 来完成后台 CPU 操作
+					
+					// 代理PowerManagerService
+					ProxyHook().proxyHook(context.getSystemService(Context.POWER_SERVICE), "mService", this)；
+
+					@Override
+					public void beforeInvoke(Method method, Object[] args) {
+						// 申请Wakelock
+						if (method.getName().equals("acquireWakeLock")) {
+							if (isAppBackground()) {
+								// 应用后台逻辑，获取应用堆栈等等     
+							 } else {
+								// 应用前台逻辑，获取应用堆栈等等
+							 }
+						// 释放Wakelock
+						} else if (method.getName().equals("releaseWakeLock")) {
+						   // 释放的逻辑    
+						}
+					}
+				2>	Alarm
+					Alarm 用来做一些定时的重复任务
+
+					// 代理AlarmManagerService
+					new ProxyHook().proxyHook(context.getSystemService
+					(Context.ALARM_SERVICE), "mService", this)；
+
+					public void beforeInvoke(Method method, Object[] args) {
+						// 设置Alarm
+						if (method.getName().equals("set")) {
+							// 不同版本参数类型的适配，获取应用堆栈等等
+						// 清除Alarm
+						} else if (method.getName().equals("remove")) {
+							// 清除的逻辑
+						}
+					}
+				3>	其他
+					后台 CPU,使用卡顿监控
+					后台网络,使用网络监控
+					GPS,Hook 代理LOCATION_SERVICE
+					Sensor,Hook SENSOR_SERVICE中的“mSensorListeners”
+				通过 Hook，我们可以在申请资源的时候将堆栈信息保存起来。当我们触发某个规则上报问题的时候，
+				可以将收集到的堆栈信息、电池是否充电、CPU 信息、应用前后台时间等辅助信息也一起带上
+			2.	插桩
+				1>	第一个思路是基础类，添加监控
+					public class WakelockMetrics {
+						// Wakelock 申请
+						public void acquire(PowerManager.WakeLock wakelock) {
+							wakeLock.acquire();
+							// 在这里增加Wakelock 申请监控逻辑
+						}
+						// Wakelock 释放
+						public void release(PowerManager.WakeLock wakelock, int flags) {
+							wakelock.release();
+							// 在这里增加Wakelock 释放监控逻辑
+						}
+					}
+				2>	Facebook的 Battery-Metrics (https://github.com/facebookincubator/Battery-Metrics)
+					监控Alarm、WakeLock、Camera、CPU、Network 等，而且也有收集电量充电状态、电量水平等信息，原理是插桩来动态替换
+				插桩缺点：系统的代码插桩方案是无法替换的，例如 JobService 申请 PARTIAL_WAKE_LOCK 的场景
 	3.	总结
+	Java Hook 实现 Alarm、WakeLock 和 GPS 的耗电监控
