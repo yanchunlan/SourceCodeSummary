@@ -29,3 +29,12 @@
 二.	总结
 	修复系统 Bug、线上监控 Native 内存分配
 	
+三.	之前所有优化中hook的总结
+	inline hook 监听对象分配内存大小监控，Substrate框架（https://github.com/AndroidAdvanceWithGeektime/Chapter03），打开libart.so，针对libart.so，MSHookFunction拦截RecordAllocation函数，获取到内存的对象,做内存大小监听，对象释放等
+	PLTHook 获取Atrace日志（https://github.com/AndroidAdvanceWithGeektime/Chapter06），打开libcutils.so，针对libc.so，hook_plt_method拦截write 函数，并打印log(打开函数，是因为获取对象调用Atrace的函数)
+	PLTHook 获取线程创建的堆栈（https://github.com/AndroidAdvanceWithGeektime/Chapter06-plus），针对libart.so，hook_plt_method拦截pthread_create函数，(调用jave层getStack)获取堆栈并打印log
+	PLTHook 获取网络请求信息（https://github.com/AndroidAdvanceWithGeektime/Chapter17），针对libc.so，hook_plt_method_all_lib拦截send/recv/sendto/recvfrom/connect函数，在connect时候，判断是inet/inet6就打印线程堆栈log
+	javaHook代理对应的Service实现，完成收集Wakelock、Alarm、GPS的申请堆栈、释放信息、手机充电状态(https://github.com/simplezhli/Chapter19)
+	
+	拓展:
+		PLTHook中hook_plt_method第一个参数是排除xxx.so,
