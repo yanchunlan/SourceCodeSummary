@@ -1,0 +1,22 @@
+1.	CAS
+	compare and swap(compare and exchange)/ 自旋 / 自旋锁 / 无锁
+	cas(v,a,b),变量v,期待值a,修改值b
+	aba问题，你的女朋友在离开你的这段时间经历了别人，自旋就是你空转等待，一直等到她接纳你为止
+	解决方法(时间，版本号)，基础类型简单值不需要版本号
+2.	unsafe
+	AtomicInteger -> unsafe.compareAndSwapInt -> 
+	
+1.	volatile 用途
+	1.	线程可见性
+	2.	防止指令重排序
+		列如:	DCL单例为何需要加volatile
+2.	CPU基础知识
+	1.	缓存行对其
+		缓存行64个字节是cpu同步的基本单位，缓存行隔离会比伪共享效率更高
+	2.	伪共享
+	3.	合并写
+		
+
+1.	CAS	ABA
+2.	Volicte
+3.	无锁，偏向锁，轻量级(自旋锁)，重量级锁 （依次递增）
