@@ -1,0 +1,65 @@
+一.	源码总结
+	1.	粗劣的流程
+		绘制开始ViewRootImpl.scheduleTraversals -> performTraversals -> measure，layout，draw
+	2.	细分的流程
+		scheduleTraversals 
+		-> mChoreographer.postCallback
+		-> postCallback
+		-> postCallbackDelayed
+		-> postCallbackDelayedInternal
+		-> scheduleFrameLocked, 开始调用帧的行为，里面有USE_VSYNC开启动画和绘制的垂直同步
+		-> scheduleVsyncLocked
+		-> mDisplayEventReceiver.scheduleVsync()
+		-> nativeScheduleVsync(mReceiverPtr) ，底层处理垂直同步，回调onVsync
+		...
+		->	FrameDisplayEventReceiver.onVsync ,包装message传给handler,执行handler的run
+		->	doFrame
+		->	mFrameInfo.markInputHandlingStart();// 输入
+			doCallbacks(Choreographer.CALLBACK_INPUT, frameTimeNanos);
+
+            mFrameInfo.markAnimationsStart();// 动画
+            doCallbacks(Choreographer.CALLBACK_ANIMATION, frameTimeNanos);
+
+            mFrameInfo.markPerformTraversalsStart();// 遍历，执行measure、layout、draw
+            doCallbacks(Choreographer.CALLBACK_TRAVERSAL, frameTimeNanos);
+
+            doCallbacks(Choreographer.CALLBACK_COMMIT, frameTimeNanos);// 遍历完成的提交操作，用来修正动画启动时间
+		->	doCallbacks
+		->	内部维护四种链表
+	3.	绘制总结
+		从上可知，vsync信号是底层硬件中断，16ms产生依次，会回调onVsync方法
+		1.	切换到 Choregrapher创建时所在的线程去调用scheduleFrameLocked()方法,设置mFrameScheduled = true
+		2.	调用scheduleVsyncLocked请求下一次Vsync信号回调
+		3.	FrameDisplayEventReceiver.onVsync()会生成一个消息，然后发送到Choreographer.mHander的消息队列
+		4.	Choreographer.mHander取出上面onVsync中发送的消息，执行Choreographer.doFrame()方法，doFrame()
+			中判断mFrameScheduled是否为true,如果为true的话就上面四种callback
+	4.	帧分析
+		因为一直循环执行doframe方法，如果一个callback时间大于16ms就丢帧了
+	5.	线程关系
+		执行doFrame会把其放入Choreographer.mHander的消息队列，
+		根据Choreographer的实例化函数，看得出来，其实就是主线程的消息
+			protected Choreographer initialValue() {
+				Looper looper = Looper.myLooper();
+				...
+				Choreographer choreographer = new Choreographer(looper, VSYNC_SOURCE_APP);
+				if (looper == Looper.getMainLooper()) {
+					mMainInstance = choreographer;
+				}
+				return choreographer;
+			}
+	6.	流程总结
+		scheduleTraversals
+		-> postCallback 
+		-> addCallbackLocked/sendMessageAtFrontOfQueue ，把事件添加到队列中，并发送MSG_DO_SCHEDULE_VSYNC消息请求Vsync信号
+		-> sendMessageAtTime,	继续发送消息，并执行doFrame
+		-> doFrame
+		-> doCallbacks ，	执行这个CALLBACK_TRAVERSAL，执行performTraversas ->measure(),layout(),draw()
+二.	利用Choreographer监听应用FPS
+	1.	Matrix实现原理
+		通过反射向Choreographer.doFrame，插入一个runnable,统计处理不同事件消耗时间，在主线程处理完消息之后就观察者通知方法，计算一帧的耗时
+	2.	fps计算
+		应用的FPS我们可以每166ms(十帧)计算一次，即每166ms实际渲染了几帧
+	3.	Matrix缺点
+		其他线程卡住主线程，这个卡顿无法监控
+		
+		
