@@ -1,0 +1,118 @@
+一.	booster实现的框架分析
+	主要是利用gradle插件字节码插入代码实现功能，其中主要的是transform的实现，
+	流程如下：
+		BoosterPlugin : Plugin<Project>
+		->	android.registerTransform(BoosterAppTransform()) // 加载所有的transform
+		->	BoosterTransform.transform 内部工作交给了 BoosterTransformInvocation 实现
+		->	BoosterTransformInvocation代理了TransformInvocation，使用了ServiceLoader加载所有的transform, 并依次调用transform方法
+
+一.	修复系统异常
+	1.	booster-transform-activity-thread
+		Hook了ActivityThread.mH.mCallback，使用代理类代理它，在代理类的handleMessage中
+		针对this.mHandler.handleMessage(msg); try catch住异常，检查异常的堆栈，如果是包名开头
+		（"java.","android.","androidx.","dalvik.","com.android.），就上报这个系统的异常
+	2.	booster-transform-toast
+		Toast 在7.1 上面会奔溃，解决方式是try catch住它
+		通过字节码插桩替换系统的Taost.show()变为了ShadowToast.show()，其中ShadowToast有catch的处理
+	3.	booster-transform-res-check
+		修复了"检查覆盖安装导致的 Resources 和 Assets 未加载的 Bug"
+		解决方式：
+			Application.attachBaseContext/onCreate中判断资源是否加载，如果没有加载的话直接kill掉应用
+			if (null == app.getAssets() || null == app.getResources()) {
+				final int pid = Process.myPid();
+				Process.killProcess(pid);
+				System.exit(10);
+			}
+	4.	booster-transform-media-player
+		把崩溃的地方try-catch住,然后通过gradle transform动态替换掉代码中的MediaPlayer
+		类似于：
+			public static MediaPlayer newMediaPlayer() {
+				return workaround(new MediaPlayer());// workaround catch 异常的类
+			}
+
+	5.	booster-transform-finalizer-watchdog-daemon
+		finalizer导致的TimeoutException : 简单的说就是对象的finalize()执行时间过长
+		解决方式：
+			1.	反射停掉FinalizerWatchdogDaemon线程
+				try {
+					Class clazz = Class.forName("java.lang.Daemons$FinalizerWatchdogDaemon");
+					Method method = clazz.getSuperclass().getDeclaredMethod("stop");
+					method.setAccessible(true);
+					Field field = clazz.getDeclaredField("INSTANCE");
+					field.setAccessible(true);
+					method.invoke(field.get(null));
+				} catch (Throwable e) {
+					e.printStackTrace();
+				}
+			2.	try-cathch 住异常
+				final Thread.UncaughtExceptionHandler defaultUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
+				Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+					@Override
+					public void uncaughtException(Thread t, Throwable e) {
+						if (t.getName().equals("FinalizerWatchdogDaemon") && e instanceof TimeoutException) {
+							 //ignore it
+						} else {
+							defaultUncaughtExceptionHandler.uncaughtException(t, e);
+						}
+					}
+				});
+			3.	booster方案-手动停掉FinalizerWatchdogDaemon线程，在application创建的时候新开一个线程执行
+二.	线程优化和性能检测
+	1.	booster-transform-thread 多线程优化 
+		1.	给所有线程设置name
+			编译时通过修改字节码文件动态给HandlerThread、Timer、AsyncTask、Thread、ThreadPoolExecutor等开启的线程都起了名字
+			主要是检测thread创建的时候，新加一个方法执行线程设置name方法
+		2.	设置线程池的 allowCoreThreadTimeOut(true)
+			线程池创建的时候，keepAliveTime参数设置超时回收针对普通线程，核心线程没回收，需要设置allowCoreThreadTimeOut(true)
+			字节码替换所有线程池的创建方法，在替换的方法中执行allowCoreThreadTimeOut(true)
+	2.	booster-transform-lint 性能瓶颈检测 
+		1.	指定检测方法
+			LintTransformer 直接检测指定的方法，列如Aplication/Activity/Service/BroadcastReceiver/ContentProvider等API
+		2.	检查有没有调用敏感的API
+			analyse()用来检查当前API是否命中了Lint检查列表。如果命中就会加入到dot文件绘图节点中。
+			booster默认定义的敏感API有:	xxxxx/android/graphics/Bitmap... ;主要是一些可能导致主线程卡顿的API。
+		3.	检测demo
+			检查之后生成树形访问链，列如：
+			MainActivity -> MainActivity。onCreate（Bundle） -> MainActivity.getSharedPreferences(String,int)
+三.	资源压缩
+	1.	booster-task-compression
+	主要做了三件事
+		1.	删除资源
+		2.	压缩图片资源
+		3.	重新压缩resourceXX.ap_文件中的资源
+		回顾资源编译步骤，看com.android.tools.build:gradle源码assembleRelease，在ApplicationTaskMamager.java中
+		看得出来是有：
+			下载依赖
+			合并Manifest文件(MergeApkManifestsTask)
+			合并res资源(MergeResourcesTask)
+			合并assets资源(MergeAssetsTask)
+			处理资源,生成_.ap文件(ApkProcessTesTask)
+		资源压缩，就是创建了一些task在上面步骤之间
+		1.	资源删除
+			1>冗余资源删除
+				在MergeResourcesTask之后执行
+				val klassRemoveRedundantFlatImages = if (aapt2) RemoveRedundantFlatImages::class else RemoveRedundantImages::class
+				variant.project.tasks.create（xxx）.dependsOn(variant.mergeResourcesTask)
+			2>	aapt冗余资源的移除
+				booster里面的 RemoveRedundantImages 什么都不做处理，因为gradle自己会移除资源
+				Gradle会在以下位置查找重复资源：
+					与主源集关联的主资源，通常位于 src/main/res/。
+					变体叠加,来自编译类型和编译特性。
+					库项目依赖项。
+				Gradle会按以下级联优先顺序合并重复资源 : 依赖项 → 主资源 → 编译特性 → 编译类型
+			3>	aapt2冗余资源的移除
+				gradle 3.0.0 使用了aapt2编译
+				booster 里面针对 RemoveRedundantFlatImages 操作是，在资源合并后，对于同名的png图片，它会取density最高的图片，然后把其他的图片删除
+		2.	图片压缩资源
+			sdk>17,使用cwebp命令将图片转为webp格式
+			sdk<17,使用pngquant命令对图片进行压缩
+			图片压缩具体实现：
+				assets下的图片资源压缩（flutter引入的话会导致失效）
+				res下的图片资源压缩
+			创建一个task,转换图片即可，压缩命令如下：ActionData(input, output, listOf(cmdline.executable!!.absolutePath, "-mt", "-quiet", "-q", "80", "-o", output.absolutePath, input.absolutePath))
+			cmdline.executable!!.absolutePath就是代表cwbp命令的位置。
+		3.	压缩resourceXX.ap_文件中的资源
+			遍历找到所有resourcesXX.ap_文件，对他们进行重新压缩打包，ap_.repack就是压缩的方法，并生成报告，压缩前，压缩后大小
+			
+		
+		
