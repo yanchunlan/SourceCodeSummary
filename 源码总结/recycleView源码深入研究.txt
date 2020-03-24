@@ -1,0 +1,30 @@
+一.	基本结构
+	熟系源码：
+		ViewHolder、
+		Adapter、
+		AdapterDataObservable、
+		RecyclerViewDataObserver、
+		LayoutManager、
+		Recycler、
+		RecyclerPool
+二.	刷新机制
+	流程：
+		adapter.notifyDataSetChanged() -> 
+		AdapterDataObservable.notifyChanged() -> 
+		RecyclerViewDataObserver.notifyChanged() ->
+		RecyclerView.requestLayout() ->
+		......
+		
+		RecyclerView.dispatchLayout ->
+		
+			STEP_START ->  dispatchLayoutStep1()
+			STEP_LAYOUT -> dispatchLayoutStep2()
+			STEP_ANIMATIONS -> dispatchLayoutStep2(), dispatchLayoutStep3()
+		
+		dispatchLayoutStep2 (设置状态mState及 mLayout.onLayoutChildren(mRecycler, mState)) ->
+		LinearLayoutManager.onLayoutChildren ->
+		
+		
+三.	复用机制
+四.	动画源码
+五.	思考

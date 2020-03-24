@@ -1,4 +1,4 @@
-一.	booster实现的框架分析
+﻿一.	booster实现的框架分析
 	主要是利用gradle插件字节码插入代码实现功能，其中主要的是transform的实现，
 	流程如下：
 		BoosterPlugin : Plugin<Project>
@@ -66,6 +66,7 @@
 			线程池创建的时候，keepAliveTime参数设置超时回收针对普通线程，核心线程没回收，需要设置allowCoreThreadTimeOut(true)
 			字节码替换所有线程池的创建方法，在替换的方法中执行allowCoreThreadTimeOut(true)
 	2.	booster-transform-lint 性能瓶颈检测 
+		支持动态添加依赖或者注入某些类和库(比如插桩、无埋点统计等)
 		1.	指定检测方法
 			LintTransformer 直接检测指定的方法，列如Aplication/Activity/Service/BroadcastReceiver/ContentProvider等API
 		2.	检查有没有调用敏感的API
@@ -113,6 +114,19 @@
 			cmdline.executable!!.absolutePath就是代表cwbp命令的位置。
 		3.	压缩resourceXX.ap_文件中的资源
 			遍历找到所有resourcesXX.ap_文件，对他们进行重新压缩打包，ap_.repack就是压缩的方法，并生成报告，压缩前，压缩后大小
-			
+四.	其他
+	1.	booster-task-all/booster-transform-all 动态加载模块
+		可以定制task和transform，然后设置classpath
+	2.	booster-transform-shared-preferences
+		shared-preferences的commit的操作放在异步执行
+	3.	booster-transform-shrink  常量删除：
+		该transform shrink的主要逻辑实现步骤如下：
+			1.读取符号列表symbolList，步骤6用到
+			2.读取白名单，支持类和常量字段粒度。（反射等）
+			3.考虑三方库需要保留的常量 （support,greenDao）
+			4.删除多余R类
+			5.删除常量
+			6.用常量替换资源索引
+	4.	
 		
 		

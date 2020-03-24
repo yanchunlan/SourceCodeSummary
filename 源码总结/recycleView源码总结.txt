@@ -1,7 +1,7 @@
-﻿recycleView四级缓存：
+﻿一.	recycleView四级缓存：
 	两个scrap就是第一级缓存（mAttachedScrap ，mChangedScrap ）
 	mCachedViews，mViewCacheExtension，mRecyclerPool分别对应2,3,4级缓存
-各级缓存作用：
+二.	各级缓存作用：
 	scrap:
 
 	rv之所以要将缓存分成这么多块肯定在功能上是有一定的区分的，它们分别对应不同的使用场景，scrap是用来保存被rv
@@ -48,7 +48,7 @@
 	pool一般会和cached配合使用，这么来说，cached存不下的会被保存到pool中毕竟cached默认容量大小只有2，但是pool
 	容量也是有限的当保存满之后再有viewholder到来的话就只能会无情抛弃掉，它也有一个默认的容量大小
 	
-优化措施：
+三.	优化措施：
 	1.	降低item的布局层次
 	2.	去除冗余的setitemclick事件（不要在bindView里面设置点击事件）
 	3.	复用pool缓存（主要是针对item里面也是recycleView的情况，默认是不开启的）
@@ -78,3 +78,6 @@
 		removeview是一个更为彻底的移除view操作，内部是会调用到detachview的，并且会调用到我们很熟悉的ondetachfromwindow
 		方法，而detachview是一个轻量级的操作，内部操作就是简单的将该view从父view中移除掉，rv内部调用detachview的场景
 		就是对应被移除的view可能在近期还会被使用到所以采用轻量级的移除操作，removeview一般都预示着这个holder已经彻底从屏幕消失不可见了
+四.	总结
+	1.	不需要经过onindViewHolder能够使用的缓存是 mAttachedscrap,mCachedViews；需要onBinderViewHolder的是mRecyclerPool,mScrap
+	2.	onDetachedFromWindow调用的时候，ViewHolder没有被回收，当onViewRecycled调用，holder扔进recyclerPool,mscrap里面了，就需要绑定数据了
