@@ -22,9 +22,20 @@
 			STEP_ANIMATIONS -> dispatchLayoutStep2(), dispatchLayoutStep3()
 		
 		dispatchLayoutStep2 (设置状态mState及 mLayout.onLayoutChildren(mRecycler, mState)) ->
-		LinearLayoutManager.onLayoutChildren ->
-		
-		
+		LinearLayoutManager.onLayoutChildren
+		->
+			1.	确定锚点(Anchor)View,设置好AnchorInfo
+				updateAnchorFromChildren ->
+				assignFromView(getDecoratedStart / getDecoratedEnd) ->
+				
+			2.	根据锚点View确定有多少布局空间 , mLayoutState.mAvailable可用
+				
+				
+				LinearLayoutManager的方向开始摆放子View
+												->
+				
+			
+			
 三.	复用机制
 四.	动画源码
 五.	思考
