@@ -76,4 +76,7 @@
 				如果不采用ThreadLocal，那么系统就必须提供一个全局的哈希表供Handler查找指定线程的Looper，这样一来就必
 			须提供一个类似于LooperManager的类了，但是系统并没有这么做而是选择了ThreadLocal，这就是ThreadLocal的好处
 			2>如果是线程为单位的监听器，就可以使用它，比自己再建立一个单独的manager管理比较好
-	
+	总结：
+		1.	每个线程内部有一个threadLocal, 当外部调用threadLocal的set的时候，是把值设置在了当前线程的threadLocal中去了，所以每个线程自己存储了这些变量副本
+		2.	threadLocalMap 是继承的weakreference，当内存不足，gc的时候就回收key, 但是value不会回收,所以为了避免这种情况，使用完成之后最好remove
+		

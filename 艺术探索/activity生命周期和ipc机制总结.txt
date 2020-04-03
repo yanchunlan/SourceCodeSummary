@@ -71,4 +71,7 @@
 			Parcelable 主要用在内存序列化上
 			如果是存储存储设备或者网络传输，尽量用Serializable 
 		2.3> Binder
-
+		2.4> messager
+		2.5> socket
+		2.6> dataBase/preference/io文件
+		2.7> intent/bindle
