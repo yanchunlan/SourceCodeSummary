@@ -1,0 +1,38 @@
+一.	功能
+	日志埋点；
+	性能监控；
+	动态权限控制；
+	业务逻辑跳转时，校验是否已经登录；
+	甚至是代码调试等。
+二.	工具
+	AspectJ，ASM
+	
+	1.	原理：
+		遍历项目中所有的 .class 文件，遍历到目标 .class 文件 （Activity）之后，通过 ASM 动态注入需要被插入的字节码、
+		其中遍历文件主要是依赖 Transform 实现，插入代码是ASM
+	
+	2.	Transform概述
+		getName：设置我们自定义的Transform对应的Task名称。Gradle在编译的时候，会将这个名称显示在控制台上。
+				比如：Task :app:transformClassesWithXXXForDebug。
+
+		getInputType：在项目中会有各种各样格式的文件，通过 getInputType 可以设置 LifeCycleTransform 接收的文件类型，
+				此方法返回的类型是 Set<QualifiedContent.ContentType> 集合。主要是CLASSES、RESOURCES
+		
+		getScopes()：这个方法规定自定义 Transform 检索的范围
+		
+		isIncremental()：表示当前 Transform 是否支持增量编译，我们不需要增量编译，所以直接返回 false 即可
+		
+		transform()：在 自定义Transform 中最重要的方法就是 transform()。在这个方法中，可以获取到两个数据的流向。
+			inputs：inputs 中是传过来的输入流，其中有两种格式，一种是 jar 包格式，一种是 directory（目录格式）
+			outputProvider：outputProvider 获取到输出目录，最后将修改的文件复制到输出目录，这一步必须做，否则编译会报错。
+	
+	3.	ASM
+		ClassReader：负责解析 .class 文件中的字节码，并将所有字节码传递给 ClassWriter。
+		
+		ClassVisitor：负责访问.class文件中各个元素，还记得上一课时我们介绍的.class文件结构吗？ClassVisitor就是用来解析这些文件结构的，
+		当解析到某些特定结构时（比如类变量、方法），它会自动调用内部相应的 FieldVisitor 或者 MethodVisitor 的方法，进一步解析或者修改 .class 文件内容。
+		
+		ClassWriter：继承自 ClassVisitor，它是生成字节码的工具类，负责将修改后的字节码输出为 byte 数组
+	
+	4.	字节码生成工具
+		ASM Bytecode Outline

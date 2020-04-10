@@ -59,3 +59,26 @@
 		软引用如果被其他使用，占据，在每次gc的时候就不会被释放，导致内存爆，
 		最好是软引用被存储的地方也通过队列管理，每次gc之后清除它，判断是否为null
 六.	总结
+	讲了垃圾回收的各种知识
+七.	拓展
+	1.	观察jvm的变化监控软件：
+		D:\android\jdk\jdk_local\bin\jvisualvm.exe
+		工具-插件-安装visual-GC
+		可以再AS中写代码监控GC效果
+			@org.junit.Test
+			public void isCorrect() {
+				ArrayList list = new ArrayList();
+				while (true) {
+					list.add(new TestGC());
+
+					try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+
+			class TestGC {
+				byte[] bytes = new byte[300 * 1024];// 100k
+			}
