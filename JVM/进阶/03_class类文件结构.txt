@@ -1,0 +1,113 @@
+一.	描述
+	字节码，让Java 虚拟机和 Java 语言之间的耦合，兼容更多其他语言
+	class文件的数据结构：无符号数和表
+		无符号数：属于基本的数据类型，以u1、u2、u4、u8来分别代表1个字节、2个字节、4个字节和8个字节的无符号数，无符号数可以用来描述数字、索引引用、数量值或者字符串（UTF-8编码）
+		表：表是由多个无符号数或者其他表作为数据项构成的复合数据类型，class文件中所有的表都以“_info”结尾。其实，整个 Class 文件本质上就是一张表
+二.	class 文件结构
+	无符号数和表就组成了 class 中的各个结构
+	Test.java javac编译成 Test.class 字节码文件。然后使用 16 进制编辑器打开 class 文件，显示很多16进制文件
+	1.	魔数
+		固定的值--0XCAFEBABE，不是这个就不是class文件
+	2.	版本号
+		00000034 ，前2个次版本，0034主版本，十进制=52，所以为52.0，也就是1.8.0
+	3.	常量池
+		保存了类的各种相关信息，比如类的名称、父类的名称、类中的方法名、参数名称、参数类型等
+		每一项就是一个表，其中类型有14种，就简单看下CONSTANT_Class_info 和 CONSTANT_Utf8_info 两张表
+		1>	CONSTANT_Class_info 
+			table CONSTANT_Class_info {
+			    u1  tag = 7;
+			    u2  name_index;
+			}
+			tag：占用一个字节大小。比如值为7，说明是CONSTANT_Class_info类型表。
+			name_index：是一个索引值，可以将它理解为一个指针，指向常量池中索引为name_index的常量表。比如 name_index = 2，则它指向常量池中第 2 个常量
+		2>	CONSTANT_Utf8_info 
+			table CONSTANT_utf8_info {
+			    u1  tag;
+			    u2  length;
+			    u1[] bytes;
+			}
+			tag：值为1，表示是CONSTANT_Utf8_info类型表。
+			length：length表示u1[]的长度，比如length=5，则表示接下来的数据是5个连续的u1类型数据
+			bytes：u1 类型数组，长度为上面第 2 个参数 length 的值
+		字符串存储格式就 CONSTANT_utf8_info，编译时候长度是最大的65536-null值=65534,运行时，看源码里Integer.MAX_VALUE(2147483647)大概4GB
+		
+		3>	常量池大小用2字节做容量，001d 转十进制等于29，其中第0个有其他用途，所以固定是28的长度
+		
+			第一个常量，0a 十进制tag=10，就是CONSTANT_Methodref_info
+				CONSTANT_Methodref_info{
+					u1 tag=10;
+					u2 class_index;指向此方法的所属类
+					u1 name_type_index 指向此方法的名称和类型
+				}
+			0a 之后的2个字节指向这个方法是属于哪个类,紧接的 2 个字节指向这个方法的名称和类型。它们的值分别是
+				0006：十进制 6，表示指向常量池中的第 6 个常量。
+				0015：十进制 21，表示指向常量池中的第 21 个常量。
+		
+		4>	第二个常量，09 CONSTANT_FIeldref_info 
+			CONSTANT_Fieldref_info{
+				u1 tag;
+				u2 class_index;指向此字段的所属类
+				u2 name_type_index;指向此字段的名称和类型
+			}
+			同样也是 4 个字节，前后都是两个索引。
+				0005：指向常量池中第 5 个常量。
+				0016：指向常量池中第 22 个常量。
+		...   其余21个常量池解析一样
+		
+		也可以直接使用javap -v test.class 解析，直接看结果：
+		第一个常量，6，21；其中21指的类型是NameAndType
+			CONSTANT_NameAndType_info{
+				u1 tag;
+				u2 name_index;指向某字段或方法的名称字符串
+				u2 type_index;指向某字段或方法的类型字符串
+			}
+		21指向了13，14，分别是<init>和()V，所以第一个常量池解析出来就是 java/lang/object.init:()V，
+		所以第一个存储的是默认的构造器方法
+	4.	访问标志 access_flags
+		2个字节，访问标志代表类或者接口的访问信息，比如：该 class 文件是类还是接口，是否被定义成 public，是否是 abstract，如果是类，是否被声明成 final 等等。各种访问标志如下所示
+		0021 ，0001与0020结合而成
+	5.	类索引、父类索引与接口索引计数器
+		接口访问标识之后，0005 0006 0002 分别是类索引 父索引 接口索引，分别是Test”和“Object”，2之后是接口索引
+		0007 0008 分别是常量值Serializable，Cloneable
+		所以当前类继承Object ，实现了Serializable，Cloneable接口
+	6.	字段表
+		描述类或者接口中声明的变量，包含了类级别变量以及实例变量，但是不包括方法内部声明的局部变量
+		0002 ， 2个字段表数据结构
+			CONSTANT_Fieldref_info{
+				u2	access_flags字段的访问标志
+				u2	name_index字段的名称索引(也就是变量名)
+				u2  descriptor_index    字段的描述索引(也就是变量的类型)
+			    u2  attributes_count    属性计数器
+			    attribute_info
+			}
+		0002 0002 0009 000a 字段计数器，字段访问标识 ，变量名索引，变量类型索引
+	7.	字段访问标识
+		0002 查表，是private, 0009 000a 分别是9，10,查询javap,可知类中有一个num的 类型为int类型的变量
+		注意事项：
+			字段表集合中不会列出从父类或者父接口中继承而来的字段。
+			内部类中为了保持对外部类的访问性，会自动添加指向外部类实例的字段。
+	8.	方法表
+		方法表常量应该也是以一个计数器开始的，因为一个类中的方法数量是不固定的
+			CONSTANT_Methodref_info{
+			    u2  access_flags;        方法的访问标志
+			    u2  name_index;          指向方法名的索引
+				u2 descriptor_index;	指向方法类型的索引
+				u2 attributes_count;	方法属性计数器
+				attribute_infoattribu
+			}
+		我们知道类中有2个方法，但是一个是默认构造器，所以忽略，就只有add一个方法
+		access_flags=0X0001也就是访问权限为public。
+		name_index=0X0011指向常量池中的第17个常量，也就是“add”。
+		type_index=0X0012    指向常量池中的第 18 个常量，也即是 (I)。这个方法接收 int 类型参数，并返回 int 类型参数
+	9.	属性表
+		CONSTANT_Attribute_info{
+		    u2 name_index;
+		    u2 attribute_length length;
+		    u1[] info;
+		}
+		属性表有很多，其中你主要是code表
+		在方法索引之后就是add方法的属性，0x0001属性计数器，0x000f属性表类型索引，且当前test.clas里面是code表
+		通过javap -v test.class  可以看到add方法的字节码指令
+	10.	总结
+		熟系class文件结构，利用16进制编辑器，javap查看
+			
