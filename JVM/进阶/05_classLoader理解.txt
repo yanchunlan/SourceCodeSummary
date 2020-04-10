@@ -1,0 +1,99 @@
+一.	何时加载类
+	1.	调用类构造器
+
+	2.	调用类中的静态（static）变量或者静态方法
+	
+二.	java 中的classLoader
+	1.	JVM中自带3个类加载器：
+			启动类加载器 BootstrapClassLoader
+			扩展类加载器 ExtClassLoader （JDK 1.9 之后，改名为 PlatformClassLoader）
+			系统加载器 APPClassLoader
+	
+		1>	APPClassLoader 系统类加载器
+			根据源码，主要是加载 java.class.path 配置的类文件，也就是环境变量 CLASS_PATH 配置的路径
+			编写的代码和第三方jar包由它加载
+		
+		2>	ExtClassLoader 扩展类加载器
+			根据源码，加载 java.ext.dirs 配置下的类文件
+			xxxxxx/jdk1.8.0_151.jdk/contents/home/jre/lib/ext
+			
+		3>	BootstrapClassLoader 启动类加载器
+			c/c++编写，属于虚拟机的部分，加载系统属性“sun.boot.class.path”配置下类文件
+			xxxxxx/jdk1.8.0_151.jdk/contents/home/jre/lib/resources.jar
+			xxxxxx/jdk1.8.0_151.jdk/contents/home/jre/lib/rt.jar
+			xxxxxx/jdk1.8.0_151.jdk/contents/home/jre/lib/sunrsasign.jar
+			xxxxxx/jdk1.8.0_151.jdk/contents/home/jre/lib/jsse.jar
+			xxxxxx/jdk1.8.0_151.jdk/contents/home/jre/lib/jce.jar
+			xxxxxx/jdk1.8.0_151.jdk/contents/home/jre/lib/charsets.jar
+			xxxxxx/jdk1.8.0_151.jdk/contents/home/jre/lib/jfr.jar
+			xxxxxx/jdk1.8.0_151.jdk/contents/home/jre/classes
+	
+	2.	双亲委派模式
+		当类加载器收到加载类或资源的请求时，通常都是先委托给父类加载器加载，也就是说，
+		只有当父类加载器找不到指定类或资源时，自身才会执行实际的类加载过程
+		
+		解释说明：
+			判断该 Class 是否已加载，如果已加载，则直接将该 Class 返回。
+			如果该 Class 没有被加载过，则判断 parent 是否为空，如果不为空则将加载的任务委托给parent
+			如果parent==null，则直接调用BootstrapClassLoader加载该类。
+			如果parent或者BootstrapClassLoader都没有加载成功，则调用当前ClassLoader 的 findClass 方法继续尝试加载。
+		再看classloader的构造器，知道有个parent参数，AppClassLoader 传入的 parent 就是 ExtClassLoader
+		
+		1>	实例分析：
+				Test test = new Test();
+			默认情况下，JVM首先使用AppClassLoader去加载Test类。
+				AppClassLoader将加载的任务委派给它的父类加载器（parent）—ExtClassLoader。
+				ExtClassLoader 的 parent 为 null，所以直接将加载任务委派给 BootstrapClassLoader。
+				BootstrapClassLoader 在 jdk/lib 目录下无法找到 Test 类，因此返回的 Class 为 null
+				因为 parent 和 BootstrapClassLoader 都没有成功加载 Test 类，所以AppClassLoader会调用自身的 findClass 方法来加载 Test
+			
+			查看log,test.geteclassLoader,test.getparent.geteclassLoader,test.getparent.getparent.geteclassLoader,
+			AppClassLoader ，ExtClassLoader ，null
+		2>	总结
+			继承java.lang.ClassLoader 类，实现自己的类加载器。如果想保持双亲委派模型，就应该重写 findClass(name) 方法；如果想破坏双亲委派模型，可以重写 loadClass(name) 方法
+	
+	3.	自定义classLoader
+		jvm预置的classLoader只能加载特定目录.class文件，需要加载其他位置(网络或磁盘)classLoader就需要自定义classLoader
+		1>	步骤
+			自定义一个类继承抽象类 ClassLoader。
+			重写 findClass 方法。
+			在 findClass 中，调用 defineClass 方法将字节码转换成 Class 对象，并返回。
+		
+		实用性：
+			用作热修复和插件化开发，包括QQ空间热修复方案、微信Tink等原理都是由此而来。客户端只要从服务端下载一个加密的.class文件，然后
+			在本地通过事先定义好的加密方式进行解密，最后再使用自定义ClassLoader 动态加载解密后的 .class 文件，并动态调用相应的方法。
+
+三.	Android中的classLoader
+	无法加载class,是吧class转换为dex再加载，代码在BaseDexClassLoader ，具体实现一般是PathClassLoader 和 DexClassLoader
+	1.	PathClassLoader
+		PathClassLoader 用来加载系统 apk 和被安装到手机中的 apk 内的 dex 文件
+		
+		构造参数：
+			dexPath：dex 文件路径，或者包含 dex 文件的 jar 包路径；
+			librarySearchPath：C/C++ native 库的路径。		
+		
+		apk里面的class.deX的class都是通过PathClassLoader 加载
+		
+	2.	DexClassLoader 
+		没有限制，可以从 SD 卡上加载包含 class.dex 的 .jar 和 .apk 文件，插件化和热修复的基础
+		构造参数：
+			dexPath：包含 class.dex 的 apk、jar 文件路径 ，多个路径用文件分隔符（默认是“:”）分隔
+			optimizedDirectory：用来缓存优化的 dex 文件的路径，即从 apk 或 jar 文件中提取出来的 
+			dex 文件。该路径不可以为空，且应该是应用私有的，有读写权限的路径
+	
+	3.	热修复实践
+		
+		1>	生成代码的java文件，打包jar，再使用dx工具将class文件优化成dex文件
+		
+		2>	dx --dex --output=say_something_hotfix.jar say_something.jar
+		
+		3>	将jar包放置在SD卡目录，再使用dexClassLoader加载jar里面的类
+		
+		4>	dexClassLoader 初始化，及dexclassLoader.loadClass(xxxxx), 
+		通过反射获取类对象，再打印文件
+		
+四.	总结
+	ClassLoader就是用来加载class文件的，不管是jar中还是dex中的class。
+	Java中的ClassLoader通过双亲委托来加载各自指定路径下的class文件
+	可以自定义ClassLoader，一般覆盖findClass()方法，不建议重写loadClass方法。
+	Android中常用的两种ClassLoader分别为：PathClassLoader 和 DexClassLoader。
