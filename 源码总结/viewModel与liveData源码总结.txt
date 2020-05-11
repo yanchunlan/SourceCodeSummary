@@ -1,0 +1,62 @@
+一.	ViewModel
+	1.	主类
+		ViewModel ：数据存储类，可重写onCleared，想存储数据，加入参数SavedStateHandle构造
+		AndroidViewModel : ViewModel 子类，有Application的引用，可存储数据，加入SavedStateHandle
+		ViewModelStore ： 内部维护hashMap
+		ViewModelStoreOwner ：接口，提供外部访问VM，AndroidX 的 AppCompatActivity/Fragment 实现了该接口
+		ViewModelProvider ：VM的提供者，依赖ViewModelStore存取VM，Factory生成/恢复VM
+		Factory ：创建VM，一般使用 AndroidViewModelFactory，或者使用 SavedStateViewModelFactory
+	2.	源码
+		1.	ViewModelProvider.java
+			1>	构造函数
+				ViewModelProvider(ViewModelStoreOwner owner) ->
+				ViewModelProvider(ViewModelStore store, Factory factory) ->
+				而androidx.activity.ComponentActivity，androidx.fragment.app.Fragment 实现了 ViewModelStoreOwner，HasDefaultViewModelProviderFactory
+				就有这2个数据
+			2> 	get
+				get(@NonNull Class<T> modelClass) ->
+				get(String key, Class<T> modelClass) ->
+				ViewModel viewModel = mViewModelStore.get(key)
+				...
+				(mFactory).create(modelClass);
+
+	3.	好处
+		1.	ViewModel 的屏幕横竖屏切换恢复机制
+			通过 NonConfigurationInstances 恢复，而在ComponentActivity有NonConfigurationInstances类，其中执有ViewModelStore的引用
+			横竖屏的时候，通过onRetainNonConfigurationInstance（） 存储viewModelStore
+			使用时候，通过getLastNonConfigurationInstance获取viewModelStore
+			
+			在fragment中，
+				getViewModelStore(){
+					mFragmentManager.getViewModelStore(this);
+				}    ->
+				FragmentManager.getViewModelStore(f){
+					FragmentManagerViewModel.getViewModelStore(f)
+				}
+			关于FragmentManagerViewModel实例化，在attachController的时候就执行了，其中是从host获取
+			（host是实现的ViewModelStoreOwner接口的FragmentActivity$HostCallbacks）
+			根据FragmentActivity源码，可看到host是上层传入
+			所以最终都是FragmentActivity的getViewModelStore获取到的，
+			
+			顶级FragmentManager的FragmentManagerViewModel中，维护一个子级的FragmentManagerViewModel仓库
+			而顶级依赖于Activity的ViewModelStore，通过Activity的机制进行恢复
+			
+			而异常恢复getLastNonConfigurationInstance可能为null,这是可以设置Fragment的onSaveInstanceState(true)，就是让Fragment来保存容器
+			其中存储是使用androidx.savedstate存储
+二.	liveData
+	1.	主类
+		LiveData：抽象类
+		MutableLiveData：postValue()和setValue()是public
+		Observer：观察接口
+		liveData$ObserverWrapper :	
+		LiveData$AlwaysActiveObserver: 
+		LiveData$LifecycleBoundObserver: 
+		MediatorLiveData ：允许对多个LiveData的进行观察
+		Transformations : 
+		map : 
+		switchMap :	
+		distinctUntilChanged :	
+		ComputableLiveData :
+	2.	源码
+		
+	3.	

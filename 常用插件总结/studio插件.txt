@@ -80,6 +80,13 @@ Freeline	Android的超快速构建工具,可以替代Instant Run(不支持kotlin)
 
 jenkins control plugin	自动打包工具插件
 
+Alibaba Java Coding Guidelines	阿里代码约束插件
+
+Android Drawable Preview	drawable预览
+
+JSON To Kotlin Class	json数据变kt类
+
+JsonViewer	Json 格式化插件
 
 
 
