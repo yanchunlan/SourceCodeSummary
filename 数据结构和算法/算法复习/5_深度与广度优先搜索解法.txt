@@ -1,0 +1,104 @@
+一.	迷宫
+		递归实现：
+				boolean dfs(int maze[][], int x, int y) {
+				    // 第一步：判断是否找到了B
+				    if (x == B[0] && y == B[1]) {
+				        return true;
+				    } 
+
+				    // 第二步：标记当前的点已经被访问过
+				    maze[x][y] = -1;
+
+				    // 第三步：在四个方向上尝试
+				    for (int d = 0; d < 4; d++) {
+				        int i = x + dx[d], j = y + dy[d];
+
+				        // 第四步：如果有一条路径被找到了，返回true
+				        if (isSafe(maze, i, j) && dfs(maze, i, j)) {
+				            return true;
+				        }
+				    }
+
+				    // 付出了所有的努力还是没能找到B，返回false
+				    return false;
+				  
+				}
+		栈实现：
+			boolean dfs(int maze[][], int x, int y) {
+			    // 创建一个Stack
+			    Stack<Integer[]> stack = new Stack<>();
+
+			    // 将起始点压入栈，标记它访问过
+			    stack.push(new Integer[] {x, y});
+			    maze[x][y] = -1;
+			    
+			    while (!stack.isEmpty()) {
+			        // 取出当前点
+			        Integer[] pos = stack.pop();
+			        x = pos[0]; y = pos[1];
+			      
+			        // 判断是否找到了目的地
+			        if (x == B[0] && y == B[1]) {
+			          return true;
+			        }
+			    
+			        // 在四个方向上尝试  
+			        for (int d = 0; d < 4; d++) {
+			            int i = x + dx[d], j = y + dy[d];
+			            
+			        if (isSafe(maze, i, j)) {
+			            stack.push(new Integer[] {i, j});
+			            maze[i][j] = -1;
+			            }
+			        }
+			    }
+			    return false;
+			}
+二.	利用 DFS 去寻找最短的路径
+	void solve(int maze[][]) {
+
+	    // 第一步. 除了A之外，将其他等于0的地方用MAX_VALUE替换
+	    for (int i = 0; i < maze.length; i++) {
+	        for (int j = 0; j < maze[0].length; j++) {
+	  	    if (maze[i][j] == 0 && !(i == A[0] && j == A[1])) {
+	                maze[i][j] = Integer.MAX_VALUE;
+	            }
+	        }
+	    }
+
+	    // 第二步. 进行优化的DFS操作
+	    dfs(maze, A[0], A[1]);
+
+	    // 第三步. 看看是否找到了目的地
+	    if (maze[B[0]][B[1]] < Integer.MAX_VALUE) {
+	        print("Shortest path count is: " + maze[B[0]][B[1]]);
+	    } else {
+	      print("Cannot find B!");
+	    }
+	}
+	     
+	    void dfs(int maze[][], int x, int y) {
+	        // 第一步. 判断是否找到了B
+	        if (x == B[0] && y == B[1]) return;
+
+	        // 第二步. 在四个方向上尝试
+	        for (int d = 0; d < 4; d++) {
+	            int i = x + dx[d], j = y + dy[d];
+
+	            // 判断下一个点的步数是否比目前的步数+1还要大
+	            if (isSafe(maze, i, j) && maze[i][j] > maze[x][y] + 1) {
+	            // 如果是，就更新下一个点的步数，并继续DFS下去
+	                maze[i][j] = maze[x][y] + 1;
+	                dfs(maze, i, j);
+	            }
+	        }
+	    }
+	
+	运行结果：
+		2,  1,  A,  1,  2,  3
+		3,  2, -1,  2,  3,  4 
+		4,  3, -1,  3,  4,  5 
+		5,  4, -1, -1,  5,  6 
+		6, -1,  8,  7,  6,  7 
+		7,  8,  9,  8,  7, -1
+	得出，	矩阵中每个点的数值代表着它离 A 点最近的步数。

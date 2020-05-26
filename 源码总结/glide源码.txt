@@ -1,0 +1,18 @@
+﻿一.	异步加载，线程池
+	存在多个线程池，sourceExecutor,diskCacheExecutor,animationExecutor
+二.	线程切换，handler
+三.	缓存 
+	三级缓存：lrucache,disklrucache,网络
+	linkedHashMap ->	addBefore/addAfter  -> trimTosize 移除最老数据
+四.	防止oom
+	缓存bitmap:	软引用，lrucache
+	onlowMemory 清除缓存
+	图片压缩
+	bitmap像素存储位置:	堆区改为存储在native栈区
+	freaco5.0以下就是存储native栈区
+五.	内存泄漏
+	imageView使用，weakreference
+	生命周期管理,fragment管理生命周期，控制是否执行请求，取消请求
+六.	列表滑动错乱，队列任务多
+	设置tag
+
