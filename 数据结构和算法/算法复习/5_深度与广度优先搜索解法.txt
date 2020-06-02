@@ -1,4 +1,5 @@
-一.	迷宫
+一.	DFS深度优先
+	1.	迷宫
 		递归实现：
 				boolean dfs(int maze[][], int x, int y) {
 				    // 第一步：判断是否找到了B
@@ -54,7 +55,7 @@
 			    }
 			    return false;
 			}
-二.	利用 DFS 去寻找最短的路径
+	2.	利用 DFS 去寻找最短的路径
 	void solve(int maze[][]) {
 
 	    // 第一步. 除了A之外，将其他等于0的地方用MAX_VALUE替换
@@ -102,3 +103,100 @@
 		6, -1,  8,  7,  6,  7 
 		7,  8,  9,  8,  7, -1
 	得出，	矩阵中每个点的数值代表着它离 A 点最近的步数。
+三.	BFS广度优先
+	1.	迷宫问题
+	void bfs(int[][] maze, int x, int y) {
+	    // 创建一个队列queue，将起始点A加入队列中
+	    Queue<Integer[]> queue = new LinkedList<>();
+	    queue.add(new Integer[] {x, y});
+	  
+	    // 只要队列不为空就一直循环下去  
+	    while (!queue.isEmpty()) {
+	        // 从队列的头取出当前点
+	        Integer[] pos = queue.poll();
+	        x = pos[0]; y = pos[1];
+	      
+	        // 从四个方向进行BFS
+	        for (int d = 0; d < 4; d++) {
+	            int i = x + dx[d], j = y + dy[d];
+	        
+	            if (isSafe(maze, i, j)) {
+	                // 记录步数（标记访问过）
+	                maze[i][j] = maze[x][y] + 1;
+	                // 然后添加到队列中  
+	                queue.add(new Integer[] {i, j});
+	                // 如果发现了目的地就返回  
+	                if (i == B[0] && j == B[1]) return;
+	            }
+	        }
+	    }
+	}
+	2.	4个人解决打通墙的迷宫问题
+		int bfs(int[][] maze, int x, int y, int w) {
+		    // 初始化
+		    int steps = 0, z = 0;
+
+		    // 利用队列来辅助BFS
+		    Queue<Integer[]> queue = new LinkedList<>();
+		    queue.add(new Integer[] {x, y, z});
+		    queue.add(null);
+
+		    // 三维的visited记录各层平面中每个点是否被访问过
+		    boolean[][][] visited = new boolean[N][N][w + 1];
+		    visited[x][y][z] = true;  
+
+		    // 只要队列不为空就一直循环
+		    while (!queue.isEmpty()) {
+		        Integer[] pos = queue.poll();
+		      
+		        if (pos != null) {
+		            // 取出当前点
+		            x = pos[0]; y = pos[1]; z = pos[2];
+		            // 如果遇到了目的地就立即返回步数
+		            if (x == B[0] && y == B[1]) {
+		              return steps;
+		            }
+		        
+		        // 朝四个方向尝试
+		        for (int d = 0; d < 4; d++) {
+		            int i = x + dx[d], j = y + dy[d];
+		          
+		            if (!isSafe(maze, i, j, z, visited)) {
+		                continue;
+		            }
+		          
+		            // 如果在当前层遇到了墙，尝试打通它
+		            int k = getLayer(maze, w, i, j, z);
+		          
+		            if (k >= 0) {
+		                // 如果能打通墙，就在下一层尝试
+		                visited[i][j][k] = true;
+		                queue.add(new Integer[] {i, j, k});
+		            }
+		        }
+		      } else {
+		        steps++;
+		        
+		        if (!queue.isEmpty()) {
+		            queue.add(null);
+		        }
+		      }
+		    }
+		    
+		    return -1;
+		}
+		
+		注意：
+			初始化队列的时候，除了把在第一层里的起始点 A 加入到队列中，还加入了一个 null，这是使用 BFS 的一个小技巧，用来帮助我们计算当前遍历了多少步数。
+			其中，利用 getLayer 函数判断是否遇到了墙壁，以及是否能打通墙壁到下一层。
+			最后，如果当前点是 null，表明已经处理完当前的步数，继续下一步
+			
+		int getLayer(int[][] maze, int w, int x, int y, int z) {
+		    if (maze[x][y] == -1) {
+		        return z < w ? z + 1 : -1;
+		    }
+		    return z;
+		}
+		
+			getLayer 的思想很简单，如果当前遇到的是一堵墙，那么看打通的墙壁个数是否已经超出了规定，如果没有，就继续打通它，否则返回 -1。另外，
+			如果当前遇到的不是一堵墙，就继续在当前的平面里进行 BFS
