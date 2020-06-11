@@ -1,0 +1,267 @@
+一.	解题方法
+	线性法及优化线性法
+	切分法
+	快速选择算法
+	最小堆法
+	分治法
+	
+	1.	列题1
+		LeetCode 第 03 题：给定一个字符串，请你找出其中不含有重复字符的最长子串的长度。
+			示例 1
+			输入："abcabcbb"
+			输出：3
+			解释：因为无重复字符的最长子串是"abc"，其长度为3。
+		思路：
+			1>	暴力法
+				找出所有的子串，然后一个一个地去判断每个子串里是否包含有重复的字符。假设字符串的长度为 n，那么有 n×(n + 1) / 2 个非空子串。计算过程如下。
+				长度为 1 的子串，有 n 个
+				长度为 2 的子串，每两个每两个相邻地取，一共有 n - 1 个
+				长度为 3 的子串，每三个每三个相邻地取，一共有 n - 2 个
+				……
+				以此类推，长度为 k 的子串，有 n - k + 1 个。	 
+				当 k 等于 n 的时候，n - k + 1=1，即长度为 n 的子串有 1 个。		 
+				所有情况相加，得到所有子串的长度为：			 
+				n + (n - 1) + (n - 2) + (n - 3) + … + 2 + 1 = n×(n + 1) / 2
+				算上空字符串，那么就一共有 n×(n + 1) / 2 + 1 个。		 
+				
+				拓展一下，对于一个长度为 n 的字符串，一共有多少个子序列呢？和子串不一样，子序列里的元素不需要相互挨着。			 
+				同理分析，长度为 1 的子序列有 n 个，即 Cn1，长度为 2 的子序列个数为 Cn2，以此类推，长度为 k 的子序列有 Cnk，那么所有子序列的个数（包括空序列）是 Cn0 + Cn1 + Cn2 + … Cnn = 2n			 
+				
+				注意：对于统计子串和子序列个数的方法和结果，大家务必记下来，对于在分析各种问题时会有很大帮助。			 
+				回到本来问题，如果对所有的子串进行判断，从每个子串里寻找出最长的那个并且没有重复字符的，那么复杂度就是：O(n×(n + 1)/2×n) = O(n3)。
+			2>	线性法
+				例题 1：给定的字符串里有一段是没有重复字符的，如下，能不能把下一个字符 a 加进来？
+				思路：
+					要看当前的子串”abc”是否已经包含了字符 a。
+					1.	扫描一遍“abc”，当发现某个字符与 a 相同，可以得出结论。
+					2.	把“abc“三个字符放入到一个哈希集合里，那么就能在 O(1) 的时间里作出判断，提高速度。
+					使用定义一个哈希集合 set 的方法，从给定字符串的头开始，每次检查一下当前字符是不是在集合里边，如果不在，说明这个字符不会造成重复和冲突，把它加入到集合里，并统计一下当前集合的长度，可能它就是最长的那个子串
+				例题 2：如果发现新的字符已经在集合里已经出现了，怎么办？
+						eabc 是目前为止没有重复字符的最长子串，当我们遇到下一个字符a的时候，以这个字符结尾的没有重复的子串是“bca”，而此时集合里的字符有：d，e，a，b，c。首先，必须把 a 删除，因为这样才能把新的 a 加入到集合里，那么如何判断要把 d 和 e 也都删除呢？
+					
+						可以定义两个指针 i 和 j。
+						i 是慢指针，j 是快指针，当 j 遇到了一个重复出现的字符时，从慢指针开始一个一个地将 i 指针指向的字符从集合里删除，然后判断一下是否可以把新字符加入到集合里而不会产生重复。
+						把字符 d 删除后，i 指针向前移动一步，此时集合里还剩下：e, a, b, c，很明显，字符 a 还在集合里，仍然要继续删除。
+						把字符 e 删除后，集合里还剩 a，b，c，字符 a 还在集合里，继续删除慢指针 i 指向的字符 a。
+						集合里剩 b，c，可以放心地把新的字符 a 放入到集合里，然后快指针 j 往前移动一步。
+				时间复杂度：
+					由于采用的是快慢指针的策略，字符串最多被遍历两次，快指针遇到的字符会被添加到哈希集合，而慢指针遇到的字符会从哈希集合里删除，对哈希集合的操作都是 O(1) 的时间复杂度，因此，整个算法的时间复杂度就是 n×O(1) + n×O(1) = O(n)
+				空间复杂度：
+					最坏的情况就是全部遍历一遍，O(N)
+				代码：
+					// 定义一个哈希集合 set，初始化结果 max 为 0
+					int lengthOfLongestSubstring(String s) {
+					    Set<Character> set = new HashSet<>();
+					    int max = 0;
+
+					    // 用快慢指针 i 和 j 扫描一遍字符串，如果快指针所指向的字符已经出现在哈希集合里，不断地尝试将慢指针所指向的字符从哈希集合里删除
+					    for (int i = 0, j = 0; j < s.length(); j++) {
+					        while (set.contains(s.charAt(j))) {
+					            set.remove(s.charAt(i));
+					            i++;
+					        }
+					        
+					        // 当快指针的字符加入到哈希集合后，更新一下结果 max
+					        set.add(s.charAt(j));
+					        max = Math.max(max, set.size());
+					    }
+					    return max;
+					}
+				列提3：	用哈希表记录每个字符的位置，下次查询的时候，i直接去该位置即可
+				注意：	不能去数哈希集合的元素个数来作为子串的长度，所以得额外维护一个变量来保存最后的结果
+						而且，不能简单的取出位置+1,快指针指向的位置应该是max(i,重复字符出现位置 + 1)
+				代码：
+					// 定义一个哈希表用来记录上一次某个字符出现的位置，并初始化结果 max 为 0
+					int lengthOfLongestSubstring(String s) {
+					    Map<Character, Integer> map = new HashMap<>();
+					    int max = 0;
+
+					    // 用快慢指针 i 和 j 扫描一遍字符串，若快指针所对应的字符已经出现过，则慢指针跳跃
+					    for (int i = 0, j = 0; j < s.length(); j++) {
+					        if (map.containsKey(s.charAt(j))) {
+					            i = Math.max(i, map.get(s.charAt(j)) + 1);
+					        }
+					        
+					        map.put(s.charAt(j), j);
+					        max = Math.max(max, j - i + 1);
+					    }
+					    
+					    return max;
+					}	
+	2.	列题2
+		LeetCode 第 04 题：给定两个大小为 m 和 n 的有序数组 nums1 和 nums2。请你找出这两个有序数组的中位数，并且要求算法的时间复杂度为 O(log(m+n))。你可以假设 nums1 和 nums2 不会同时为空
+		例1:	nums1 = [1, 3]
+				nums2 = [2]
+				则中位数是 2.0
+		例2:	nums1 = [1, 2]
+				nums2 = [3, 4]
+				则中位数是 (2 + 3)/2 = 2.5
+		思路1：
+			暴力法，归并排序，直接合并，时间复杂度是 O(log(m+n)) ，不符合要求
+		思路2：
+			切分法，
+				如果是总数奇数，则k=L/2,即 f(k + 1)；偶数则f(k) + f(k + 1) / 2。
+				
+				假设 k = 5，k1 = 3，k2 = 2，有下面几种情况。
+				1.	当 a2 = b1 时，可以肯定  a2 和 b1 就是第 5 小的数
+					b0 a0 a1 b1 a2
+				2.	当 a2 < b1 的时候，无法肯定 a2 和 b1 是不是第 5 小的数
+					不会出现在nums1前段，nums2后段，应该从 nums1 的后半段以及 nums2 的前半段中继续寻找
+				3.	当 a2 > b1 的时候，无法肯定 a2 和 b1 是不是第 5 小的数
+		代码：
+			double findMedianSortedArrays(int nums1[], int nums2[]) {
+			    int m = nums1.length;
+			    int n = nums2.length;
+			  
+			    int k = (m + n) / 2;
+			  
+			    if ((m + n) % 2 == 1) {
+			        return findKth(nums1, 0, m - 1, nums2, 0, n - 1, k + 1);
+			      } else {
+			        return (
+			            findKth(nums1, 0, m - 1, nums2, 0, n - 1, k) + 
+			            findKth(nums1, 0, m - 1, nums2, 0, n - 1, k + 1)
+			        ) / 2.0;
+			    }
+			}
+
+			double findKth(int[] nums1, int l1, int h1, int[] nums2, int l2, int h2, int k) {
+			    int m = h1 - l1 + 1;
+			    int n = h2 - l2 + 1;
+			  
+			    if (m > n) {
+			        return findKth(nums2, l2, h2, nums1, l1, h1, k);
+			    }
+			  
+			    if (m == 0) {
+			        return nums2[l2 + k - 1];
+			    }
+			  
+			    if (k == 1) {
+			        return Math.min(nums1[l1], nums2[l2]);
+			    }
+			  
+			    int na = Math.min(k/2, m);
+			    int nb = k - na;
+			    int va = nums1[l1 + na - 1];
+			    int vb = nums2[l2 + nb - 1];
+			  
+			    if (va == vb) {
+			        return va;
+			    } else if (va < vb) {
+			        return findKth(nums1, l1 + na, h1, nums2, l2, l2 + nb - 1, k - na);
+			    } else {
+			       return findKth(nums1, l1, l1 + na - 1, nums2, l2 + nb, h2, k - nb);
+			    }
+			}
+			主体函数其实就是根据两个字符串长度的总和进行判断，看看如何调用递归函数以及返回结果。当总长度是奇数的时候，返回正中间的那个数；当总长度是偶数的时候，返回中间两个数的平均值。
+			进入 findkth 函数，这个函数的目的是寻找第 k 小的元素。
+			如果 nums1 数组的长度大于 nums2 数组的长度，我们将它们互换一下，这样可以让程序结束得快一些。
+			当 nums1 的长度为 0 时，直接返回 nums2 数组里第 k 小的数。当 k 等于 1 的时候，返回两个数组中的最小值。
+			接下来，分别选两个数组的中间数。
+			比较一下两者的大小，如果相等，表明我们找到了中位数，返回它；如果不等的话，我们进行剪枝处理。
+		算法复杂度： O(log((m+n) / 2))
+		拓展：
+			例题：如果给定的两个数组是没有经过排序处理的，应该怎么找出中位数呢？
+			思路：
+				1.	合并数组，排序，选出中位数O((m+n)× og(m+n))。
+				2.	快排
+					判断一下基准值所在位置 p：
+					如果 p 刚好等于 k，那么基准值就是所求数，直接返回。
+					如果 k < p，即基准值太大，搜索的范围应该缩小到基准值的左边。
+					如果 k > p，即基准值太小，搜索的范围应该缩小到基准值的右边。此时需要找的应该是第 k - p 小的数，因为前 p 个数被淘汰
+					代码：
+						public int findKthLargest(int[] nums, int k) {
+						    return quickSelect(nums, 0, nums.length - 1, k);
+						}
+
+						// 随机取一个基准值，这里取最后一个数作为基准值
+						int quickSelect(int[] nums, int low, int high, int k) {
+						    int pivot = low;
+
+						    // 比基准值小的数放左边，把比基准值大的数放右边
+						    for (int j = low; j < high; j++) {
+						      if (nums[j] <= nums[high]) {
+						          swap(nums, pivot++, j);
+						      }
+						    }
+						    swap(nums, pivot, high);
+						  
+						    // 判断基准值的位置是不是第 k 大的元素
+						    int count = high - pivot + 1;
+						    // 如果是，就返回结果。
+						    if (count == k) return nums[pivot];
+						    // 如果发现基准值小了，继续往右边搜索
+						    if (count > k) return quickSelect(nums, pivot + 1, high, k);
+						    // 如果发现基准值大了，就往左边搜索
+						    return quickSelect(nums, low, pivot - 1, k - count);
+						}
+					时间复杂度：O(n)
+					空间复杂度：O(1) ，没有额外的控件开销，直接数组完成
+				3.	数组“组合”
+					把这两个数组“虚拟”地组合在一起，即它们是分开的，但是在访问它们的元素时，把它们看成是一个数组。那么就能运用快速选择的算法
+					代码：
+					double findMedianArrays(int[] nums1, int[] nums2) {
+					    int m = nums1.length;
+					    int n = nums2.length;
+					  
+					    int k = (m + n) / 2;
+					  
+					    return (m + n) % 2 == 1 ?
+					        findKthLargest(nums1, nums2, k + 1) :
+					        (findKthLargest(nums1, nums2, k) + findKthLargest(nums1, nums2, k + 1)) / 2.0;
+					}
+
+					double findKthLargest(int[] nums1, int[] nums2, int k) {
+					    return quickSelect(nums1, nums2, 0, nums1.length + nums2.length - 1, k);
+					}
+
+					double quickSelect(int[] nums1, int[] nums2, int low, int high, int k) {
+					    int pivot = low;
+
+					    // use quick sort's idea
+					    // put nums that are <= pivot to the left
+					    // put nums that are  > pivot to the right
+					    for (int j = low; j < high; j++) {
+					        if (getNum(nums1, nums2, j) <= getNum(nums1, nums2, high)) {
+					            swap(nums1, nums2, pivot++, j);
+					        }
+					    }
+					    swap(nums1, nums2, pivot, high);
+					  
+					    // count the nums that are > pivot from high
+					    int count = high - pivot + 1;
+					    // pivot is the one!
+					    if (count == k) return getNum(nums1, nums2, pivot);
+					    // pivot is too small, so it must be on the right
+					    if (count > k) return quickSelect(nums1, nums2, pivot + 1, high, k);
+					    // pivot is too big, so it must be on the left
+					    return quickSelect(nums1, nums2, low, pivot - 1, k - count);
+					}
+
+					int getNum(int[] nums1, int[] nums2, int index) {
+					    return (index < nums1.length) ? nums1[index] : nums2[index - nums1.length];
+					}
+
+					void swap(int[] nums1, int[] nums2, int i, int j) {
+					    int m = nums1.length;
+					  
+					    if (i < m && j < m) {
+					        swap(nums1, i, j);
+					    } else if (i >= m && j >= m) {
+					        swap(nums2, i - m, j - m);
+					    } else if (i < m && j >= m) {
+					        int temp = nums1[i];
+					        nums1[i] = nums2[j - m];
+					        nums2[j - m] = temp;
+					    }
+					}
+
+					void swap(int[] nums, int i, int j) {
+					    int temp = nums[i];
+					    nums[i] = nums[j];
+					    nums[j] = temp;
+					}
+					时间复杂度是 O(m+n)，空间复杂度 O(1)
+		拓展2：
+			

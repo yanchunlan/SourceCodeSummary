@@ -1,0 +1,284 @@
+一.	二分搜索
+	定义：	是一种在有序数组中查找某一特定元素的搜索算法。从定义可知，运用二分搜索的前提是数组必须是排好序的。另外，输入并不一定是数组，也有可能是给定一个区间的起始和终止的位置
+	优点：	时间复杂度是 O(lgn)，非常高效
+	缺点：	要求待查找的数组或者区间是排好序的
+			
+			数组动态查找插入O(n),此时用自平衡的二叉查找树
+				在 O(nlogn) 的时间内用给定的数据构建出一棵二叉查找树；
+				在 O(logn) 的时间里对目标数据进行搜索；
+				在 O(logn) 的时间里完成删除和插入的操作。
+			如果数据已经排好序，二分搜索是最好的选择
+			
+	解题思路：
+		就是一直对半分，查找
+	递归解法：	优点：简洁；缺点：执行消耗大
+		实例：	从一个排好序的数组里 {1, 3, 4, 6, 7, 8, 10, 13, 14} 查看一下数字 7 是否在里面，如果在，返回它的下标，否则返回 -1
+		代码：	
+			// 二分搜索函数的定义里，除了要指定数组 nums 和目标查找数 target 之外，还要指定查找区间的起点和终点位置，分别用 low 和 high 去表示。
+			int binarySearch(int[] nums, int target, int low, int high) {
+				// 为了避免无限循环，先判断，如果起点位置大于终点位置，表明这是一个非法的区间，已经尝试了所有的搜索区间还是没能找到结果，返回 -1。 
+				if (low > high) {
+				        return -1;
+				    }
+				    // 取正中间那个数的下标 middle。
+				    int middle = low + (high - low) / 2;
+				    // 判断一下正中间的那个数是不是要找的目标数 target，是，就返回下标 middle。    
+				    if (nums[middle] == target) {
+				        return middle;
+				    }
+				    // 如果发现目标数在左边，就递归地从左半边进行二分搜索。
+				    if (target < nums[middle]) {
+				        return binarySearch(nums, target, low, middle - 1);
+				      } else {
+				        return binarySearch(nums, target, middle + 1, high);
+				    }//否则从右半边递归地进行二分搜索。
+				}
+			}
+		注意：
+			如果middle 不是查找的数据，就不需要把middle加入左右2边了
+			
+		时间复杂度：O(logn)
+			
+	非递归解法：
+		代码实现：
+		int binarySearch(int[] nums, int target, int low, int high) {
+		    // 在 while 循环里，判断搜索的区间范围是否有效
+		    while (low <= high) {
+		        // 计算正中间的数的下标
+		        int middle = low + (high - low) / 2;
+		    
+		    // 判断正中间的那个数是不是要找的目标数 target。如果是，就返回下标 middle
+		    if (nums[middle] == target) {
+		        return middle;
+		    }
+		    
+		    // 如果发现目标数在左边，调整搜索区间的终点为 middle - 1；否则，调整搜索区间的起点为 middle + 1
+		    if (target < nums[middle]) {
+		        high = middle - 1;
+		      } else {
+		        low = middle + 1;
+		      }
+		    }
+
+		    // 如果超出了搜索区间，表明无法找到目标数，返回 -1  
+		    return -1;
+		}
+	
+	1.	分析一：	找确定的边界（上下左右边界）
+		例题：LeetCode 第 34 题，在一个排好序的数组中找出某个数第一次出现和最后一次出现的下标位置
+		示例：输入的数组是：{5, 7, 7, 8, 8, 10}，目标数是 8，那么返回 {3, 4}，其中 3 是 8 第一次出现的下标位置，4 是 8 最后一次出现的下标位置
+		代码：
+			寻找下边界：
+			int searchLowerBound(int[] nums, int target, int low, int high) {
+			    if (low > high) {
+			        return -1;
+			    }
+			  
+			    int middle = low + (high - low) / 2;
+			    //判断是否是下边界时，先看看 middle 的数是否为 target，并判断该数是否已为数组的第一个数，或者，它左边的一个数是不是已经比它小，如果都满足，即为下边界。
+			    if (nums[middle] == target && (middle == 0 || nums[middle - 1] < target)) {
+			        return middle;
+			    }
+
+			    if (target <= nums[middle]) {
+			        return searchLowerBound(nums, target, low, middle - 1);
+			      } else {
+			        return searchLowerBound(nums, target, middle + 1, high);
+			      } //不满足，如果这个数等于 target，那么就得往左边继续查找。
+			}
+			 寻找上边界：
+			int searchUpperBound(int[] nums, int target, int low, int high) {
+			    if (low > high) {
+			        return -1;
+			    }
+			  
+			    int middle = low + (high - low) / 2;
+			    
+			    //判断是否是上边界时，先看看 middle 的数是否为 target，并判断该数是否已为数组的最后一个数，或者，它右边的数是不是比它大，如果都满足，即为上边界。    
+			    if (nums[middle] == target && (middle == nums.length - 1 || nums[middle + 1] > target)) {
+			        return middle;
+			    }
+			    
+			    if (target < nums[middle]) {
+			        return searchUpperBound(nums, target, low, middle - 1);
+			      } else {
+			        return searchUpperBound(nums, target, middle + 1, high);
+			      } //不满足时，需判断搜索方向。
+			}
+	2.	分析二：	寻找模糊的边界（大于、小于边界值）
+		例题：从数组 {-2, 0, 1, 4, 7, 9, 10} 中找到第一个大于 6 的数。
+		代码：
+			Integer firstGreaterThan(int[] nums, int target, int low, int high) {
+			    if (low > high) {
+			        return null;
+			    }
+			  
+			    int middle = low + (high - low) / 2;
+			    
+			    //判断 middle 指向的数是否为第一个比 target 大的数时，须同时满足两个条件：middle 这个数必须大于 target；middle 要么是第一个数，要么它之前的数小于或者等于 target。 
+			    if (nums[middle] > target && (middle == 0 || nums[middle - 1] <= target)) {
+			        return middle;
+			    }
+
+
+			    if (target < nums[middle]) {
+			        return firstGreaterThan(nums, target, low, middle - 1);
+			      } else {
+			        return firstGreaterThan(nums, target, middle + 1, high);
+			      }
+			}
+		拓展：	如果要求的是第一个大于 6 的数，而数组中有多个 6 挨在一起，而此时的 middle 指向其中的一个 6，程序必须得在右半边搜索
+				在给定数组里，找最后一个比目标数小的数。就需要左边搜索
+	3.	分析三：	旋转过的排序数组
+		例题：LeetCode 第 33 题，给定一个经过旋转了的排序数组，判断一下某个数是否在里面。
+		示例：给定数组为 {4, 5, 6, 7, 0, 1, 2}，target 等于 0，答案是 4，即 0 所在的位置下标是 4。
+		思路：
+			最好是判断出来那边是排好序的，就能准确地判断目标值是否在这个区间里。如果 nums[low] <= target && target < nums[middle]，则应该在这个区间里搜索目标值。反之，目标值肯定在另外一边
+		代码：
+			int binarySearch(int[] nums, int target, int low, int high) {
+			    if (low > high) {
+			        return -1;
+			    } //判断是否已超出了搜索范围，是则返回-1。
+			  
+			    int middle = low + (high - low) / 2; //取中位数。
+
+			    if (nums[middle] == target) {
+			        return middle;
+			    } //判断中位数是否为要找的数
+
+
+			    if (nums[low] <= nums[middle]) { //判断左半边是不是排好序的。
+			        if (nums[low] <= target && target < nums[middle]) { //是，则判断目标值是否在左半边。
+			            return binarySearch(nums, target, low, middle - 1); //是，则在左半边继续进行二分搜索。
+			        }
+			        return binarySearch(nums, target, middle + 1, high); //否，在右半边进行二分搜索。
+			      } else {
+			        if (nums[middle] < target && target <= nums[high]) { //若右半边是排好序的那一半，判断目标值是否在右边。
+			            return binarySearch(nums, target, middle + 1, high); //是，则在右半边继续进行二分搜索。
+			        }
+			        return binarySearch(nums, target, low, middle - 1); //否，在左半边进行二分搜索。
+			    }
+			}
+	4.	分析四：	不定长的边界
+		例题：	有一段不知道具体长度的日志文件，里面记录了每次登录的时间戳，已知日志是按顺序从头到尾记录的，没有记录日志的地方为空，要求当前日志的长度
+		示列：	{2019-01-14, 2019-01-17, … , 2019-08-04, …. , null, null, null ...}
+		思路：	1>暴力法	顺序遍历，当第一个为null的时，就知道了日志的数量
+				2>二分搜索		反着搜索
+					一开始设置 low = 0，high = 1
+					只要 logs[high] 不为 null，high *= 2
+					当 logs[high] 为 null 的时候，可以在区间 [0, high] 进行普通的二分搜索
+		代码：
+			// 先通过getUpperBound函数不断地去试探在什么位置会出现空的日志。
+			int getUpperBound(String[] logs, int high) {
+			    if (logs[high] == null) {
+			        return high;
+			    }
+			    return getUpperBound(logs, high * 2);
+			}
+
+			// 再运用二分搜索的方法去寻找日志的长度。
+			int binarySearch(String[] logs, int low, int high) {
+			    if (low > high) {
+			        return -1;
+			    }
+			  
+			    int middle = low + (high - low) / 2;
+			  
+			    if (logs[middle] == null && logs[middle - 1] != null) {
+			        return middle;
+			    }
+			  
+			    if (logs[middle] == null) {
+			        return binarySearch(logs, low, middle - 1);
+			      } else {
+			        return binarySearch(logs, middle + 1, high);
+			    }
+			}
+		判断是否是日志的结尾很简单，只要当前的日志为空，而前一个日志不为空即可。
+二.	贪婪算法
+	定义：	是一种在每一步选中都采取在当前状态下最好或最优的选择，从而希望导致结果是最好或最优的算法
+	优点：	对于一些问题，非常直观有效。
+	缺点：
+		并不是所有问题都能用它去解决；
+		得到的结果并一定不是正确的，因为这种算法容易过早地做出决定，从而没有办法达到最优解
+	
+	例题：	0-1 背包问题，能不能运用贪婪算法去解决。
+		有三种策略：
+			选取价值最大的物品
+			选择重量最轻的物品
+			选取价值/重量比最大的物品
+	策略1：
+		每次尽可能选择价值最大的，行不通。举例说明如下。
+		物品有：A B C
+		重量分别是：25, 10, 10
+		价值分别是：100，80，80
+		根据策略，首先选取物品 A，接下来就不能再去选其他物品，但是，如果选取 B 和 C，结果会更好
+	策略 2：
+		每次尽可能选择轻的物品，行不通。举例说明如下。
+		物品有：A B C
+		重量分别为：25, 10, 10
+		价值分别为：100, 5, 5
+		根据策略，首先选取物品 B 和 C，接下来就不能选 A，但是，如果选 A，价值更大。
+	策略 3：
+		每次尽可能选价值/重量比最大的，行不通。举例说明如下。
+		物品有：A B C
+		重量是：25, 10, 10
+		价值是：25, 10, 10
+		根据策略，三种物品的价值/重量比都是一样，如果选 A，答案不对，应该选 B 和 C。
+	贪婪算法总是做出在当前看来是最好的选择。即，它不从整体的角度去考虑，仅仅对局部的最优解感兴趣。因此，只有当那些局部最优策略能产生全局最优策略的时候，才能用贪婪算法
+
+	实例1：		
+		LeetCode 第 253 题，会议室II，给定一系列会议的起始时间和结束时间，求最少需要多少个会议室就可以让这些会议顺利召开
+	
+	思路：
+		1.	暴力法：
+			把所有的会议组合找出来；
+			从最长的组合开始检查，看看各个会议之间有没有冲突；
+			直到发现一组会议没有冲突，那么它就是答案。
+		很明显，这样的解法是非常没有效率的。
+		2.	贪婪算法：
+			会议按照起始时间顺序进行；
+			要给新的即将开始的会议找会议室时，先看当前有无空会议室；
+			有则在空会议室开会，无则开设一间新会议室
+		int minMeetingRooms(Interval[] intervals) {
+		    if (intervals == null || intervals.length == 0)
+		        return 0;
+		    
+		    // 将输入的一系列会议按照会议的起始时间排序。
+		    Arrays.sort(intervals, new Comparator<Interval>() {
+		        public int compare(Interval a, Interval b) { return a.start - b.start; }
+		    });
+		  
+		    // 用一个最小堆来维护目前开辟的所有会议室，最小堆里的会议室按照会议的结束时间排序。
+		    PriorityQueue<Interval> heap = new PriorityQueue<Interval>(intervals.length, new Comparator<Interval>() {
+		        public int compare(Interval a, Interval b) { return a.end - b.end; }
+		    });
+		  
+		    // 让第一个会议在第一个会议室里举行。
+		    heap.offer(intervals[0]);
+		  
+		    for (int i = 1; i < intervals.length; i++) {
+		        // 从第二个会议开始，对于每个会议，我们都从最小堆里取出一个会议室，那么这个会议室里的会议一定是最早结束的。
+		        Interval interval = heap.poll();
+		    
+		        if (intervals[i].start >= interval.end) {
+		        // 若当前要开的会议可以等会议室被腾出才开始，那么就可以重复利用这个会议室。
+		        interval.end = intervals[i].end;
+		      } else {
+		        // 否则，开一个新的会议室。
+		        heap.offer(intervals[i]);
+		    }
+		    
+		    // 把旧的会议室也放入到最小堆里。
+		    heap.offer(interval);
+		    }
+		    // 最小堆里的会议室个数就是要求的答案，即最少的会议个数。
+		    return heap.size();
+		}
+		为什么贪婪算法能在这里成立？
+			每当遇到一个新的会议时，总是贪婪地从所有会议室里找出最先结束会议的那个。
+		为什么这样可以产生最优的结果？
+			若选择的会议室中会议未结束，则意味着需要开辟一个新会议室，这已经不是当前的最优解了
+三.	总结
+	二分搜索非常重要
+	贪婪算法，练习常用的几个就ok了

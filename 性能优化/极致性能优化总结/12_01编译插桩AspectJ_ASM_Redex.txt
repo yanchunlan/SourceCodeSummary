@@ -1,4 +1,4 @@
-一.	基本知识
+﻿一.	基本知识
 	Dagger、ButterKnife 根据apt
 	Kotlin 的编译器
 	1.	使用场景
@@ -50,3 +50,6 @@
 三.	总结
 	ASM处理工具：Hunter（https://github.com/Leaking/Hunter），Hibeaver（https://github.com/BryanSharp/hibeaver）
 	Javassist处理工具：DroidAssist（https://github.com/didi/DroidAssist）
+
+四.	Aspjectj 学习
+	https://blog.csdn.net/zlmrche/article/details/79643801
