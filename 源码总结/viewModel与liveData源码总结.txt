@@ -1,4 +1,4 @@
-一.	ViewModel
+﻿一.	ViewModel
 	1.	主类
 		ViewModel ：数据存储类，可重写onCleared，想存储数据，加入参数SavedStateHandle构造
 		AndroidViewModel : ViewModel 子类，有Application的引用，可存储数据，加入SavedStateHandle
@@ -59,4 +59,4 @@
 		ComputableLiveData :
 	2.	源码
 		
-	3.	
+	3.	其实质就是观察一个有什么周期的fragment的observer
