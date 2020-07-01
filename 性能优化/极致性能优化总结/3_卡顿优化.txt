@@ -7,11 +7,20 @@
 	3.	android卡顿排查工具
 		1.	Traceview
 			利用 Android Runtime 函数调用的 event事件，将函数运行的耗时和调用关系写入 trace 文件中
+			实操：
+				1. 具体代码中加入startMethodTracing/stopMethodTracing,调用的时候就会生成trace文件
+				2. 或者使用ddms的tart Method Profiling / Stop Method Profiling,生成trace文件再观察，
+				3. traceView上半部分看线程执行时间，下半部分看具体线程方法
+				4. 或者点击TraceView 中的 Cpu Time/Call，可以看那个方法占据cpu时间长
+				5. 点击TraceView 中的 Cpu Time/Call，从高到底，一个个排查那个方法和子方法调用时间比较长
 		2.	Uber开源的Nanoscope(十分适合做启动耗时自动化分析)
 			直接修改虚拟机源码，在ArtMethod执行入口和执行结束位置增加埋点代码，将所有的信息先写到内存，等到 trace 结束后才统一生成结果文件
 		3.	systrace
 			利用了 Linux 的ftrace调试工具，相当于在系统各个关键位置都添加了一些性能探针
 			自动实现：可以使用编译时给每个函数插桩解决
+			实操：
+				1. Trace.beginSection()/endSection
+				2. ddms里面直接打开查看
 		4.	Simpleperf
 			可以看到所有的 Native 代码的耗时，
 		总结：
