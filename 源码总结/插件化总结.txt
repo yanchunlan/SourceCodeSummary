@@ -45,8 +45,14 @@
 			就执行三方里面的启动方法
 	
 2.	Hook方式
+	VirtualAPK通过替换了系统的Instrumentation，hook了Activity的启动和创建，当创建的是插件的activity的时候，AMS在处理Activity时，
+	通过一个token表示具体Activity对象，而这个token正是和启动Activity时创建的对象对应的，而这个Activity被我们替换成了插件中的Activity，所以之后AMS的所有调用都会传给插件中的Activity
+	
+	360的RePlugin框架选择hook了系统的ClassLoader，在判断出待启动的Activity是插件中的时，会调用插件的ClassLoader构造相应对象
+	RePlugin通过重写Activity的startActivity，因此其插件Activity是需要继承一个类似PluginActivity的基类的。不过RePlugin提供了一个Gradle插件将插件中的Activity的基类换成了PluginActivity，用户在开发插件Activity时也是没有感知的
 
-其他URL：https://blog.csdn.net/lyb2518/article/details/79178386
+	
+	其他URL：https://blog.csdn.net/lyb2518/article/details/79178386
 		
 		
 		
