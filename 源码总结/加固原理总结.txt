@@ -1,0 +1,5 @@
+原理总结：
+	1.	放入加固的假的dex文件
+	2.	把真正的chass.dex 加密放入assets目录
+	3.	修改manifest文件的启动application，指向加固的假的dex
+	4.	在加固的假的application的oncreate 方法实现解密并加载真正class.dex 
