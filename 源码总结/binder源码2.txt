@@ -1,4 +1,4 @@
-一.	binder流程
+﻿一.	binder流程
 	客户端 -> copyFromUser -> server  ->  客户端
 	
 	总结：
@@ -9,3 +9,35 @@
 		(jni 中提供有mmap函数)
 		
 		page页：
+
+
+二.	原理解析 (图 binder_03)
+	一次拷贝
+	Process A向Process B传递数据時，这些数据会被driver从ProcessA copy 到 binder和ProcessB之间的共享內存中。ProcessB已经映射过地址，就可以直接读取内存里面的数据了，就不需要再做一次拷贝动作了
+	
+	以下是错误的理解（错误的是返回的时候，实际上是没有拷贝）：
+	服务端跨进程的类都要继承Binder类。我们所持有的Binder引用(即服务端的类引用)并不是实际真实的远程Binder对象，我们的引用在Binder驱动里还要做一次映射。也就是说，
+	设备驱动根据我们的引用对象找到对应的远程进程。客户端要调用远程对象函数时，只需把数据写入到Parcel，在调用所持有的Binder引用的transact()函数，transact函数执
+	行过程中会把参数、标识符（标记远程对象及其函数）等数据放入到Client的共享内存，Binder驱动从Client的共享内存中读取数据，根据这些数据找到对应的远程进程的共享
+	内存，把数据拷贝到远程进程的共享内存中，并通知远程进程执行onTransact()函数，这个函数也是属于Binder类。远程进程Binder对象执行完成后，将得到的写入自己的共享
+	内存中，Binder驱动再将远程进程的共享内存数据拷贝到客户端的共享内存，并唤醒客户端线程
+
+三.	binder_ref / binder_node  (图 binder_03)
+
+	我们拿到一个代理对象，通过binder驱动来调用远程的服务，那Binder到底是如何根据代理对象找到实体對象的呢？
+
+	其实Binder驱动会在内核为process创建一個binder_proc 结构提，在binder_proc中保存着四个RB Tree。
+	其中三个tree就是保存binder_ref和binder_node的。就是传递来传递去的代理对象和实体对象。
+
+	一个tree保存binder_node；另外两个tree保存binder_ref,这两个tree的内容其实都一样，只是为了便于搜索，就建了两个不同key的tree。
+
+	 
+
+	这三个tree都具体存写什么东西？
+	-->这样说，一个process里有个实体对象，就有多少个binder_node；一个process有多少个代理对象指向远端，就有多少个binder_ref.
+
+	 
+
+	看下面的图中：
+	ProcessA向binder驱动传入一个handle，binder驱动就会根据handle在tree中找到对应的binder_ref。 binder_ref里面有一个node变量， 它就是对应的
+	实体对象的node的地址，靠它找到对应的binder_node。然后在binder_node里面，也有一个变量：cookie，它就是BBinder的地址。找到BBinder就OK了

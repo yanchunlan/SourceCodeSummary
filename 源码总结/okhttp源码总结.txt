@@ -34,10 +34,11 @@
 	Response getResponse() throws IOException {
 		ArrayList<Interceptor> interceptors = new ArrayList<>();
 		interceptors.addAll(client.interceptors());
-		interceptors.add(new InterceptorRetry());
-		interceptors.add(new InterceptorHeaders());
-		interceptors.add(new InterceptorConnection());
-		interceptors.add(new InterceptorCallService());
+		interceptors.add(new RetryAndFollowUpInterceptor());
+		interceptors.add(new BridgeInterceptor());
+		interceptors.add(new CacheInterceptor());
+		interceptors.add(new ConnectInterceptor());
+		interceptors.add(new CallServerInterceptor());
 		InterceptorChain interceptorChain = new InterceptorChain(interceptors, 0, this, null);
 		return interceptorChain.proceed();
 	}*/
@@ -47,10 +48,11 @@
 	2.责任链
 	责任链会调用拦截器，而每个拦截器都会调用下一个拦截器获取Response，调用之
 	前做请求初始化操作，调用之后做响应处理操作
-		InterceptorRetry:请求失败时，重新请求，内部调用下一拦截器（chain.proceed();）
-		InterceptorHeaders：添加请求头信息，内部调用下一拦截器（chain.proceed();）
-		InterceptorConnection: 通过Socket创建Http连接，使用连接池来获取Http连接，内部调用下一拦截器
-		InterceptorCallService：发送Http请求，直接返回response
+		RetryAndFollowUpInterceptor:请求请求的重试和重定向，内部调用下一拦截器（chain.proceed();）
+		BridgeInterceptor：添加请求头信息，处理响应结果的 header 信息，内部调用下一拦截器（chain.proceed();）
+		CacheInterceptor：根据当前获取的状态选择 网络请求 、读取缓存、更新缓存（DiskLruCache）。
+		ConnectInterceptor: 通过Socket创建Http连接，使用连接池来获取Http连接，通过okio来操作数据流，内部调用下一拦截器
+		CallServerInterceptor：发送Http请求，直接返回response
 	3.创建Http连接
 		HttpConnection：使用Socket建立http连接，支持Https协议
 		createSocket 创建socket，支持Https协议
@@ -65,6 +67,7 @@
     interceptors.add(new BridgeInterceptor(client.cookieJar()));
     interceptors.add(new CacheInterceptor(client.internalCache()));
     interceptors.add(new ConnectInterceptor(client));
+    interceptors.add(new CallServerInterceptor(client));
 	
 	1）在配置 OkHttpClient 时设置的 interceptors； 
 	2）负责失败重试以及重定向的 RetryAndFollowUpInterceptor； 
