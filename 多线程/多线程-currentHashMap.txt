@@ -1,1 +1,6 @@
-主要是一个数组被volicate修饰，保持其原子性，可见性，有序性
+hashTable ：
+	主要是全部方法用synchronized修饰，每次执行只能执行一个方法就不太好
+	主要是一个数组被volicate修饰，保持其原子性，可见性，有序性
+ConcurrentHashMap：
+	分段锁，提高并发效率
+	

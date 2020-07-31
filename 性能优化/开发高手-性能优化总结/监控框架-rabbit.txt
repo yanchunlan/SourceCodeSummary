@@ -1,12 +1,12 @@
-1.	应用测速
+﻿1.	应用测速
 	可以准确统计应用Applicaiton创建耗时、应用冷启动耗时和页面inflate耗时&完全渲染耗时
 	
-		Application.onCreate耗时统计：	插桩加入耗时统计函数
-		应用冷启动耗时统计：			Application.attachBaseContext开始，到activity耗时完成时间，为冷启动耗时
-		Activity.onCreate耗时统计：		针对ContentView套一个控件，监听dispatchDraw统计渲染结束，并插桩统计代码在Activity.onCreate前，嵌套控件在后
-		Activity首次inflate耗时统计：	直接在setContentView(xxx)，前后埋点耗时代码
-		Activity首次渲染耗时：			界面全部接口拿到数据并渲染完成（通过拦截器统计接口所有是否完成，再捕获此时调用了ViewGroup.dispatchDraw时间，作为渲染耗时）
-		页面网络请求耗时监控:			在拦截器中处理，直接chain.proceed(request)，前后分别插入耗时统计，后面上传耗时代码即可
+		Application.onCreate耗时统计：	Application.attachBaseContext()开始和Application.onCreate()结束，插桩加入耗时统计函数
+		应用冷启动耗时统计：		Application.attachBaseContext开始，到activity的ViewGroup.dispatchDraw耗时完成时间，为冷启动耗时
+		Activity页面渲染耗时统计：		针对ContentView套一个控件，监听ViewGroup.dispatchDraw结尾统计渲染结束，并插桩统计代码在Activity.onCreate前，嵌套控件在后
+		Activity首次inflate耗时统计：		直接在setContentView(xxx)，前后埋点耗时代码
+		Activity首次渲染耗时：		界面全部接口拿到数据并渲染完成（通过拦截器统计接口所有是否完成，添加一个自定义容器，捕获ViewGroup.dispatchDraw的结尾时间，作为渲染耗时）
+		页面网络请求耗时监控:		在拦截器中处理，直接chain.proceed(request)，前后分别插入耗时统计，后面上传耗时代码即可
 
 	注：	所有的配置通过一个文件配置，在编译的时候直接读取文件信息，去判断哪些统计
 2.	FPS分析

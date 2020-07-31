@@ -26,14 +26,19 @@ study:
 	资源搜索：http://magnet.chongbuluo.com/
 	源码：http://androidxref.com/
 	dart学习：https://www.dartlang.org/tools/sdk#install
+	LeeCode：https://leetcode-cn.com
 
 ffmpeg:https://edu.csdn.net/course/detail/8036
 https://edu.csdn.net/course/detail/7417
-https://www.shiguangkey.com/course/1352
+https://www.shiguangkey.com/course/135：
 百度云干货：https://www.jianshu.com/p/e4f9fe3d98a1
 音视频学习：https://www.cnblogs.com/renhui/p/7452572.html
 openGL(湖广武王):https://blog.csdn.net/junzia/article/category/6462864
-jvm:http://www.cnblogs.com/leefreeman/category/1058724.html
-libiconv:https://blog.csdn.net/ydyang1126/article/details/65441441
+jvm：http://www.cnblogs.com/leefreeman/category/1058724.html
+libiconv：https://blog.csdn.net/ydyang1126/article/details/65441441
+性能优化：https://www.jianshu.com/p/b5b1b8e1747f
+Flutter实战：https://mp.weixin.qq.com/s/Ika_qU2f_MePTp281FCEig
+Flutter实战：https://juejin.im/post/6844903650704244750
+gitYuan：http://gityuan.com/archive/
 
 

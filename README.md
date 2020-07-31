@@ -12,9 +12,10 @@
  9. 艺术专题
  10. 设计模式
  11. 面试专题
- 12. 黑科技
+ 12. framework
+ 13. 黑科技
 
-### 与音视频及C/C++/Jni相关的项目复习（顺序执行）
+### c/c++/jni/makeFile/shell/openGL/openElES/ffmpeg/音视频推拉流/播放器相关的项目复习（顺序执行）
 
  - [https://github.com/yanchunlan/c_Master](https://github.com/yanchunlan/c_Master)
  - [https://github.com/yanchunlan/CPlusPlusDemo](https://github.com/yanchunlan/CPlusPlusDemo)
