@@ -1,0 +1,39 @@
+1.	R文件删除
+	通过自定义gradle遍历存储所有R文件的常量值，在遍历文件通过asm修改引用R文件常量值，
+	删除R的常量引用值
+	插件地址：https://github.com/houjinyun/Android-ThinApk
+2.	代码混淆和压缩
+	ProGuard 会检测和移除代码中未使用的类、字段、方法和属性，除此外还可以优化字节码，移除未使用的代码指令，以及用短名称混淆类、字段和方法
+	shrinkResources 开启资源压缩（最终资源是空资源占位）
+	resConfigs 去除多余语言包
+	
+	proguard ：
+	-dontshrink
+		声明不进行压缩操作。
+	-dontoptimize
+		不对 class 进行优化，默认是开启优化的。由于优化会进行类合并、内联等，使用热修复的应用，建议关闭优化
+	资源也可以不压缩，keep住
+	<resources
+		xmlns:tools="http://schemas.android.com/tools"
+		tools:shrinkMode="safe"
+		tools:keep="@mipmap/emoji_*,@mipmap/jietiao_ic_module_*"
+		>
+	</resources>
+	
+	1>	R文件解释
+		格式 ：0xpptteeee；  pp：表示 package id ，tt：表示 type id ，eeee：表示 entry id
+		资源混淆，实质上就是改短资源名字，然后同步修改resources.arsc里面的引用
+	
+3.	资源混淆
+	直接使用AndResGuard插件，其原理就是开启一个任务，打包ok后，解压APK，识别 resources.arsc 资源表，混淆 res所有资源文件，同步修改资源表，然后重新打包签名
+	核心就是对resources.arsc 资源表的解析修改，所以需要熟系resources.arsc 文件格式
+
+4.	图片压缩
+	TinyPng压缩
+	使用.9代替大图
+	使用xml代替图片
+	其余图片使用webP(>20kb使用webP,小于20kb使用tinypng压缩)
+
+5.	D8编译器
+	AS3.1以上默认支持，D8编译器是dex编译的工具，编译出来的dex小，
+	gradle.properties 中配置 android.enableD8=true

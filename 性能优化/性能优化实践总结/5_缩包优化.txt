@@ -1,4 +1,0 @@
-1.	R文件删除
-	通过自定义gradle遍历存储所有R文件的常量值，在遍历文件通过asm修改引用R文件常量值，
-	删除R的常量引用值
-	插件地址：https://github.com/houjinyun/Android-ThinApk
