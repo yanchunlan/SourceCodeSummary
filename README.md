@@ -15,7 +15,7 @@
  12. framework
  13. 黑科技
 
-### c/c++/jni/makeFile/shell/openGL/openElES/ffmpeg/音视频推拉流/播放器相关的项目复习（顺序执行）
+### c/c++/jni/makeFile/shell/openGL/openSlES/ffmpeg/音视频相关的项目复习（顺序执行）
 
  - [https://github.com/yanchunlan/c_Master](https://github.com/yanchunlan/c_Master)
  - [https://github.com/yanchunlan/CPlusPlusDemo](https://github.com/yanchunlan/CPlusPlusDemo)
