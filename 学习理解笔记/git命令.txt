@@ -1,6 +1,6 @@
 git init ≥ı ºªØ
 git add fileName 
-git add -A 
+git add -A .
 git commit -m "XXXX"
 git re flieNeme       ( rm flieName)
 
