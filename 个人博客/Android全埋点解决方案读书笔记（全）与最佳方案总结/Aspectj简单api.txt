@@ -1,0 +1,52 @@
+一.	注解类
+	1.	#aspectj
+		描述切面类
+	2.	@poingCut
+		定义切点，标记方法，
+		如果后面是**（..）就可以匹配所有的@xxx标记的方法
+	3.	@Before
+		前置增强，在连接点之前执行的增强
+		在方法执行之前执行某些操作
+	4.	@After
+		后置增强，在某些连接点之后执行的增强
+		方法执行之后执行
+	5.	@Around
+		环绕增强，在切点前后执行
+		内部可执行 joinpoint.proceed，可在其方法前后插入代码，也得到执行
+	6.	@AfterReturn
+		返回增强，切入点方法返回结果之后执行
+		在方法返回结果之后打印值
+	7.	@AfterThrowing
+		异常增强，切点抛出异常时执行
+二.	切点表达式
+	1.	实例：execution(* android.xxx(xxx))
+		格式：execution(<修饰符模式>？<返回类型模式><方法名模式>(<参数模式>)<异常模式>？)
+			?代表可选
+			修饰符指public ,private , protected
+			异常模式指
+			classNotFoundException
+	2.	joinpoint能获取的值
+		
+		执行方法
+		Object resultObj=joinpoint.proceed
+		
+		MethodSignature signature = joinpoint.getsignature
+		
+		方法名
+		String name = signature.getName
+		
+		返回值类型
+		Class returnType = signature.getReyurnType
+		
+		方法所在类名
+		Class DeclaringType = signature.getDeclaringType
+		
+		参数类型
+		Class[] parameterTypes = signature.getParameterTypes
+		
+		参数名
+		String[] parameterNames = signature.getParameterNames
+		
+三.	calls与execution区别
+	calls 调用点，用在方法的调用前后
+	execution 执行点，用在方法内部的前后

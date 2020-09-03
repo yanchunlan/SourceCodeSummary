@@ -1,0 +1,36 @@
+一.	2个基础概念
+	1. transfromInput
+	输入文件的抽象，主要有2部分：
+		1>	DirectoryInput集合
+			源码方式参与项目编译的所有目录结构及其目录下的源码文件
+		2>	JarInput
+			jar包方式参与项目编译的所有本地jar包和远程jar包
+	2.	transfromOutput
+		transfrom的输出，通过它可以获取输出路径等信息
+二.	transfrom抽象类的方法介绍
+	1.	getName
+		该transfrom对应的task名称
+	2.	getInputTypes
+		指定transfrom处理的数据类型，目前有2种类型
+		1>	CLASSES
+			编译后的字节码，jar或者目录
+		2>	RESOURCES
+			java资源
+	3.	getScopes
+		指定transfrom作用域，目前有7种
+		1>	PROJECT
+			当前项目
+		2>	SUB_PROJECTS
+			子项目
+		3>	PROJECT_LOCAL_DEPS
+			当前项目本地依赖，jar/aar等
+		4>	SUB_PROJECT_LOCAL_DEPS
+			子项目本地依赖，jar/aar等
+		5>	EXTERNAL_LIBRARIES
+			外部的依赖库
+		6>	PROVIDED_ONLY
+			本地或远程以provided形式引入的依赖库
+		7>	TEXTED_CODE
+			测试代码
+	4.	isIncremental
+		是否增量更新
