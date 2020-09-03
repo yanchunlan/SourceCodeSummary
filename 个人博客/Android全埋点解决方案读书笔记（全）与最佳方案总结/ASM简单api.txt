@@ -1,0 +1,48 @@
+一.	ASM核心的几个类
+	1.	classReader
+		解析编译过的.class字节码文件
+	2.	classWriter
+		重新构建编译后的类，比如修改类名，属性，方法，甚至新的字节码文件
+	3.	classVisitor
+		负责访问类成员信息，包括类上的注解，构造方法，字段，方法静态代码块
+		1>	visit方法
+			void visit(int version,int access,String name,String signature,String supername,String[] interfaces);
+			1）	version
+				jdk版本，如:
+				1.8   ->		52
+				1.7   ->		51
+				1.6   ->		50
+			2）	access
+				类的修饰符，以ACC_开头，如：
+				ACC_PUBLIC ->	public 
+				ACC_PRIVATE ->	private 
+				ACC_SUPER ->	extends 
+			3）	name
+				类名，一般是包名+类名
+			4）	signature
+				泛型信息，如果无泛型就为null
+			5）	supername
+				父类，默认也会继承object
+			6）	interfaces
+				接口列表，因为存在多个接口，所以是数组
+		2>	visitMethod
+			访问到方法时候调用
+			MethodVisitor visitMethod(int access,String name,String desc,String signature,String[] exceptions))
+			1)	access
+				方法的修饰符，以ACC_开头，如：
+				ACC_PUBLIC ->	public 
+				ACC_PRIVATE ->	private 
+				ACC_SUPER ->	extends 
+			2）	name
+				方法名
+			3）	desc
+				方法签名
+				跟jni，native方法签名一致，如：
+				I	->	int
+				V	->	void
+			4）	signature
+				泛型信息，如果无泛型就为null
+			5)	exceptions
+				将抛出的异常，如果方法不抛出，则参数为null
+	4.	AdviceAdapter
+		实现了methodVisitor接口，负责访问方法信息，主要用于具体方法字节码操作

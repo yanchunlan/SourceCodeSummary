@@ -1,0 +1,23 @@
+一.	基础知识
+	1.	classPool
+		存储ctClass的hash表，一般是通过classPool.getDefault获取到classPool
+		然后通过 classPool.insertClassPath(xxx)
+	2.	ctClass
+		通过classPool获取到:	pool.getCtclass('className')
+		支持转化为class文件：	ctClass.toClass
+		支持转化为字节码：		ctClass.toByteCode
+		支持转化为本地文件：	ctClass.writeFile
+		使用完之后尽量回收，释放ctClass:	ctClass.detach
+		
+		但是被转化之后，ctClass就被冻结了，再次使用需要解冻
+		if(tcClass.isFrozen){
+			ctClass.defrost
+		}
+	3.	ctMethod/ctConstructor
+		支持insertBefore/insertAfter/addCatch
+		其中传递的参数
+			$1,$2,$3,代表第1/2/3个参数
+			$args，代表所有参数的数组
+			$$，所有参数列表的缩写，逗号分隔
+			$_，使用方法的返回结果
+		

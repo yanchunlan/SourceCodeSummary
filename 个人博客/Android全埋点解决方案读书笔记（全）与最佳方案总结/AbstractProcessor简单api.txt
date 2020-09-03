@@ -1,0 +1,28 @@
+一.	基本方法介绍
+	1.	init
+		初始化，可得到processingEnviroment对象，其提供很多工具类，Element,Types，Filer	
+	2.	getSupportedAnnotationTypes
+		注册哪些注解处理器，添加到此集合，或者直接在类上加上注解@SupportedAnnotationTypes
+	3.	getSupportedSourceVersion
+		java版本，一般写sourceVersion.lastSupported,或者直接在类上加注解@SupportedSourceVersion
+	4.	process
+		在这添加扫描，评估，处理注解的代码，生成java文件
+		一般流程是：
+		通过roundEnvironment.getElementAnnotationWith(xx)得到指定注解Element集合,
+		然后强转VariableElement，再TypeElement typeElement= VariableElement.getEncloseingElement
+		再typeElement.getQualifiedName得到包名+类名
+	注意：
+		如果类没有被autoService（Processor.class）修饰，就需要添加文件src/main/resource/META-INF/services/javax.annotation.processing.Processor
+		文件声明，文件内容是：自定义注解的包名类名
+二.	Element
+	asType:	返回此元素定义的类型
+	getKind:	返回此元素的种类，包，类，接口，方法，字段
+	getModifiers:	返回此元素修饰符
+	getSimpleName:	返回此元素简单名称
+	getEnclosedElements:	返回封装此元素的最里层元素
+	getAnnotation：	返回此元素针对指定类型的注解
+	TypeElement：	一个类和接口程序元素
+	VariableElement:	字段，常量，方法或构造方法参数，局部变量，异常参数
+	ExecutableElement:	类和接口的方法，构造方法或初始化程序，包括注解类型元素
+	packageElement：	包程序元素
+	TypeParameterElement：	类，接口，方法，构造方法元素的泛型参数
