@@ -1,4 +1,4 @@
-﻿一.	ViewModel
+一.	ViewModel
 	1.	主类
 		ViewModel ：数据存储类，可重写onCleared，想存储数据，加入参数SavedStateHandle构造
 		AndroidViewModel : ViewModel 子类，有Application的引用，可存储数据，加入SavedStateHandle
@@ -43,6 +43,8 @@
 			
 			而异常恢复getLastNonConfigurationInstance可能为null,这是可以设置Fragment的onSaveInstanceState(true)，就是让Fragment来保存容器
 			其中存储是使用androidx.savedstate存储
+	4.	清除
+		在activity与fragment关闭之后，会执行viewModel的clear方法，清除
 二.	liveData
 	1.	主类
 		LiveData：抽象类
@@ -58,5 +60,8 @@
 		distinctUntilChanged :	
 		ComputableLiveData :
 	2.	源码
-		
-	3.	其实质就是观察一个有什么周期的fragment的observer
+		[低版本liveData](https://github.com/yanchunlan/LiveDataBus_Demo/blob/master/library/src/main/java/com/example/library/livedata/LiveData.java)
+		[高版本liveData](https://github.com/yanchunlan/LiveDataBus_Demo/blob/master/library/src/main/java/com/example/library/livedata2/LiveData2.java)
+		根据上面源码就可以直接明白所有的流程
+	3.	总结
+		低版本其实质就是观察一个有什么周期的fragment的observer，高版本高版本使用lifecycle的添加观察者监听
