@@ -1,0 +1,32 @@
+#jdk
+JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_202.jdk/Contents/Home
+PATH=$JAVA_HOME/bin:$PATH:.
+CLASSPATH=$JAVA_HOME/lib/tools.jar:$JAVA_HOME/lib/dt.jar:.
+export JAVA_HOME
+export PATH
+export CLASSPATH
+
+#git
+export GIT_HOME=/usr/bin/git
+export PATH=$GIT_HOME/bin:$PATH
+
+#androidStudio
+export ANDROID_HOME=/Users/yanchunlan/AndroidStudio/sdk
+export PATH=${PATH}:${ANDROID_HOME}/tools
+export PATH=${PATH}:${ANDROID_HOME}/platform-tools
+
+#ndk
+export NDK_HOME=/Users/yanchunlan/AndroidStudio/ndk
+export PATH=${PATH}:${NDK_HOME}/android-ndk-r16b
+
+#flutter
+export PATH=/Users/yanchunlan/AndroidStudio/flutter/flutter-1.20.0/bin:$PATH
+
+#mono fiddler
+export MONO_HOME=/Library/Frameworks/Mono.framework/Versions/6.12.0
+export PATH=$PATH:$MONO_HOME/bin
+
+#systrace
+if [ -f ~/.bashrc ]; then
+   source ~/.bashrc
+fi

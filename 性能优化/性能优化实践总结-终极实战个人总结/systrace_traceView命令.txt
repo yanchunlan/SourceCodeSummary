@@ -1,0 +1,17 @@
+#systrace
+python /Users/yanchunlan/AndroidStudio/sdk/platform-tools/systrace/systrace.py gfx input audio view webview wm am hal app res dalvik re bionic power sched freq idle load sync workq memreclaim irq disk binder_driver binder_lock -b 10240 -t 5 -o "/Users/yanchunlan/AndroidStudio/ycl/systrace/systrace-com.xiatou.hlg.html" 
+
+python $ANDROID_HOME/platform-tools/systrace/systrace.py gfx view wm am pm ss dalvik app sched -b 90960 -a com.xiatou.hlg  -o /Users/yanchunlan/AndroidStudio/ycl/systrace/test_log_hlg.html
+
+
+#traceView
+adb shell am start -S -W -n com.xiatou.hlg -start-profiler /data/local/tmp/hlg.trace
+adb shell am profile com.xiatou.hlg stop
+Adb pull /data/local/tmp/hlg.trace /hlg/traceview/hlg.trace
+
+# am start
+adb shell am start -W com.xiatou.hlg/com.xiatou.hlg.ui.splash.SplashActivity
+
+#Display
+Displayed com.xiatou.hlg/ui.splash.SplashActivity
+
