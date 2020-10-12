@@ -1,0 +1,98 @@
+版本 tinker 1.9.14.7 
+一.	tinker流程划分
+	根据源码流程，可划分为3部分。
+	1.	校验加载补丁
+		tinkerApplication 启动 
+		onBaseContextAttached（ 反射执行 TinkerLoader.tryLoader 及绑定代理DefaultApplicationlike）
+		->	TinkerLoader.tryLoader
+		->	TryLoadPatchFilesInternal
+			1.	检查是否开关,主进程，tinker目录,patchInfo文件,
+			2.	读取patch数据,新旧版本对比，清除新patch,版本变化与主进程决定加载patch,patch-xxxx/patch-xxxx.apk存在，
+			3.	补丁包签名检测，tinkerId与基准包是否一致,
+			4.	检测tinkerFlag开启了哪些修复，并检测dex,artHot,so,res是否complate
+			5.	加载dex,artHot,resource(无so)
+			6.	打印log,tryLoadPatchFiles:load end,ok！
+
+	2.	合成环境准备
+		tinkerInstaller.installTinker 初始化
+		defaultApplicationlike的onBaseContextAttached 
+			loadReporter/patchReporter/PatchListener/updatePatch/defaultTinkerResultService/执行初始化 tinkerInstaller.install
+		->	tinker.install
+			setPatchProcessor / tinkerLoaderResult.parsetinkerResult / loadReporter.onLoadResult
+
+		->	1.	setPatchProcessor:	
+			->	tinkerPatchService.setPatchProcessor
+			->	tinkerPatchService.handlerIntent
+
+
+		->	2.	tinkerLoaderResult.parsetinkerResult:
+			从intent取出参数，根据不同的loadCode，上报 在application启动过程中加载合成补丁包的结果，并通过onLoadResult反馈结果
+
+		->	3.	loadReporter.onLoadResult
+			反馈结果
+
+	3.	合成
+		tinkerInstall.onReceiveUpgradePatch 加载patch包
+		->	tinker.with(context).getPatchListener.onPatchReceived
+		->	tinkerPatchService.runPatchService
+		->	tinkerPatchService.onHandlerIntent
+		->	tinker.patchreport.onPatchServiceStart / upgradegatchProcessor.tryPatch / abstraceResultService.runReslutService
+		
+		->	upgradegatchProcessor.tryPatch
+			1.	热修复enable,patch文件合法，签名校验，md5校验，创建tinker文件夹,info.lock,patch.info,旧patch.info与新patch.info对比
+			2.	创建tinker/patch-xxxxx文件夹,复制补丁包到 data/data/com.xxx.xxx/tinker/patch-xxxxx，md5校验
+			3.	合成dex,合成artHot，合成so,合成res,对dex进行opt优化
+			4.	结果写入patch.info
+			5.	打印log,upgradepatch tryPatch:done,it is ok 
+
+二.	几个原理
+	1.	dexDiff算法怎么制作patch dex
+
+	2.	加载dex,so,res原理
+		dex:	hook classLoader对应的dexpathList的makeDexElements,将修复dex插入dexElements最前面
+		so:		hook classLoader对应的dexpathList的makeDexElements，将so注入nativeLibraryPathElements数组中
+		res:	替换loadApk对应的mResDir指向补丁包，resourcesImpl mAssets替换为新的assetManager,将assetManager调用其addAssetPath加载补丁包
+
+	3.	现实中服务器交互
+		1.	接口检测当前基准版有无patch包，上传版本号，渠道号，包名
+		2.	获取策略文件域名，拉去策略文件
+		3.	根据策略文件，拉取patch,判断做修复还是回滚，
+		4.	拉取对应的atch包，包校验
+		5.	可能拉取引导图，开机时设置引导图
+		6.	校验有无重复，有无已经加载，然后执行tinker的合成操作
+		7.	设计重启策略，关闭patch进程即可
+
+二.	文件构成
+	1.	tinker信息（文件合成中生成）
+		1.	data/data/com.xxx.xxx/tinker:
+			info.lock
+			patch-xxxxxx
+			patch.info
+
+		2.	patch.info:
+			old=xxxxxxxxxx				(旧包md5)
+			is_remove_interpret_oat_dir=0
+			print=xioami/xx/xxx
+			dir=odex
+			is_projected_app=0
+			s_remove_new_versionr=0
+			new=xxxxxxx 				(新包md5)
+
+		3.	data/data/com.xxx.xxx/tinker/patch-xxxxx:
+			dex
+			odex
+			patch-xxxxxx.apk 			(合成前diff Patch)
+
+		4.	data/data/com.xxx.xxx/tinker/patch-xxxxx/dex:
+			oat
+			tinker_classN.apk 			(合成后patch)
+
+	2.	patch包信息
+		META-INF
+		classes.dex
+		test.dex
+		assets
+			package_meta.txt
+			dex_meta.txt
+			so_meta.txt
+			res_meta.txt

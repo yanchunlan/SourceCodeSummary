@@ -1,0 +1,24 @@
+查找
+	cmd + E			打开最近访问的文件列表
+	ctr + H			查看类继承关系
+	ctr + opt + H		方法被调用层级结构
+	cmd + U			跳转到超类方法
+
+控制
+	opt + cmd + T			Surround with快速调出if,for,try…catch,while等环绕代码
+	cmd + J				快速生成模版代码块，如if,while,return
+	cmd + N				快速生成getter／setter方法，构造方法，toString()方法等
+	shift + cmd + enter		行尾自动添加分号，if后面自动加“(){ }”
+	ctr + O				引入重写父类的方法
+	ctr + I				引入接口或抽象类方法的实现
+	opt + cmd + /			注释与取消注释，注释效果/.../
+	cmd + delete			删除行
+	opt + ctr + L			格式化代码
+	opt + ctr + O			清除无效包
+	cmd + ,				打开设置
+
+代码重构
+	opt + cmd + M		方法重构，方法抽离
+	opt + cmd + P		抽离为方法参数
+	opt + cmd + V		抽离为局部变量
+	opt + cmd + F		抽离为成员变量
