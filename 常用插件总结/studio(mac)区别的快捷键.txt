@@ -16,6 +16,7 @@
 	opt + ctr + L			格式化代码
 	opt + ctr + O			清除无效包
 	cmd + ,				打开设置
+	cmd + shift +U			大小写转换
 
 代码重构
 	opt + cmd + M		方法重构，方法抽离
