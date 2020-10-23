@@ -1,0 +1,175 @@
+一.	流程
+	初始化阶段，配置阶段，执行阶段
+	1.	初始化阶段
+		1.	构建
+			构建 setting.gradle 文件，可添加监听 gradle.addBuildListener()
+		2.	外部目录导入当前
+			include "speech"
+	    	project(":speech").projectDir = new     File("../OtherApp/speech")
+	2.	配置阶段
+		执行各项目下的 build.gradle 脚本
+		注意：执行任何 Gradle 命令，在初始化阶段和配置阶段的代码都会被执行
+	3.	执行阶段
+		生成有向无环图，可监听Gradle.getTaskGraph()的
+		whenReady(groovy.lang.Closure) 或者 addTaskExecutionGraphListener(TaskExecutionGraphListener) 方法
+	4.	生命周期执行
+		图 1_gradle生命周期流程
+二.	Project
+	1.	project 流程
+		可分为以下部分概括：
+		Project API,Task 相关 API,Project 属性相关的 Api,File 相关 Api,Gradle 生命周期 API,其他Api
+	2.	project API
+		1.	getAllprojects
+			返回一个包含根 project 与其子 project 的 Set 集合
+		2.	getSubprojects
+			返回了一个包含子 project 的 Set 集合
+		3.	getParent
+			获取当前 project 的父类（根工程中使用它,父类为null）
+		4.	getRootproject
+			任意位置可以，获取当前根工程实例
+		5.	project
+			2个参数，一个是指定工程的路径，另一个是用来配置该工程的闭包，如下：
+			project("app") { Project project ->
+			    apply plugin: 'com.android.application'
+			}
+	3.	project 属性
+		1.	ext扩展属性
+		2.	gradle.properties扩展属性
+	4.	file 属性
+		1.	路径获取 api
+			getRootDir()，getProjectDir()，getBuildDir()
+		2.	文件操作 api
+			1.	文件定位
+				fine("xxx"):	直接从当前project查找
+			2.	文件拷贝
+				copy {
+				    from file("build/outputs/apk")
+				    into getRootProject().getBuildDir().path + "/apk/"
+				    exclude {
+				        // 排除不需要拷贝的文件
+				    }
+				    rename {
+				        // 对拷贝过来的文件进行重命名
+				    }
+				}
+			3.	文件树遍历
+				fileTree("build/outputs/apk") { FileTree fileTree ->
+				    fileTree.visit { FileTreeElement fileTreeElement ->
+				        copy {
+				            from fileTreeElement.file
+				            into getRootProject().getBuildDir().path + "/apkTree/"
+				        }
+				    }
+				}
+	5.	其他 api
+		1.	依赖相关api
+			注意：
+				exclude module: 'support-v4'  // 排除依赖
+				transitive false // 依赖传递，A => B => C ，打开A就能找到C
+		2.	外部命令执行
+			exec{
+				executable "bash"
+                args "-c", "mv -f $xxx $xxx"
+			}
+三.	Task	
+	3.	Task
+		1.	依赖 dependsOn
+		2.	创建
+				tasks.create()、tast xxx(),setGroup之后，可在分组里面找到它
+		3.	属性
+				"name"				task 名字												无，必须指定
+				"type"				需要创建的 task Class										DefaultTask
+				"action"			当 task 执行的时候，需要执行的闭包 closure 或 行为 Action	null
+				"overwrite"			替换一个已存在的 task										false
+				"dependsOn"			该 task 所依赖的 task 集合								[]
+				"group"				该 task 所属组											null
+				"description"		task 的描述信息											null
+				"constructorArgs"	传递到 task Class 构造器中的参数							null
+		4.	$ 引用其他属性
+		5.	使用ext给自定义需要的属性
+		6.	使用 defaultTasks 关键字标识默认执行任务
+		7.	依赖和执行顺序
+			1.	dependOn 强依赖方式
+				外面、里面使用dependsOn，或者参数传入dependsOn
+			2.	通过task指定输入输出
+				outputs.file、inputs.file
+				D中插入CTask如下：
+				this.afterEvaluate { Project project ->
+				    def cTask=project.tasks.findByName(C.name) as Task					    (project.tasks.findByName(D.name) as Task).dependsOn(cTask.taskDependencies.getDependencies(cTask))
+				    cTask.dependsOn(project.tasks.findByName(D.name))
+				}
+			3.	通过Api指定顺序依赖
+				除了 dependsOn，可使用mustRunAfter、与shouldRunAfter（非强制依赖）
+		8.	taks类型
+			type: Delete  -> delete xxx
+			type: copy  -> from  xxx   , into xxx
+			type: Sync  -> from  xxx   , into xxx
+		9.	挂接生命周期
+			配置阶段执行完之后执行
+			this.project.afterEvaluate {}
+四.	SourceSet
+	1.	修改so位置
+		sourceSets {
+	        main {
+	            // 修改 so 库存放位置
+	            jniLibs.srcDirs = ["libs"]
+	        }
+	    }
+	2.	修改资源文件位置
+		sourceSets {
+	        main {
+	            res.srcDirs = ["src/main/res",
+	                           "src/main/res-play",
+	                           "src/main/res-shop"
+	                            ... 
+	                           ]
+	        }
+	    }
+五.	gradle命令
+	1.	获取命令
+		// 1、按自顶向下的结构列出子项目的名称列表
+		./gradlew projects
+		// 2、分类列出项目中所有的任务
+		./gradlew tasks
+		// 3、列出项目的依赖列表
+		./gradlew dependencies
+	2.	执行命令
+		// 1、用于执行多个 task 任务
+		./gradlew xxx xxx
+		// 2、使用 -x 排除单个 task 任务
+		./gradlew -x xxx
+		// 3、使用 -continue 可以在构建失败后继续执行下面的构建命令
+		./gradlew -continue xxx
+		// 4、建议使用简化的 task name 去执行 task，下面的命令用于执行
+		// Gradle_Last 这个 task
+		./gradlew G_Last
+	对于子目录：
+		// 1、使用 -b 执行 app 目录下定义的 task
+		./gradlew -b app/build.gradle MyTask
+		// 2、在大型项目中我们一般使用更加智能的 -p 来替代 -b
+		./gradlew -p app MyTask
+
+六.	打包工具
+	1.	AAPT2
+		可以编译res资源文件生成res.zip文件
+		$aapt2 compile -o build/res.zip --dir ./app/src/main/res
+
+		讲res.zip与sdk连接，生成.ap_文件（资源，manifest,arsc）和R文件
+		$ aapt2 link build/res.zip -I $ANDROID_HOME/platforms/android-21/android.jar --java build --manifest ./app/src/main/AndroidManifest.xml -o build/app-debug.ap_
+
+	2.	javac
+		将java文件编译成.class文件
+		javac -d build -cp $ANDROID_HOME/platforms/android-21/android.jar com/*/.java
+
+	3.	d8
+		将生成的.class文件编译成.dex文件
+		d8 --output build/ --lib $ANDROID_HOME/platforms/android-21/android.jar build/com/example/application/*.class
+
+	4.	zip
+		将1的ap_资源文件和3的dex文件打包成未签名的apk
+		zip -j build/app-debug.ap_ build/classes.dex
+
+	5.	apksign
+		修改.ap_为.apk，并使用apksigner对apk进行签名
+		apksign -ks ~/.android/debug.keystore build/app-debug.apk
+

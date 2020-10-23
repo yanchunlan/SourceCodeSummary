@@ -37,3 +37,16 @@
 5.	D8编译器
 	AS3.1以上默认支持，D8编译器是dex编译的工具，编译出来的dex小，
 	gradle.properties 中配置 android.enableD8=true
+
+6.	资源压缩框架
+	1.	MCImage:	https://github.com/smallSohoSolo/McImage
+		原理就是在mergeTask执行之后添加个task,执行寻找到资源文件，然后对资源进行压缩或者转webP
+	2.	booster
+		booster-transform-shrink  等效于 Android-ThinApk
+		booster-task-compression  等效于 MCImage 并且还多具备资源删除，压缩resourceXX.ap_文件中的资源，可以支持压缩assets里面的资源等
+	3.	matrix
+		appChecker
+7.	包大小监控
+	
+8.	中台包远程下载
+		

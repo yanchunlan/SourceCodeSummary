@@ -1,4 +1,4 @@
-﻿一.	booster实现的框架分析
+一.	booster实现的框架分析
 	主要是利用gradle插件字节码插入代码实现功能，其中主要的是transform的实现，
 	流程如下：
 		BoosterPlugin : Plugin<Project>
@@ -6,7 +6,103 @@
 		->	BoosterTransform.transform 内部工作交给了 BoosterTransformInvocation 实现
 		->	BoosterTransformInvocation代理了TransformInvocation，使用了ServiceLoader加载所有的transform, 并依次调用transform方法
 
-一.	修复系统异常
+二.	性能优化
+	1.	booster-transform-lint 性能瓶颈检测 
+		支持动态添加依赖或者注入某些类和库(比如插桩、无埋点统计等)
+		1.	指定检测方法
+			LintTransformer 直接检测指定的方法，列如Aplication/Activity/Service/BroadcastReceiver/ContentProvider等API
+		2.	检查有没有调用敏感的API
+			analyse()用来检查当前API是否命中了Lint检查列表。如果命中就会加入到dot文件绘图节点中。
+			booster默认定义的敏感API有:	xxxxx/android/graphics/Bitmap... ;主要是一些可能导致主线程卡顿的API。
+		3.	检测demo
+			检查之后生成树形访问链，列如：
+			MainActivity -> MainActivity。onCreate（Bundle） -> MainActivity.getSharedPreferences(String,int)
+	2.	booster-transform-analyser 静态分析
+		类继承分析：	classLoader 加载所有类，判断有无继承关系
+		静态分析入口：	
+			四大组件 -> mergedManifests 之后获取到合并的AndroidManifest，即可获取到组件
+			自定义View -> mergeRes 之后通过aapt2生成flat文件，但是解析flat文件太慢，所以只解析flat头，然后在定位源文件xml,解析xml
+			线程注解 ->  Thread Annotations标注类，方法就是入口，兼容eventBus的@Subscribe(threadMode = MAIN)也是主线程入口
+	3.	booster-transform-thread 多线程优化 
+		1.	降低线程数量
+			将线程池的corePoolSize设置0，不为核心线程就可以销毁
+			为 maxPoolSize 设置上限Math.min(maxCorePoolSize, NCPU)，因为多个线程池都设置一样的，在某一时刻会导致大量线程池存在
+			允许核心线程空闲时自动销毁，设置executor.allowCoreThreadTimeOut(true)，目的是回收核心线程
+			HandlerThread 替换成 SingleThreadPoolExecutor，主要是销毁线程
+		2.	给所有线程设置name
+			编译时通过修改字节码文件动态给HandlerThread、Timer、AsyncTask、Thread、ThreadPoolExecutor等开启的线程都起了名字
+			主要是检测thread创建的时候，新加一个方法执行线程设置name方法
+		3.	线程池静态方法替换
+			替换为新增了name的初始化方法
+	4.	sharePreferences 优化
+		apply，只是数据加在队列,在pause的时,从队列取出,主线程执行队列消息的run，容易造成anr
+		通过自定义的sharePreference，asm方式动态替换解决onPause(), onDestroy()回调时在主线程的同步操作
+		其中不参考mmkv的方式是因为：
+			无OnSharedPreferenceChangeListener
+			MMKV 未校验数据类型
+			MMKV 与系统原生 API 的行为不一致
+	5.	WebView 预加载
+		主要是加载webView的时候，加载Chromium,导致时间久，导致anr
+		加载流程：
+			webView.init -> 
+			webViewChromium.init -> 
+			webViewChromiumFactoryProvider.startYourEngines ->
+			webViewChromiumAwinit.startYourEngines -> ensureChromiumStartedLocked
+		通过android.webkit.WebViewFactory的getProvider方法可以得到Provider，在执行其startYourEngines就可以初始化Chromium引擎
+		将上面的初始化引擎的插装在application的onCreate方法里面
+三.	包体积瘦身
+	1.	booster-task-compression
+	主要做了三件事
+		1.	删除资源
+		2.	压缩图片资源
+		3.	重新压缩resourceXX.ap_文件中的资源
+		回顾资源编译步骤，看com.android.tools.build:gradle源码assembleRelease，在ApplicationTaskMamager.java中
+		看得出来是有：
+			下载依赖
+			合并Manifest文件(MergeApkManifestsTask)
+			合并res资源(MergeResourcesTask)
+			合并assets资源(MergeAssetsTask)
+			处理资源,生成_.ap文件(ApkProcessTesTask)
+		资源压缩，就是创建了一些task在上面步骤之间
+		1.	资源删除
+			1>	冗余资源删除
+				在MergeResourcesTask之后执行
+				val klassRemoveRedundantFlatImages = if (aapt2) RemoveRedundantFlatImages::class else RemoveRedundantImages::class
+				variant.project.tasks.create（xxx）.dependsOn(variant.mergeResourcesTask)
+			2>	aapt冗余资源的移除
+				booster里面的 RemoveRedundantImages 什么都不做处理，因为gradle自己会移除资源
+				Gradle会在以下位置查找重复资源：
+					与主源集关联的主资源，通常位于 src/main/res/。
+					变体叠加,来自编译类型和编译特性。
+					库项目依赖项。
+				Gradle会按以下级联优先顺序合并重复资源 : 依赖项 → 主资源 → 编译特性 → 编译类型
+			3>	aapt2冗余资源的移除
+				gradle 3.0.0 使用了aapt2编译
+				booster 里面针对 RemoveRedundantFlatImages 操作是，在资源合并后，对于同名的png图片，它会取density最高的图片，然后把其他的图片删除
+		2.	图片压缩资源
+			sdk>17,使用cwebp命令将图片转为webp格式
+			sdk<17,使用pngquant命令对图片进行压缩
+			图片压缩具体实现：
+				assets下的图片资源压缩（flutter引入的话会导致失效）
+				res下的图片资源压缩
+			创建一个task,转换图片即可，压缩命令如下：ActionData(input, output, listOf(cmdline.executable!!.absolutePath, "-mt", "-quiet", "-q", "80", "-o", output.absolutePath, input.absolutePath))
+			cmdline.executable!!.absolutePath就是代表cwbp命令的位置。
+		3.	压缩resourceXX.ap_文件中的资源
+			遍历找到所有resourcesXX.ap_文件，对他们进行重新压缩打包，ap_.repack就是压缩的方法，并生成报告，压缩前，压缩后大小
+	2.	pbg图片压缩
+		在mergeRes与processRes之间执行，压缩操作，且根据aapt2是否开启做了区分
+	3.	webP图片压缩
+		在14-17之间，webP是不支持带alpha通道的图
+		注意：goolePlay上架，icon必现是png
+		最佳使用是 >=18,webP，<18 png压缩
+	4.	zip文件压缩
+		processRes执行后，生成ap_文件（AndroidManifest，res/*，resources.arsc），其实就是一个zip文件
+		但是执行生成ap_文件后，因为有2种压缩格式STORED（未压缩），DEFLATED（压缩），所以可能未压缩
+		processRes执行后，重新压缩ap_,并且指定格式其就是DEFLATED（压缩），保证其一定是压缩了
+	5.	资源索引内联（R去除，field去除）
+		
+
+四.	修复系统异常
 	1.	booster-transform-activity-thread
 		Hook了ActivityThread.mH.mCallback，使用代理类代理它，在代理类的handleMessage中
 		针对this.mHandler.handleMessage(msg); try catch住异常，检查异常的堆栈，如果是包名开头
@@ -57,64 +153,7 @@
 					}
 				});
 			3.	booster方案-手动停掉FinalizerWatchdogDaemon线程，在application创建的时候新开一个线程执行
-二.	线程优化和性能检测
-	1.	booster-transform-thread 多线程优化 
-		1.	给所有线程设置name
-			编译时通过修改字节码文件动态给HandlerThread、Timer、AsyncTask、Thread、ThreadPoolExecutor等开启的线程都起了名字
-			主要是检测thread创建的时候，新加一个方法执行线程设置name方法
-		2.	设置线程池的 allowCoreThreadTimeOut(true)
-			线程池创建的时候，keepAliveTime参数设置超时回收针对普通线程，核心线程没回收，需要设置allowCoreThreadTimeOut(true)
-			字节码替换所有线程池的创建方法，在替换的方法中执行allowCoreThreadTimeOut(true)，目的是可回收核心线程
-	2.	booster-transform-lint 性能瓶颈检测 
-		支持动态添加依赖或者注入某些类和库(比如插桩、无埋点统计等)
-		1.	指定检测方法
-			LintTransformer 直接检测指定的方法，列如Aplication/Activity/Service/BroadcastReceiver/ContentProvider等API
-		2.	检查有没有调用敏感的API
-			analyse()用来检查当前API是否命中了Lint检查列表。如果命中就会加入到dot文件绘图节点中。
-			booster默认定义的敏感API有:	xxxxx/android/graphics/Bitmap... ;主要是一些可能导致主线程卡顿的API。
-		3.	检测demo
-			检查之后生成树形访问链，列如：
-			MainActivity -> MainActivity。onCreate（Bundle） -> MainActivity.getSharedPreferences(String,int)
-三.	资源压缩
-	1.	booster-task-compression
-	主要做了三件事
-		1.	删除资源
-		2.	压缩图片资源
-		3.	重新压缩resourceXX.ap_文件中的资源
-		回顾资源编译步骤，看com.android.tools.build:gradle源码assembleRelease，在ApplicationTaskMamager.java中
-		看得出来是有：
-			下载依赖
-			合并Manifest文件(MergeApkManifestsTask)
-			合并res资源(MergeResourcesTask)
-			合并assets资源(MergeAssetsTask)
-			处理资源,生成_.ap文件(ApkProcessTesTask)
-		资源压缩，就是创建了一些task在上面步骤之间
-		1.	资源删除
-			1>冗余资源删除
-				在MergeResourcesTask之后执行
-				val klassRemoveRedundantFlatImages = if (aapt2) RemoveRedundantFlatImages::class else RemoveRedundantImages::class
-				variant.project.tasks.create（xxx）.dependsOn(variant.mergeResourcesTask)
-			2>	aapt冗余资源的移除
-				booster里面的 RemoveRedundantImages 什么都不做处理，因为gradle自己会移除资源
-				Gradle会在以下位置查找重复资源：
-					与主源集关联的主资源，通常位于 src/main/res/。
-					变体叠加,来自编译类型和编译特性。
-					库项目依赖项。
-				Gradle会按以下级联优先顺序合并重复资源 : 依赖项 → 主资源 → 编译特性 → 编译类型
-			3>	aapt2冗余资源的移除
-				gradle 3.0.0 使用了aapt2编译
-				booster 里面针对 RemoveRedundantFlatImages 操作是，在资源合并后，对于同名的png图片，它会取density最高的图片，然后把其他的图片删除
-		2.	图片压缩资源
-			sdk>17,使用cwebp命令将图片转为webp格式
-			sdk<17,使用pngquant命令对图片进行压缩
-			图片压缩具体实现：
-				assets下的图片资源压缩（flutter引入的话会导致失效）
-				res下的图片资源压缩
-			创建一个task,转换图片即可，压缩命令如下：ActionData(input, output, listOf(cmdline.executable!!.absolutePath, "-mt", "-quiet", "-q", "80", "-o", output.absolutePath, input.absolutePath))
-			cmdline.executable!!.absolutePath就是代表cwbp命令的位置。
-		3.	压缩resourceXX.ap_文件中的资源
-			遍历找到所有resourcesXX.ap_文件，对他们进行重新压缩打包，ap_.repack就是压缩的方法，并生成报告，压缩前，压缩后大小
-四.	其他
+五.	其他
 	1.	booster-task-all/booster-transform-all 动态加载模块
 		可以定制task和transform，然后设置classpath
 	2.	booster-transform-shared-preferences
@@ -128,5 +167,14 @@
 			5.删除常量
 			6.用常量替换资源索引
 	4.	
-		
+五.	原理讨论
+	1.	不可编译无用assets资源优化
+		1.找出assets资源
+			packageDebug / packageRelease 执行前，可以找到input的dex和assets
+		2.反汇编dex找出usedAssetsResources
+			反汇编apk包中dex文件，在内存生产smali相关数据，检索  const-string 指令 line，根据const-string指令 后面字符串常量值 与 assets资源名是否相等，找出usedAssetsResouces
+		3.根据配置解析出无用assets白名单
+		4.根据前三步，得到unusedAssetsResources
+		5.删除unusedAssetsResources文件
+			直接添加一个在 packageDebug / packageRelease 前doRemoveUnusedAssetsResources的task就可以了
 		
