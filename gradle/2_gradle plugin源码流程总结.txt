@@ -1,0 +1,69 @@
+一.	流程
+	app module 依赖 implementation 'com.android.tools.build:gradle:3.0.1' 即可查看agp源码
+	其主要分为以下几个流程
+	1.	准备工作
+		basePlugin.apply -> 
+		checkPluginVersion （检查插件版本）
+		checkModulesForErrors （检查 module 是否重名）
+		PluginInitializer.initialize/ProfilerInitializer.init/ProcessProfileWriter.getProject (初始化插件信息)
+	2.	配置项目
+		BasePlugin.configureProject ->
+		checkGradleVersion (检查 gradle 版本)
+		创建 AndroidBuilder和 DataBindingBuilder
+		apply(JavaBasePlugin.class)/ apply(JacocoPlugin.class); (引入 java plugin 和 jacoco plugin)
+		添加了 BuildListener，在 buildFinished 回调里做缓存清理工作
+	3.	配置 Extension
+		BasePlugin.configureExtension ->
+		createExtension (创建 AppExtension，也就是 build.gradle 里用到的 android {} dsl)
+		创建依赖管理，ndk管理，任务管理，variant管理
+		注册新增配置的回调函数，包括 signingConfig，buildType，productFlavor
+		创建默认的 debug 签名，创建 debug 和 release 两个 buildType
+	4.	创建不依赖 flavor 的 task
+		BasePlugin.createTasks ->
+		TaskManager.createTasksBeforeEvaluate
+		创建Task如下：
+			uninstallAll，deviceCheck，connectedCheck，preBuild，
+			extractProguardFiles，sourceSets，assembleAndroidTest，
+			compileLint，lint，lintChecks，cleanBuildCacheresolveConfigAttr，consumeConfigAttr
+	5.	创建构建 task
+		BasePlugin.createAndroidTasks ->
+		VariantManager.createAndroidTasks -> 
+
+		在其执行之前，通过 populateVariantDataList 生成 flavor 数据，然后通过 createTasksForVariantData创建 flavor 对应的 task
+
+		1.	populateVariantDataList
+
+			通过createVariantDataForProductFlavors 创建VariantData ，其中VariantData 都是 BaseVariantData 的子类，
+			看BaseVariantData 如下：
+			public abstract class BaseVariantData implements TaskContainer {
+			    private final GradleVariantConfiguration variantConfiguration;
+			    private VariantDependencies variantDependency;
+			    private final VariantScope scope;
+			    public Task preBuildTask;
+			    public Task sourceGenTask;
+			    public Task resourceGenTask; // 资源处理
+			    public Task assetGenTask;
+			    public CheckManifest checkManifestTask; // 检测manifest
+			    public AndroidTask<PackageSplitRes> packageSplitResourcesTask; // 打包资源
+			    public AndroidTask<PackageSplitAbi> packageSplitAbiTask;
+			    public RenderscriptCompile renderscriptCompileTask; 
+			    public MergeResources mergeResourcesTask; // 合并资源
+			    public ManifestProcessorTask processManifest; // 处理 manifest
+			    public MergeSourceSetFolders mergeAssetsTask; // 合并 assets
+			    public GenerateBuildConfig generateBuildConfigTask; // 生成 BuildConfig
+			    public GenerateResValues generateResValuesTask;
+			    public Sync processJavaResourcesTask;
+			    public NdkCompile ndkCompileTask; // ndk 编译
+			    public JavaCompile javacTask; 
+			    public Task compileTask;
+			    public Task javaCompilerTask; // java 文件编译
+			    // ...
+			}
+		2.	createTasksForVariantData
+			创建完 variant 数据，就要给 每个 variantData 创建对应的 task，对应的 task 有 assembleXXXTask，prebuildXXX，
+			generateXXXSource，generateXXXResources，generateXXXAssets，processXXXManifest 等等
+
+			具体可查看createTasksForVariantScope，其中 ApplicationTaskManager.createTasksForVariantScope()是具体实现类
+			
+		注意：	
+			TransformManager.addTransform 实际上是为 transform 创建了一个 Task
