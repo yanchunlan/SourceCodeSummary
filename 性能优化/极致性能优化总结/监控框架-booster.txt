@@ -51,7 +51,6 @@
 		通过android.webkit.WebViewFactory的getProvider方法可以得到Provider，在执行其startYourEngines就可以初始化Chromium引擎
 		将上面的初始化引擎的插装在application的onCreate方法里面
 三.	包体积瘦身
-	1.	booster-task-compression
 	主要做了三件事
 		1.	删除资源
 		2.	压缩图片资源
@@ -63,45 +62,49 @@
 			合并res资源(MergeResourcesTask)
 			合并assets资源(MergeAssetsTask)
 			处理资源,生成_.ap文件(ApkProcessTesTask)
-		资源压缩，就是创建了一些task在上面步骤之间
-		1.	资源删除
-			1>	冗余资源删除
-				在MergeResourcesTask之后执行
-				val klassRemoveRedundantFlatImages = if (aapt2) RemoveRedundantFlatImages::class else RemoveRedundantImages::class
-				variant.project.tasks.create（xxx）.dependsOn(variant.mergeResourcesTask)
-			2>	aapt冗余资源的移除
-				booster里面的 RemoveRedundantImages 什么都不做处理，因为gradle自己会移除资源
-				Gradle会在以下位置查找重复资源：
-					与主源集关联的主资源，通常位于 src/main/res/。
-					变体叠加,来自编译类型和编译特性。
-					库项目依赖项。
-				Gradle会按以下级联优先顺序合并重复资源 : 依赖项 → 主资源 → 编译特性 → 编译类型
-			3>	aapt2冗余资源的移除
-				gradle 3.0.0 使用了aapt2编译
-				booster 里面针对 RemoveRedundantFlatImages 操作是，在资源合并后，对于同名的png图片，它会取density最高的图片，然后把其他的图片删除
-		2.	图片压缩资源
-			sdk>17,使用cwebp命令将图片转为webp格式
-			sdk<17,使用pngquant命令对图片进行压缩
-			图片压缩具体实现：
-				assets下的图片资源压缩（flutter引入的话会导致失效）
-				res下的图片资源压缩
-			创建一个task,转换图片即可，压缩命令如下：ActionData(input, output, listOf(cmdline.executable!!.absolutePath, "-mt", "-quiet", "-q", "80", "-o", output.absolutePath, input.absolutePath))
-			cmdline.executable!!.absolutePath就是代表cwbp命令的位置。
-		3.	压缩resourceXX.ap_文件中的资源
-			遍历找到所有resourcesXX.ap_文件，对他们进行重新压缩打包，ap_.repack就是压缩的方法，并生成报告，压缩前，压缩后大小
-	2.	pbg图片压缩
+		资源压缩，就是创建了一些task在上面步骤之间	
+	1.	png图片压缩
 		在mergeRes与processRes之间执行，压缩操作，且根据aapt2是否开启做了区分
-	3.	webP图片压缩
+	1.	webP图片压缩
 		在14-17之间，webP是不支持带alpha通道的图
+		sdk>17,使用cwebp命令将图片转为webp格式
+		sdk<17,使用pngquant命令对图片进行压缩
+		图片压缩具体实现：
+			assets下的图片资源压缩（flutter引入的话会导致失效）
+			res下的图片资源压缩
+		创建一个task,转换图片即可，压缩命令如下：ActionData(input, output, listOf(cmdline.executable!!.absolutePath, "-mt", "-quiet", "-q", "80", "-o", output.absolutePath, input.absolutePath))
+		cmdline.executable!!.absolutePath就是代表cwbp命令的位置。
 		注意：goolePlay上架，icon必现是png
-		最佳使用是 >=18,webP，<18 png压缩
-	4.	zip文件压缩
+	2.	zip文件压缩
 		processRes执行后，生成ap_文件（AndroidManifest，res/*，resources.arsc），其实就是一个zip文件
 		但是执行生成ap_文件后，因为有2种压缩格式STORED（未压缩），DEFLATED（压缩），所以可能未压缩
 		processRes执行后，重新压缩ap_,并且指定格式其就是DEFLATED（压缩），保证其一定是压缩了
-	5.	资源索引内联（R去除，field去除）
-		
-
+		：：遍历找到所有resourcesXX.ap_文件，对他们进行重新压缩打包，ap_.repack就是压缩的方法，并生成报告，压缩前，压缩后大小
+	3.	资源索引内联（R去除，field去除）
+		解析 Symbol List (R.txt)，在transform 将 getfield 指令替换成 ldc 指令
+		该transform shrink的主要逻辑实现步骤如下：
+			1.读取符号列表symbolList，步骤6用到
+			2.读取白名单，支持类和常量字段粒度。（反射等）
+			3.考虑三方库需要保留的常量 （support,greenDao）
+			4.删除多余R类
+			5.删除常量
+			6.用常量替换资源索引
+	4.	移除冗余资源
+		实质上是保留最高 density 的资源，移除其他低 density 的资源
+		1>	冗余资源删除
+			在MergeResourcesTask之后执行
+			val klassRemoveRedundantFlatImages = if (aapt2) RemoveRedundantFlatImages::class else RemoveRedundantImages::class
+			variant.project.tasks.create（xxx）.dependsOn(variant.mergeResourcesTask)
+		2>	aapt冗余资源的移除
+			booster里面的 RemoveRedundantImages 什么都不做处理，因为gradle自己会移除资源
+			Gradle会在以下位置查找重复资源：
+				与主源集关联的主资源，通常位于 src/main/res/。
+				变体叠加,来自编译类型和编译特性。
+				库项目依赖项。
+			Gradle会按以下级联优先顺序合并重复资源 : 依赖项 → 主资源 → 编译特性 → 编译类型
+		3>	aapt2冗余资源的移除
+			gradle 3.0.0 使用了aapt2编译
+			booster 里面针对 RemoveRedundantFlatImages 操作是，在资源合并后，对于同名的png图片，它会取density最高的图片，然后把其他的图片删除
 四.	修复系统异常
 	1.	booster-transform-activity-thread
 		Hook了ActivityThread.mH.mCallback，使用代理类代理它，在代理类的handleMessage中
@@ -156,17 +159,12 @@
 五.	其他
 	1.	booster-task-all/booster-transform-all 动态加载模块
 		可以定制task和transform，然后设置classpath
-	2.	booster-transform-shared-preferences
-		shared-preferences的commit的操作放在异步执行
-	3.	booster-transform-shrink  常量删除：
-		该transform shrink的主要逻辑实现步骤如下：
-			1.读取符号列表symbolList，步骤6用到
-			2.读取白名单，支持类和常量字段粒度。（反射等）
-			3.考虑三方库需要保留的常量 （support,greenDao）
-			4.删除多余R类
-			5.删除常量
-			6.用常量替换资源索引
-	4.	
+	2.	booster-task-check-snapshot Release构建依赖检测
+		检查dependencies 的依赖，如果有SNAPSHOT，就打印出log
+	3.	booster-task-list-permission 权限清单检测
+	4.	booster-task-list-shared-library 动态库清单
+	5.	booster-task-list-artifact 构建中间产物清单
+		打印构建过程的细节和内部实现，以便于在合适的时机插入特定的 Task 来获取 AGP 的中间产物，为了方便 Gradle Plugin 的开发者
 五.	原理讨论
 	1.	不可编译无用assets资源优化
 		1.找出assets资源
