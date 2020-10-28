@@ -1,0 +1,44 @@
+一.	常用命令
+	1.	查询
+		查看主要任务	:	./gradlew tasks
+		查看所有任务，包括缓存任务等等	:	./gradlew tasks --all
+	2.	执行
+		对某个module [moduleName] 的某个任务[TaskName] 运行	:	./gradlew :moduleName:taskName
+	3.	构建
+		构建版本	:		./gradlew -v
+		清除 build 文件夹	:	./gradlew clean
+		检查依赖并编译打包:	 ./gradlew build
+		编译并安装 debug 包:	./gradlew installDebug
+		编译并打印日志:	./gradlew build --info
+		编译并输出性能报告，性能报告一般在构建工程根目录 build/reports/profile 下:	./gradlew build --profile
+		调试模式构建并打印堆栈日志:	./gradlew build --info --debug --stacktrace
+		强制更新最新依赖，清除构建后再构建:	./gradlew clean build --refresh-dependencies
+		编译并打 Debug 包:	./gradlew assembleDebug(简化版:	./gradlew aD)
+		编译并打 Release 的包:	./gradlew assembleRelease(简化版:	./gradlew aR)
+	4.	安装
+		卸载 Release 模式包：	./gradlew uninstallRelease
+		debug release 模式全部渠道打包：	./gradlew assemble
+	5.	查看
+		查看项目根目录下的依赖：	./gradlew dependencies
+		查看 app 模块下的依赖：	./gradlew app:dependencies
+		查看 app 模块下包含 implementation 关键字的依赖项目：	./gradlew app:dependencies --configuration implementation
+
+二.	编译分析
+	1.	本地的构建分析报告：	./gradlew assembleDebug --profile
+	2.	Build Scan （https://docs.gradle.com/enterprise/gradle-plugin/?&_ga=2.100043736.79666310.1541473383-2130798346.1527486300#getting_set_up）
+		 ./gradlew build --scan 
+		 没有权限就加上： chmod +x gradlew
+
+		1.	项目添加依赖在 根build.gradle buildscript的下方
+			plugins {
+			    id "com.gradle.build-scan" version "3.4.1"
+			}
+			gradleEnterprise {
+			    buildScan {
+			        termsOfServiceUrl = "https://gradle.com/terms-of-service"
+			        termsOfServiceAgree = "yes"
+			        publishAlways()
+			    }
+			}
+		2.	查看
+			performance -> task execution
