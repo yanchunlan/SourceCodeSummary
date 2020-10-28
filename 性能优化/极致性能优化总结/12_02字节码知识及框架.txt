@@ -28,6 +28,27 @@
 			3>.	各种Visitor类：如上所述，CoreAPI根据字节码从上到下依次处理，对于字节码文件中不同的区域有不同的Visitor，
 			比如用于访问方法的MethodVisitor、用于访问类变量的FieldVisitor、用于访问注解的AnnotationVisitor等。为了
 			实现AOP，重点要使用的是MethodVisitor。
+			4>.	classNodes:	继承与classVisitor,是对象模型，根据其可以获取属性/方法节点，然后遍历操作码，对指定的操作码执行查找，替换，删除，增加操作
+			5>.	classReader源码流程：
+				classReader.accept ->
+					读取了类的描述和属性信息
+					调用了 classVisitor 一系列的 visitxxx 方法访问 classReader 解析完字节码后保存在内存的信息
+					调用了 readField 方法和 readMethod 方法去访问类中的方法和字段
+					调用 classVisitor 的 visitEnd 标识已访问结束
+				readField ->
+					字段的描述和属性信息
+					访问了字段的描述、注解、类型注解及其属性信息
+					调用了 FieldVisitor 实例的 visitEnd 方法结束了字段信息的访问
+				readMethod ->
+					读取了方法的描述和属性信息
+					访问了方法的描述、参数、注解、属性、方法代码对应的字节码信息
+					readCode 方法中，也是先读取了方法内部代码的字节码信息，例如头部、属性等等，然后，便会访问对应的指令集
+					调用了 MethodVisitor 实例的 visitEnd 方法结束了方法信息的访问
+				总结：
+					其中的 ClassNode 其实就是 ClassVisitor 的一个子类，它负责将 ClassReader 传进来的信息进行分类储存。同样，MethodNode 
+					也是 MethodVisitor 的一个子类，它负责将 ClassReader 传进来的操作码指令信息连接成一个列表并保存其中。
+					而 ClassWriter 也是 ClassVisitor 的一个子类，但是，它并不会储存信息，而是马上会将传入的信息转译成字节码，并在之后随时输出它们。
+					对于 ClassReader 这个被访问者来说，它负责读取我们传入的类文件中的字节流数据，并提供解析流中包含的一切类属性信息的操作
 		tree API
 			整个存内存，消耗内存多，编程简单
 	6.	步骤

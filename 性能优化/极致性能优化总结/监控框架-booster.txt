@@ -175,4 +175,11 @@
 		4.根据前三步，得到unusedAssetsResources
 		5.删除unusedAssetsResources文件
 			直接添加一个在 packageDebug / packageRelease 前doRemoveUnusedAssetsResources的task就可以了
+六.	项目整体框架介绍
+	1.	instrument
+		待 hook 的数据
+	2.	task
+		task 插件
+	3.	transform
+		插状具体
 		

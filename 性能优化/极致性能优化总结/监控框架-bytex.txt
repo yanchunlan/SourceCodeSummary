@@ -1,1 +1,31 @@
-1.	
+一.	缩包优化
+	1.	去除R文件
+		shrink-r-plugin（R文件瘦身和无用资源检查）
+
+	2.	内联inline优化
+		access-inline-plugin（access方法内联）
+		const-inline-plugin（常量内联）
+		getter-setter-inline-plugin （getter和setter方法内联）
+
+	3.	opt优化
+		method-call-opt-plugin（干净地删除某些方法调用，如Log.d）
+		field-assign-opt-plugin（优化多余赋值指令）
+
+
+二.	代码检测
+	1.	refer-check-plugin（检查是否有调用不存在的方法和引用不存在的字段）
+
+	2.	closeable-check-plugin（文件流的close检查）
+		serialization-check-plugin（序列化检查）
+		ButterKnifeChecker（检测跨module使用ButterKnife可能导致的问题）
+
+
+三.	线上分析
+	1.	coverage-plugin（线上代码覆盖率）
+		用于分析类使用热度
+
+	2.	SourceFileKiller（删除SourceFile和行号属性，作为示例）
+		案列，删除后线上creash异常分析不出来
+
+	3.	RFileKnife（修复R.java太大编译报code too large的问题）
+		解决R文件太大的问题
