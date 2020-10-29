@@ -1,0 +1,108 @@
+一.	语法
+	1.	基础语法
+		1>	变量
+			基本类型： 无基本类型，编译后基本类型转化为对象类型
+			对象类型： 所有都是对象类型
+			def : object
+		2>	字符串
+			‘’， 转义字符使用
+			”“，	 可拓展部变量
+			‘’‘ ‘’‘，  常量
+		3>	关键字
+			as、assert、break、case、catch、class、const、continue、def、default、
+			do、else、enum、extends、false、finally、for、goto、if、implements、
+			import、in、instanceof、interface、new、null、package、return、super、
+			switch、this、throw、throws、trait、true、try、while
+	2.	闭包
+		1>	调用
+			定义：闭包的本质其实就是一个代码块
+				闭包对象.call(参数)
+				闭包对象(参数)
+			注意：
+				如果闭包没定义参数的话，则隐含有一个参数，这个参数名字叫 it，和 this 的作用类似
+				函数最后一个参数都是一个闭包，省略圆括号
+		2>	用法
+			this,	指向闭包定义处的类或实例对象本身
+			owner,	指向距离最近的闭包对象
+			delegate,	指向距离最近的闭包对象，此值可被修改（如果想委托生效，需要修改resolveStrategy = Closure.DELEGATE_ONLY,原值是Closure.OWNER_FIRST）
+	3.	数据结构
+		1>	list
+			1.	排序
+				sort
+			2.	添加
+				add
+				leftshift
+			3.	删除
+				remove
+			4.	查找
+				find
+				findall
+				any
+				enery
+			5.	最大最小
+				min
+				max
+			6.	统计
+				count
+		2>	map
+			1.	存取
+				anotherkey
+			2.	遍历 each
+			3.	遍历 eachWithIndex
+			4.	分组 groupBy
+			5.	查找 findAll
+		3>	range
+			范围，begin 值 + 两个点 + < + end，通过 aRange.from 与 aRange.to 来获对应的边界元素
+	4.	面向对象
+		1>	元编程
+			可以通过类的metaClass，来对对象里面的值进行赋值操作
+		2>	脚本中的变量和作用域
+			需要使用 @Field 将当前变量标记为成员变量
+	5.	文件处理
+		1>	读
+			eachLine
+			newInputStream
+			close
+			withInputStream{ }
+		1>	写
+			withOutputStream{ }
+
+			new File(sourcePath).withReader { reader ->
+	            def lines = reader.readLines()
+	            desFile.withWriter { writer ->
+	                lines.each { line ->
+	                    writer.append(line + "\r\n")
+	            }
+	            }
+	        }
+
+	        desFile.withObjectOutputStream { out ->
+           		out.writeObject(object)
+        	}
+
+        	file.withObjectInputStream { input ->
+	            obj = input.readObject()
+	        }
+		3>	xml
+			1.	获取
+				使用 XmlSlurper 来解析此 xml 数据
+					def xmlSluper = new XmlSlurper()
+					def response = xmlSluper.parseText(xml)
+				2种遍历方式：
+				1>	深度遍历
+					def titles = response.depthFirst().findAll { book ->
+					    return book.author.text() == '李刚' ? true : false
+					}
+					println titles.toListString()
+				2>	广度遍历
+					def name = response.value.books.children().findAll { node ->
+					    node.name() == 'book' && node.@id == '2'
+					}.collect { node ->
+					    return node.title.text()
+					}
+				实例（获取 AndroidManifest.xml 的版本号versionName）：
+				def androidManifest = new XmlSlurper().parse("AndroidManifest.xml") println androidManifest['@android:versionName']
+			2.	生成
+				使用 xmlBuilder 来创建 XML 文件
+		4>	json数据
+			使用 Groovy 中提供的 JsonSlurper 类去替代 Gson 解析网络响应
