@@ -1,4 +1,78 @@
-一.	流程
+一.	gradle 命令执行流程
+	具体流程在如下：
+		图 3- agp构建流程
+
+	其中最重要的是五大生命周期的流程如下：
+
+	1.loadSetting
+		getLoadedSettings ->
+		doBuildStages ->
+		doClassicBuildStages (重点，此方法有分发)->
+			Stage == LoadSettings  ->  prepareSettings
+			Stage == Configure -> prepareProjects
+			Stage == TaskGraph -> prepareTaskExecution
+			Stage == RunTasks -> saveTaskGraph,tasks.runAction
+		其中，prepareSettings -> 
+			BuildListener.buildStarted
+			DefaultSettingsPreparer.prepareSettings ->
+				 init.gradle
+				 DefaultSettingsLoader.findAndLoadSettings（即查找setting.gradle） ->
+				 	查找 settings.gradle 
+				 	编译 buildSrc
+				 	解析 gradle.properites 
+				 	解析 settings.gradle 文件
+				 	创建 project 以及 subproject 实例
+	2.	configure
+		prepareProjects ->
+		DefaultProjectsPreparer.prepareProjects ->
+		TaskPathProjectEvaluator.configureHierarchy ->
+		EvaluateProject.run ->
+			ProjectEvaluationListener.beforeEvaluate
+			evaluate.init、wrapper task 和 默认插件，然后便会编译并执行 build.gradle 脚本
+			ProjectEvaluationListener.afterEvaluate
+	3.	taskGraph
+		DefaultGradleLauncher.prepareTaskExecution -> 
+		BuildOperatingFiringTaskExecutionPreparer.prepareForTaskExecution ->
+		CalculateTaskGraph.run ->
+		populateTaskGraph ->
+		DefaultTaskExecutionPreparer.prepareForTaskExecution  ->
+		buildConfigurationActionExecuter.select ->
+			ExcludedTaskFilteringBuildConfigurationAction.configure(处理需要排除的task)
+			DefaultTasksBuildExecutionAction.configure(添加默认的task)
+			TaskNameResolvingBuildConfigurationAction.configure（计算 task 依赖图）
+		返回，执行 taskGraph.populate
+	4.	runTask
+		DefaultGradleLauncher.executeTasks ->
+		doBuildStages.doClassicBuildStages ->
+		runWork ->
+		DefaultBuildWorkExecutor.execute ->
+			BuildExecutionAction.DryRunBuildExecutionAction
+			SelectedTaskExecutionAction.BindAllReferencesOfProjectsToExecuteListener ->
+				DefaultTaskExecutionGraph.execute ->
+				DefaultTaskExecutionGraph.executeWithServices ->
+				DefaultPlanExecutor.process ->
+				startAdditionalWorkers
+			DefaultBuildOperationExecutor.run ->
+				TaskExecutionListener.beforeExecute
+					1) 、CatchExceptionTaskExecuter#execute：增加 try catch，避免执行过程中发生异常。
+					2）、ExecuteAtMostOnceTaskExecuter#execute：判断 task 是否执行过。
+					3）、SkipOnlyIfTaskExecuter#execute：判断 task 的 onlyif 条件是否满足执行。
+					4）、SkipTaskWithNoActionsExecuter#execute：跳过没有 action 的 task，如果没有 action 说明 task 不需要执行。
+					5）、ResolveTaskArtifactStateTaskExecuter#execute：设置 artifact 的状态。
+					6）、SkipEmptySourceFilesTaskExecuter#execut：跳过设置了 source file 且 source file 为空的 task，如果 source file 为空则说明 task 没有需要处理的资源。
+					7）、ValidatingTaskExecuter#execute：确认 task 是否可以执行。
+					8）、ResolveTaskOutputCachingStateExecuter#execute：处理 task 输出缓存。
+					9）、SkipUpToDateTaskExecuter#execute：跳过 update-to-date 的 task。
+					10）、ExecuteActionsTaskExecuter#execute：用来真正执行 Task 的 executer
+			ExecuteActionsTaskExecuter.execute ->
+				ExecuteActionsTaskExecuter.TaskExecution.execute ->
+					TaskActionListener.beforeActions
+					内部会遍历执行 Task 所有的 Action
+					TaskActionListener.afterActions
+	5.	finished
+		 buildListener.buildFinished
+		 
+二.	appPlugin构建流程
 	app module 依赖 implementation 'com.android.tools.build:gradle:3.0.1' 即可查看agp源码
 	其主要分为以下几个流程
 	1.	准备工作
