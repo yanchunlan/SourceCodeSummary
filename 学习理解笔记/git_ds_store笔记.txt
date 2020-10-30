@@ -7,6 +7,9 @@
 
 	find / -name ".DS_Store" -type f -delete
 
+加入到 .gitignore:
+	
+	echo .DS_Store >> ~/.gitignore
 
 禁止.DS_store生成：
 
