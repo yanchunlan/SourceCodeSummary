@@ -1,0 +1,88 @@
+一.	异常捕获方案
+	1.	thread.setDefaultUncaughtExeceptionHandler + breakPad
+	breakPad 生成的dump文件需要转换，且较大，维护困难
+	2.	xcreash(爱奇艺)
+	奔溃生成tombstone，可直接分析，大小较小
+	3.	bugly(腾讯)
+	以上都具备
+	总结：
+		优先级：bugly > xcreash > 默认
+
+二.	java异常
+	zgoteInit ->
+	UncaughtHandler.uncaughtException (此处是添加了监听) ->				
+	commonInit ( setDefaultUncaughtExecepttionHandler ) ->
+	handlerApplicationCreash ->
+		(ams)handlerApplicationCreashInner ->
+		addErrorToDropBox（将进程crash信息存储/data/system/dropbox中） ->
+		creashApplication ->
+		handlerAppCreashingLocked ->
+		sendMessage(SHOW_ERROR_MSG) -> 弹出异常对话框
+
+	当运行时异常，虚拟机在thread.cc回调CallVoidMethod（“uncaughtException”）,回调上面java的方法，执行异常后的处理操作
+
+三.	native异常
+	大概流程： native 异常，kernel发送signal，target进程捕获signal，然后与debuggerd建立socket通信，执行dump操作
+	信号量定义在： signal.h 文件
+
+	具体流程：（android 6.0）
+	1.	信号处理函数注册
+		init (begin.s) ->
+		_linker_init (linker.cpp) ->
+			_linker_init_post_relocation
+			debuggerd_init 					->
+		debugerd_signal_handler(debugger.cpp)
+		send_debuggerd_packet
+
+		上面是注册与监听
+
+	2.	debuggerd收集奔溃信息
+		接上面大概流程，debuggerd作为服务端会接受到DEBUGGER_ACTION_CRASH消息，然后debuggerd执行下面流程：
+		1>	接受target进程发送来的socket请求，fork子进程来处理任务
+		2>	子进程创建tombstone文件，并dump收集相关信息，包括设备基本信息，backtrace,stack,系统locat
+		3>	socket到system_server进程走crash流程
+
+	3.	ams走应用crash流程
+		直接回调到 java 层的 handlerApplicationCreash 方法
+			写入crash信息到dropbox,开始死亡回调，杀进程，清理进程四大组件，弹出crash对话框
+
+四.	xcreash（2.5.7）分析
+	xcrash.init 内部有3种（java，native,anr）handler处理奔溃和日志收集,fileManager和tombstoneManager对奔溃日志进行tombstone文件管理
+	client调用tombstoneParser解析本地生成对应的tombstone文件获取数据
+	1>	java 奔溃捕获
+		thread.setDefaultUncaughtExeceptionHandler ->
+		handlerException ->
+			native 通知javacrash
+			anr 通知javacrash
+			logFile 写入文件到/data/data/packageName/files/tombstone
+			执行回调 callback.oncrash
+
+	2>	native 奔溃捕获
+		Crash.init ->
+		NativeHandler.initialize ->
+		nativeInit 动态注册native函数 ->
+		xc_jni.xc_jni_init ->
+			xc_crash_init / xc_trace_init ->
+				
+			xc_crash_init -> 
+			xc_crash_init_callback
+				-> NativeHandler.crashCallBack 
+			xcc_signal_crash_register 
+				-> xc_crash_signal_handler
+				-> xc_crash_exec_dumper
+				接下来是各种数据的 dump，搜其main函数，就可知其实现细节
+
+		奔溃处理步骤总结：
+			注册信号函数（signal handler）
+			奔溃发送创建子进程收集信息（避免在崩溃进程调用函数的系统限制）
+			suspend崩溃进程中所有的线程，暂停logcat输出，收集logcat
+			收集backtrace等信息
+			收集内存数据
+			完成后恢复线程
+
+	3>	anr 捕获
+		Crash.init ->
+		AnrHandler.initialize ->
+
+五.	anr日志生成与捕获分析
+
