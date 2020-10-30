@@ -13,20 +13,17 @@
 		new TransformTask.CreationAction
 
 二.	重要Task源码分析
-	1.	资源处理相关Task
-		1>	precessDebugManifest
-			processDebugManifest.dofFullTaskAction -> 
-			ManifestHelperKt.mergeManifestsForApplication -> 
-			ManifestMerge2.merge
+	1.	资源处理相关 Task
+		1>	generateDebugBuildConfig
+			GenerateBuildConfig.generate -> 
+			BuildConfigGenerator.generate -> 
+			JavaWriter
 
-			1、获取主 manifest 的信息，以做一些必要的检查，这里会返回一个 LoadedManifestInfo 实例。
-			2、执行 Manifest 中的系统属性注入：将主 Manifest 中定义的某些属性替换成 gradle 中定义的属性，例如 package, version_code, version_name, min_sdk_versin 、target_sdk_version、max_sdk_version 等等
-			3、合并 flavors 并且构建与之对应的 manifest 文件。
-			4、合并库中的 manifest 文件
-			5、执行 manifest 文件中的 placeholder 替换
-			6、之后对最终合并后的 manifest 中的一些属性进行一次替换，与步骤 2 类似。
-			7、保存 manifest 到 build/intermediates/merged_manifests/flavorName/AndroidManifest.xml，至此，已生成最终的 Manifest 文件
-
+			1、生成 BuildConfigGenerator
+			2、添加默认的属性，包括 DEBUG，APPLICATION_ID，FLAVOR，VERSION_CODE，VERSION_NAME
+			3、添加自定义属性
+			4、调用 JavaWriter 生成 BuildConfig.java 文件
+	
 		2>	mergeDebugResource
 			MergeResources.doFullTaskAction -> 
 			ResourceMerger.mergeData -> 
@@ -44,32 +41,97 @@
 			8、调用 MergedResourceWriter 的 start，ignoreItemInMerge、removeItem、addItem，end 方法，其中 item 中包括了需要处理的资源，包括 xml 和 图片资源，每一个 item 对应的文件，都会创建一个与之对应的 CompileResourceRequest 实例，并加入到 mCompileResourceRequests 这个 ConcurrentLinkedQueue 队列中
 			9、调用 mResourceCompiler.submitCompile 方法处理资源。
 			10、最后，对 doIncrementalTaskAction 的实现，使用修改后的文件去获取 resourceSets 。
+		
+		3>	processDebugResources
+			ProcessAndroidResources.doFullTaskAction -> 
+			ProcessAndroidResources.invokeAaptForSplit -> 
+			AndroidBuilder.processResources -> 
+			QueueAapt2.link -> 
+			Aapt2QueuedResourceProcessor.link -> 
+			AaptProcess.link -> 
+			AaptV2CommandBuilder.makeLink
+
+			1、获取 split 数据
+			2、先处理 main 和 不依赖 density 的 ApkData 资源
+			3、调用 invokeAaptForSplit 处理资源
+			4、调用 AndroidBuilder.processResources -> 
+					QueueAapt2.link -> 
+					Aapt2QueuedResourceProcessor.link -> 
+					AaptProcess.link -> 
+					AaptV2CommandBuilder.makeLink 处理资源，生成资源包以及 R.java 文件
+			5、处理其他 ApkData 资源，这里只会生成资源包而不会生成 R.java 文件
+
+		4>	precessDebugManifest
+			processDebugManifest.dofFullTaskAction -> 
+			ManifestHelperKt.mergeManifestsForApplication -> 
+			ManifestMerge2.merge
+
+			1、获取主 manifest 的信息，以做一些必要的检查，这里会返回一个 LoadedManifestInfo 实例。
+			2、执行 Manifest 中的系统属性注入：将主 Manifest 中定义的某些属性替换成 gradle 中定义的属性，例如 package, version_code, version_name, min_sdk_versin 、target_sdk_version、max_sdk_version 等等
+			3、合并 flavors 并且构建与之对应的 manifest 文件。
+			4、合并库中的 manifest 文件
+			5、执行 manifest 文件中的 placeholder 替换
+			6、之后对最终合并后的 manifest 中的一些属性进行一次替换，与步骤 2 类似。
+			7、保存 manifest 到 build/intermediates/merged_manifests/flavorName/AndroidManifest.xml，至此，已生成最终的 Manifest 文件
+
+	2.	类处理相关 Task
+		1>	transformClassesWithDexBuilderForDebug ( class -> dex )
+			DexArchiveBuilderTransform.transform -> 
+			DexArchiveBuilderTransform.convertJarToDexArchive -> 
+			DexArchiveBuilderTransform.convertToDexArchive -> 
+			DexArchiveBuilderTransform.launchProcessing -> 
+			DxDexArchiveBuilder.convert
+
+			class处理分2种处理方式：
+			1>	对 .jar 里面的 class 进行处理
+				convertJarToDexArchive:	对每一个class打成Dex文件，再放置jar包
+
+			2>	对 目录下的 class 进行处理
+				convertToDexArchive ->
+				launchProcessing -> 
+					1.	判断目录下的 class 是否新增或者修改过
+					2.	调用 DexArchiveBuilder.build 去处理修改过的 class
+					3.	DexArchiveBuilder 有两个子类，D8DexArchiveBuilder 和 DxDexArchiveBuilder，分别是调用 d8 和 dx 去打 dexßßß
+				dexArchiveBuilder
+
+				其中 DexArchiveBuilder 有2个子类，D8DexArchiveBuilder/DxDexArchiveBuilder
+
+				假如是D8处理，处理流程如下步骤：(D8DexArchiveBuilder.convert)
+
+					1）、创建一个 D8 诊断信息处理器实例，用于发出不同级别的诊断信息，共分为三类，由严重程度递减分别为：error、warning、info。
+					2）、创建一个 D8 命令构建器实例。
+					3）、遍历读取每一个类的字节数据。
+					4）、给 D8 命令构建器实例设置一系列的配置，例如 编译模式、最小 Sdk 版本等等。
+					5）、使用 com.android.tools.r8 工具包中的 D8 类的 run 方法运行组装后的 D8 命令
+
+		2>	transformDexArchiveWithExternalLibsDexMergerForDebug （ 依赖的 dex merge -> dex ）
 			
-	2.	class打包成dex （DexArchiveBuilderTask）
-		DexArchiveBuilderTask.doTaskAction -> 
-		DexArchiveBuilderTaskDelegate.doProcess -> 
-		DexArchiveBuilderTaskDelegate.processClassFromInput -> 
-		DexArchiveBuilderTaskDelegate.convertToDexArchive -> 
-		DexArchiveBuilderTaskDelegate.launchProcessing -> 
-		DexArchiveBuilder.convert
+			// dx
+			ExternalLibsMergerTransform.transform -> 
+			DexMergerTransformCallable.call -> 
+			DxDexArchiveMerger.mergeDexArchives -> 
+			DxDexArchiveMerger.mergeMonoDex -> 
+			DexArchiveMergerCallable.call -> 
+			DexMerger.merge
 
-		class处理分2种处理方式：
-		1>	对 .jar 里面的 class 进行处理
-			convertJarToDexArchive:	对每一个class打成Dex文件，再放置jar包
+			// d8
+			ExternalLibsMergerTransform.transform -> 
+			DexMergerTransformCallable.call -> 
+			D8DexArchiveMerger.mergeDexArchives -> 调用 D8 命令
 
-		2>	对 目录下的 class 进行处理
-			convertToDexArchive ->
-			launchProcessing -> 
-			dexArchiveBuilder
+		3>	transformDexArchiveWithDexMergerForDebug ( dex merge -> dex )
 
-			其中 DexArchiveBuilder 有2个子类，D8DexArchiveBuilder/DxDexArchiveBuilder
+			// dx
+			DexMergerTransform.transform -> 
+			DexMergerTransform.handleLegacyAndMonoDex -> 
+			DexMergerTransformCallable.call -> 
+			DxDexArchiveMerger.mergeDexArchives -> 
+			DxDexArchiveMerger.mergeMonoDex -> 
+			DexArchiveMergerCallable.call -> 
+			DexMerger.merge
 
-			假如是D8处理，处理流程如下步骤：(D8DexArchiveBuilder.convert)
-			
-				1）、创建一个 D8 诊断信息处理器实例，用于发出不同级别的诊断信息，共分为三类，由严重程度递减分别为：error、warning、info。
-				2）、创建一个 D8 命令构建器实例。
-				3）、遍历读取每一个类的字节数据。
-				4）、给 D8 命令构建器实例设置一系列的配置，例如 编译模式、最小 Sdk 版本等等。
-				5）、使用 com.android.tools.r8 工具包中的 D8 类的 run 方法运行组装后的 D8 命令
-
-
+			// d8
+			DexMergerTransform.transform -> 
+			DexMergerTransform.handleLegacyAndMonoDex -> 
+			DexMergerTransformCallable.call -> 
+			D8DexArchiveMerger.mergeDexArchives -> 调用 D8 命令
