@@ -1,0 +1,17 @@
+删除当前目录及其子目录下的所有.DS_Store 文件：
+
+	find . -name '*.DS_Store' -type f -delete
+
+删除所有目录下的所有.DS_Store 文件：
+
+
+	find / -name ".DS_Store" -type f -delete
+
+
+禁止.DS_store生成：
+
+	defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool TRUE
+
+恢复.DS_store生成：
+	
+	defaults delete com.apple.desktopservices DSDontWriteNetworkStores
