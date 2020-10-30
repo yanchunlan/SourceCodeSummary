@@ -71,7 +71,7 @@
 					TaskActionListener.afterActions
 	5.	finished
 		 buildListener.buildFinished
-		 
+	
 二.	appPlugin构建流程
 	app module 依赖 implementation 'com.android.tools.build:gradle:3.0.1' 即可查看agp源码
 	其主要分为以下几个流程
@@ -141,3 +141,7 @@
 			
 		注意：	
 			TransformManager.addTransform 实际上是为 transform 创建了一个 Task
+三.	gradle 脚本如何编译和执行
+	总结：
+	1.	脚本编译流程 获取脚本内容 -> 编译成 class 文件，继承自 ProjectScript -> 执行 ProjectScript.run 方法
+	2.	脚本的 buildscript 在脚本其他内容前执行
