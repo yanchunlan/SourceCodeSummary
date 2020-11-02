@@ -9,7 +9,7 @@
 
 加入到 .gitignore:
 	
-	echo .DS_Store >> ~/.gitignore
+	add *.DS_Store 到 ~/.gitignore 文件中
 
 禁止.DS_store生成：
 

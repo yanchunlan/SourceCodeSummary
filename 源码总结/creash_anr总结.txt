@@ -43,7 +43,7 @@
 		3>	socket到system_server进程走crash流程
 
 	3.	ams走应用crash流程
-		直接回调到 java 层的 handlerApplicationCreash 方法
+		直接回调到 java 层的 handlerApplicationCrash 方法
 			写入crash信息到dropbox,开始死亡回调，杀进程，清理进程四大组件，弹出crash对话框
 
 四.	xcreash（2.5.7）分析
@@ -82,7 +82,117 @@
 
 	3>	anr 捕获
 		Crash.init ->
-		AnrHandler.initialize ->
+		AnrHandler.initialize(Build.VERSION.SDK_INT <21 才拦截,因为此处FileObserver读取监听/data/anr/的权限只支持到<21版本) ->
+		FileObserver.handleAnr ->
+		checkProcessAnrState (ams的的mLruProcesses中过滤出crash和anr异常的进程，返回对应的错误信息)
+
+		如果Build.VERSION.SDK_INT>21
+		NativeHandler.initialize ->
+		xc_trace_init ->
+		xcc_signal_trace_register(xc_trace_handler) (native 注册 SIGNAL_QUIT 信号) ->
+		xc_trace_dumper (xc_trace_dumper线程会解除阻塞状态开始执行dump任务)
 
 五.	anr日志生成与捕获分析
+	1.	anr的生成
+		实质都是启动过程中先发送了一个msg消息，执行anr弹窗操作，然后在启动结束回调中移除此消息
+		1>	Service每个函数（前台20s，后台200s）：
+			as.realStertServiceLocked ->
+				bumpServiceExecutiongLocked ->
+					scheduleServiceTimeOutLocked ->
+						m.Am.mHnadler.sendMessageAtTime(SERVICE_TIMEOUT_MSG)
+
+			AT.handleCreateService ->
+				AMS.serviceDoneExecuting ->
+					AS.serviceDoneExecutingLocked ->
+						m.Am.mHnalder.removeMessagees(SERVICE_TIMEOUT_MSG)
+
+		2>	BroadcastReceiver.onReceive(前台10s,后台60s)
+			BQ.processNextBroadcast ->
+				broadcastTimeOutLocked ->
+					setbroadcastTimeOutLocked ->
+						mHandler.obtainMessage(BROADCAST_TIMEOUT_MSG)
+
+			BQ.processNextBroadcast ->
+				cancelBroadcastTimeOutLocked ->
+					mHnadler.removeMessagees(BROADCAST_TIMEOUT_MSG)
+
+		3>	ContentProvider(10s)
+			AMS.attachApplicationLocked ->
+				mHandler.obtainMessage(CONTENT_PROVIDER_PUBLISH_TIMEOUT_MSG)
+
+			AMS.attachApplicationLocked ->
+				mHandler.removeMessagees(CONTENT_PROVIDER_PUBLISH_TIMEOUT_MSG)
+
+		4>	input (当前输入事件5s未处理完成)
+
+		上面发生anr的日志生成：
+			发送超时消息之后， -> 	
+			AppErrors.appNotResponding (收集信息，调用服务，dump写入数据，添加DropBox弹窗ANR,发送handler消息SHOW_NOT_RESPONDING_UI_MSG,)
+
+	2.	anr的分析
+		分析总共可发分为如下4步：
+		1>	确定ANR发生时间,关键字:am_anr,ANR in
+			通过am_anr 和 ANR in ,确定ANR发生的时间、对应的进程、原因描述,CPU占用和iowait时间有特别异常的也需要关注
+
+		2>	查看trace及系统附加信息关键字:MIUI-BLOCK-MONITOR
+			/data/anr/traces.txt
+
+		3>	系统耗时关键字:binder_sample,dvm_lock_sample，am_lifecycle_sample，binder thread
+			binder_sample:	监控每个进程的主线程的binder transaction的耗时情况，超阀值输出
+			dvm_lock_sample:	线程等待lock的时间，超过阈值输出
+			am_lifecycle_sample:	主线程的生命周期回调方法执行时间超过阈值输出
+			binder thread:	system_server等进程的线程池使用完，无空闲线程时，此时称饥饿状态, 则饥饿状态超过一定阈值则输出信息
+
+		4>	源码及逻辑分析
+
+	3.	anr的日志收集方式
+		1>	低版本	FileObserver+ProcessErrorStateInfo
+			FileObserver:
+				监听/data/anr/目录下对应的trace文件,读取相关trace信息
+
+				如下：
+					/**
+					fileObserver = new FileObserver("/data/anr/", CLOSE_WRITE) {
+						onEvent()
+					}
+					fileObserver.startWatching();//启动监听
+					fileObserver.stopWatching();//停止监听
+					*/
+
+					FileObserver.startWatching -> 
+					ObserverThread.startWatching ->
+					android_os_fileobserver_startWatching ->
+					inotify_add_watch
+
+					inotify是文件系统变化通知机制，在监听到文件系统变化后，会向相应的应用程序发送事件
+
+					SELinux(或SEAndroid)将app划分为主要三种类型(根据user不同，也有其他的domain类型)：
+						untrusted_app：第三方app，没有android平台签名，没有system权限
+						platform_app：有android平台签名，没有system权限
+						system_app：有android平台签名和system权限
+
+			ProcessErrorStateInfo:
+				从 ProcessErrorStateInfo 中获取report(notRespondingReport初始化的地方在AppErrors.appNotResponding中调用的makeAppNotRespondingLocked)
+
+		2>	高版本	native 注册 SIGNAL_QUIT 信号，ANR发生时接收回调去收集ANR信息
+
+		总结：
+			xcrash 与bugly都是采用上述方式
+
+	4>	anr 捕获第三方
+		ANRWatchDog：
+			创建单独进程，向主线程handler发送+1消息，并定义anr阀值，休眠后判断变量是否+1完成，未完成就警告并抓取anr信息，堆栈信息
+
+		BlockCanary：
+			主线程looper的loop方法在寻找msg.target.dispatchMessage(msg)，前后打印log,时间差，满足阀值就定义是卡顿
+
+		fpsViewer:
+			Choreographer.doFrame两个绘制之间（正常<16ms）大于200ms就定义是卡顿
+
+		dokit:
+			Choreographer.doFrame两个绘制之间（正常<16ms）大于200ms就定义是卡顿
+
+		微信Matrix的TraceCanary：
+			Choreographer.doFrame两个绘制之间（正常<16ms）大于200ms就定义是卡顿，从buffer（字节码方法前后插装方法id与序列，执行方法中存储这些信息到buffer）取出方法的堆栈序列，上传后台，后台根据执行顺序id，给出堆栈信息
+
 
