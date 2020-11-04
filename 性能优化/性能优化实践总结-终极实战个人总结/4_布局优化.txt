@@ -1,0 +1,7 @@
+1.	gfxinfo
+2.	cpu profile(是traceView，systrace，simplePref三大工具的集成)
+2.	traceView
+3.	systrace(完整版android 4.3sdk)
+4.	simplePref(android 5.0只支持c++,9.0是支持java/c++)
+	分析方法:
+	具体是根据systrace定位具体范围，再根据traceView定位具体方法

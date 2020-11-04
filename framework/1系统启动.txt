@@ -1,0 +1,165 @@
+一.	开篇
+	系统分层：
+		Loader -> Kernel -> Native -> Framework -> App
+	loader：	激活Kernel
+		启动电源以及系统启动，引导程序Bootloader，linux内核启动
+	Kernel层：Android内核空间，刚进入Android系统
+		Bootloader启动Kernel的swapper进程（pid=0），用于初始化进程管理、内存管理、加载各种驱动，启动init用户进程（pid=1），启动threadd内核进程（pid=2)
+	native层：进入用户空间
+		孵化各种系统级服务、守护进程，Zygote进程，Media Server进程（启动和管理整个C++ framework，如AudioFlinger，Camera Service等服务）
+	Framework层：在Native之上，也是用户空间，主要给app层提供api以及系统服务
+		 Zygote进程，System Server进程（负责启动和管理整个Java framework，如AMS、WMS、PMS等）
+	app层：由Zygote进程fork生成的
+		第一个App进程是Launcher，还有Browser，Phone，Email等app进程
+
+二.	init（android 7.0）
+	init是第一个进程pid=1,主要孵化各种属性服务、守护进程也包括非常重要的Zygote，位于system/core/init
+	流程如下：
+		当内核完成系统设置 ->
+		init.main(/system/core/init/Init.cpp) ->
+			创建文件并挂载
+			初始化属性相关资源
+			启动属性服务
+			解析init.rc配置文件
+			启动zygote进程
+	1.	初始化属性相关资源、启动属性服务
+		键值对存储记录用户、软件使用信息，如果系统重启，就根据这个记录，进行初始化工作；getprop可查看有哪些属性
+	2.	解析init.rc配置文件、启动zygote进程
+		1>	Android Init Language
+			init.rc:	即Android初始化语言编写的脚本，其包含4种类型语句，Action、Commands、Services，Options
+			1.	action
+				on开头，决定何时执行service
+			2.	Service
+				初始化启动，退出时重启，由init进程启动，先判断可执行文件是否存在，通过fork启动一个子进程
+			3.	Command
+				要执行的命令
+			4.	Option
+				Options是Services的可选项,与service配合使用
+			5.	import
+				导入其他rc文件,如：import /xxx.rc
+		2>	zygote进程启动
+			解析init.rc文件，其中解析到有zygote,是在system/core/rootdir/init.zygoteXX.rc中有初始化，
+			其初始化是创建了zygote结构体，socketinfo结构体（socket通信）,4个onrestart的action结构体
+			init.main (init.cpp) ->
+			do_class_start (init_parse.cpp) ->
+			fork子进程 (service.cpp) ->
+			执行execve ->
+			App_main.main(app_main.cpp) ->
+			androidRuntime -> 启动zygote
+	3.	服务重启
+		init进程会启动很多native的service,这些service如果不是oneshot,其异常之后，需要被重启（servicemanager ，zygote ，surfaceflinger，zygote，仅此4服务具备可重启）
+
+		观察期.rc文件也可以看到有onrestart指令
+	init的总结：
+		1>	创建一些文件夹并挂载设备
+		2>	初始化和启动属性服务
+		3>	通过解析init.rc 和 其他对应rc文件,启动对应的系统级进程。包括zygote等
+
+三.	zygote
+	Zygote是java进程的爹，启动创建虚拟机，可fork应用程序进程和systemServer进程
+	1.	zygote启动流程
+		1>	AndroidRuntime.cpp
+		app_main.start ->
+			startVm(创建javaVM即DVM)
+			startReg（为DVM注册JNI）
+			ZygoteInit.main ->
+				CallStaticVoidMethod,调用java层的main
+		2>	ZygoteInit.java(frameworks/base/core/java/com/android/internal/os/ZygoteInit.java main)
+			ZygoteInit.main ->
+				registerZygoteSocket（注册Zygote用的Socket，待SystemServer进程启动后，就等待ams请求zygote创建新应用程序）
+				preload（预加载的资源、类、虚拟机实例）
+				startSystemServer（启动SystemServer进程，其包含framework的核心服务）
+				runSelectLoop（轮训处理AMS创建应用请求，通过ZygoteConnection.runOnce去创建应用进程）
+		总结： 1_1_zygote.png
+			1.	解析init.zygote.rc中的参数，创建AppRuntime并调用AppRuntime.start()方法；
+			2.	调用AndroidRuntime的startVM()方法创建虚拟机，再调用startReg()注册JNI函数；
+			3.	通过JNI方式调用ZygoteInit.main()，第一次进入Java世界；
+			4.	registerZygoteSocket()建立socket通道，zygote作为通信的服务端，用于响应客户端请求；
+			5.	preload()预加载通用类、drawable和color资源、openGL以及共享库以及WebView，用于提高app启动效率；
+			6.	zygote完毕大部分工作，接下来再通过startSystemServer()，fork得力帮手system_server进程，也是上层framework的运行载体。
+			7.	zygote功成身退，调用runSelectLoop()，随时待命，当接收到请求创建新进程请求时立即唤醒并执行相应工作
+			8.	同时会因为surfaceflinger,servicemanager、system_server,进程被杀而被动触发Zygote重启。
+			9.	android 5.0以上系统,有zygote、zygote642个进程，ps | grep zygote 可查看
+
+	2.	copy-on-write fork
+		提高fork效率，采用此技术
+		原理：
+			父进程fork一个子进程，刚fork之后，这两个虚拟地址实际上指向的是相同的物理地址（内存页），且把父子共享的页面标记为“只读”，但如果其中任
+			何一个进程要对共享的页面“写操作”，这时内核会复制一个物理页面给这个进程使用，同时修改页表，把原来的只读页面标记为“可写”，留给另外一个进程使用
+			此时两个虚拟地址指向不同的物理地址（新的物理地址的内容从原物理地址中复制得到）。
+		列如：	Zygote进程fork应用程序进程
+			父子进程先是共享相同物理地址资源，仅只能读不能写，如果此时应用进程开始写操作，那么会从Zygote原物理地址中复制内容到一块新的物理地址上，供应
+			程序进程使用。这样子进程可以高效而完整地继承父进程内存地址中的数据。
+
+四.	systemServer
+	1.	SystemServer启动流程
+		1>	Zygote fork SystemServer
+		2>	当system_server进程创建失败时，将会重启zygote进程
+		3>	Zygote通过信号处理函数SigChldHandler监听所有子进程的存亡
+			其中有判断，如果是挂了SystemServer，则zygote执行kill
+	2.	SystemServer启动后的工作
+		1>	ZygoteInit.startSystemServer:	fork 子进程 system_server，进入 system_server 进程
+		2>	ZygoteInit.handleSystemServerProcess:	当前system_server进程，创建 PathClassLoader 类加载器
+		3>	RuntimeInit.zygoteInit:	重定向 log 输出,通用的初始化（设置默认异常捕捉方法，时区等）,初始化 Zygote ->nativeZygoteInit
+		4>	app_main::onZygoteInit:	proc->startThreadPool,启动Binder线程池，这样就可以与其他进程进行通信
+		5>	ZygoteInit.main:	开启 DDMS 功能，preload() 加载资源，预加载 OpenGL，调用 SystemServer.main() 方法。
+		6>	SystemServer.main:	先初始化 SystemServer 对象,再调用对象的 run() 方法
+	3.	系统服务
+		startBootstrapServices：引导服务
+			Installer：系统安装apk时的一个服务类，启动完成Installer服务之后才能启动其他的系统服务
+			ActivityManagerService：负责四大组件的启动、切换、调度。
+			PowerManagerService：计算系统中和Power相关的计算，然后决策系统应该如何反应
+			LightsService：管理和显示背光LED
+			DisplayManagerService：用来管理所有显示设备
+			UserManagerService：多用户模式管理
+			SensorService：为系统提供各种感应器服务
+			PackageManagerService：用来对apk进行安装、解析、删除、卸载等等操作
+		startCoreServices：核心服务
+			BatteryService：管理电池相关的服务
+			UsageStatsService：收集用户使用每一个APP的频率、使用时常
+			WebViewUpdateService：WebView更新服务
+		startOtherServices：其他服务
+			CameraService：摄像头相关服务
+			AlarmManagerService：全局定时器管理服务
+			InputManagerService：管理输入事件
+			WindowManagerService：窗口管理服务
+			VrManagerService：VR模式管理服务
+			BluetoothService：蓝牙管理服务
+			NotificationManagerService：通知管理服务
+			DeviceStorageMonitorService：存储相关管理服务
+			LocationManagerService:定位管理服务
+			AudioService:音频相关管理服务
+	4.	SystemServiceManager分析
+		系统服务管理类
+		1>	startService函数
+			反射创建服务对象，并调用其onStart( )方法启动
+		2>	startBootPhase函数
+			Systemserver会将设备启动分成几个阶段，每个阶段service通过继承SytemService实现的onBootPhase方法来做一些对应的操作，相当于一个回调
+
+五.	ActivityManagerServer
+	管理系统中所有应用进程以及应用进程中的四大组件
+	SystemServer.run ->
+		startBootstrapServices(创建并启动AMS服务，同时执行AMS启动后的一些初始化工作)
+		startOtherServices(进入下个阶段的一些准备工作)
+	1.	startBootstrapServices
+		1>	创建并启动AMS服务
+			mSystemServiceManager.startService 通过反射创建服务对象并启动，传入的是一个代理类Lifecycle，代理类的具体实现是ActivityManagerService
+			所以也算是间接的创建并启动了AMS服务，让AMS运行在system_server进程的frameWork服务中，并将其统一保存在队列管理
+		2>	AMS初始化工作
+			创建ActivityManager消息循环并绑定MainHandler,再创建一些服务，并在/data/system创建其需要的文件与文件夹,如下：
+				BatteryStatsService		电池状态管理		/data/system/batterystats.bin 		记录包括电压在内的各种电池信息
+				ProcessStatsService		进程状态管理		/data/system/procstats				记录各个进程的状态信息
+				AppOpsService			应用操作权限管理	/data/system/appops.xml				存储各个app的权限设置和操作信息
+		3>	ActivityManagerService.setSystemProcess
+			1.	向SystemServiceManager添加若干服务
+				activity	AMS服务本身				gfxinfo	监控分析GPU profiling信息			permission	权限控制相关服务
+				procstats	进程状态管理				dbinfo	数据库相关服务
+				meminfo	获取内存信息					cpuinfo	获取cpu相关信息
+			2.	接着调用pms的getApplicationInfo接口，获取android应用信息及其apk,调用installSystemApplicationInfo加载/system/framework/framework-res.apk文件
+			3.	在newProcessRecordLocked.ProcessRecord对象app,创建后，对app的一些成员变量初始化，包括设置常驻内存运行；设置system_server的pid等
+			4.	mProcessNames.put将ProcessRecord对象app加入其中，ams就有了system_server的ProcessRecord（此ProcessRecord是system_server的），则ams就可以管理system_server
+	2.	startOtherServices
+		1>	
+
+六.	Launcher
+

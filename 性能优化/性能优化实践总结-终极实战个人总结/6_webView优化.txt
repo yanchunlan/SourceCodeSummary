@@ -1,0 +1,30 @@
+方案探讨
+	一.	加速
+		click -> webView初始化 -> dns解析与连接 -> 下载html页面解析 -> 加载静态资源 -> action
+					9%				55%				28%					8%
+		优化1：
+			原理：
+				提前加载本地资源，减少下载html页面解析耗时
+			措施：
+				1>	支持离线静态资源缓存
+				2>	html预取缓存
+			流程：
+				app启动/前后台切换 -> 离线宝接口请求 -> 是否更新 -> 离线包配置信息持久化，缓存资源同步 -> 下载离线包zip
+			webView缓存机制：
+				application cache 缓存机制
+				dom storage 缓存机制
+				web sql database缓存机制
+				indexed database 缓存机制
+				浏览器缓存机制
+	二.	安全
+		1.	域名检测
+		2.	方法检测
+	三.	数据埋点统计
+	四.	bridge拓展及调用耗时统计
+	五.	debug调试
+		debug的时候，支持显示全部流程的log信息，
+
+技术优化
+
+	可采取bosster-webView 的优化一样的措施，提前加载webView的内部需要初始化的类
+	
