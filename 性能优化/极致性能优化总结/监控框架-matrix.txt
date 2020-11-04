@@ -1,6 +1,21 @@
-一.	性能检测
+一.	APK Checker
+	实质上对打包之后的apk，进行解压，然后执行不同的task，就是不同的操作，分析apk的文件大小与数据，并给出输出文件
 	
-二.	缩包优化
+二.	Resource Canary
+	弱引用统计activity的泄漏，类似于blackCanary
+	依赖haha库对bitmap重复检测
 
-三.	apk分析
-	apkChecker	
+三.	Trace Canary
+	字节码插桩相应代码，统计如下几大点
+	界面流畅性fps
+	启动耗时
+	页面切换耗时
+	慢函数
+	卡顿
+
+四.	SQLite Lint
+	lint检测sqlite的语句是否ok
+
+五.	IO Canary
+	java hook: 
+	native hook: 对系统的so直接hook，IO相关的open、read、write、close方法，然后直接代理即可

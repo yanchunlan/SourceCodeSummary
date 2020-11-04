@@ -116,3 +116,7 @@ git tag push origin --tags 推送全部到远程
 git push origin :refs/tags/** 删除远程标签
 
 
+
+git config --global core.quotepath false  解决git中文显示是数字
+
+

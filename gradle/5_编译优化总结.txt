@@ -1,0 +1,72 @@
+一.	编译耗时统计
+	./gradlew build --scan
+
+二.	编译优化总结
+	1.	apt优化
+		1.	依赖优化
+			问题：部分apt参数是自动创建，可能再次编译其参数顺序不一致，导致其文件不一致，导致重编
+			解决措施：如果是自己写的apt，就直接更改，第三方不可更改的，可以设置debug不使用它规避编译耗时
+		2.	增量优化
+			问题1：
+				sourceSet{
+					processed{
+						java{
+							compileClasspath+=configurations.aptCompile
+						}
+					}
+					// 删除1		把输出加入在源文件
+					main{
+						java{
+							compileClasspath+=processed.output
+						}
+					}
+				}
+
+				defcultConfig{
+				// 删除 2
+					javacompileOptions{
+						annotatinProcessorOptions{
+							includeCompileClasspath=true
+						}
+					}
+				}
+			解决措施：删除上面1，2处
+
+			问题2：apt支持增量
+			在其incremental.annotation.processors 文件加入AccessorProcesor,Aggregating,接入较复杂，具体查看文档： https://blog.gradle.org/incremental-compiler-avoidance
+		3.	apt分离
+			问题：apt和compile都是javacCompile task执行，导致如果一个编译了，实质上另一个不需要编译也编译了
+			解决措施：apt分离，android。enableSeparateAnnotationProcessing=true
+			并添加一个task，解决部分文件不存在的问题，
+			val metaDir=file(task。project.builddir,"generated/source/apt/${buildType.name}/META-INF")
+			val javadir=file(task。project.builddir,"intermediates/javac/${buildType.name}/compile/${buildType.name.capitalize()}/javaWithJavac/classes")
+			if(metaDir.exist&&javadir.exist){
+				com.android.utils.fileUtils.copyDirectoryToDirectory(metaDir,javadir)
+			}
+
+	2.	agp/gradle升级
+		问题：agp 高版本有编译优化相关的措施，所以使用高版本agp与gradle对编译优化有提升
+		解决措施：agp version >agp 3.4.2 ; gradle version > gradle 5.1.1
+
+	3.	transforms/task优化
+		所有的task与transfroms都应该支持增量编译
+		编译时都应该开启线程池，支持并行编译
+
+	4.	dexBuilder/dexArchive优化
+		问题：实际上编译一个文件，jar编译是全编译，这种效率太慢了，导致上述task执行非常慢
+		解决措施：自己做一个task,实现jar的解压，然后diff区分，然后只编译一个文件，然后打包jar，
+			具体是解压了jar，执行一个task操作，直接输出加入在输出目录即可，并且此处解压可以用kt协程并行解压
+
+		问题：也可以直接不在执行java compile
+		解决措施：
+			task.doFirst{
+				if(task.state.upToDate){
+					return@doFirst
+				}
+				val changed = runBlacking{
+					diff change
+				}
+				if(!changed&&!task.state.upToDate){
+					throw stopExecutionExecution
+				}
+			}

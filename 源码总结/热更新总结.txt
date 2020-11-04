@@ -1,154 +1,172 @@
-﻿一.	主流市场的对比
-	腾讯系：tinker ；阿里系：Sophix ；饿了吗：amigo；美团：robust 每个函数插入额外逻辑
-	主要分2派，以tinker为代表的multidex类加载法和以阿里andfix为代表的底层替换法，而阿里sophix为了提高
-	热修复的成功率同时采用了上述两种方案，并在兼容性上进行了一定的优化
+一.	热补丁介绍
+	一.	主流市场的对比
+		腾讯系：tinker ；阿里系：Sophix ；饿了吗：amigo；美团：robust 每个函数插入额外逻辑
+		主要分2派，以tinker为代表的multidex类加载法和以阿里andfix为代表的底层替换法，而阿里sophix为了提高
+		热修复的成功率同时采用了上述两种方案，并在兼容性上进行了一定的优化
+		
+		
+		android虚拟机,4.4之前是Dalvik虚拟机，4.4之后是art虚拟机
+		
+
+	二.	虚拟机
+		jvm与Dalvik/ART 区别：
+			Jvm通过ClassLoader加载的class字节码，而Dalvik/ART VM通过ClassLoader加载则是dex
+			
+		art虚拟机 ：在Art虚拟机上目前也是是通过改变一个 ArtMethod的入口函数来实现
+		
+		类加载器ClassLoader	
+		
+		Android的类加载器分为两种,PathClassLoader和DexClassLoader，两者都继承自BaseDexClassLoader
+		
+		PathClassLoader代码位于libcore\dalvik\src\main\Java\dalvik\system\PathClassLoader.java 
+		DexClassLoader代码位于libcore\dalvik\src\main\java\dalvik\system\DexClassLoader.java 
+		BaseDexClassLoader代码位于libcore\dalvik\src\main\java\dalvik\system\BaseDexClassLoader.java
+
+		PathClassLoader
+			用来加载系统类和应用类
+		DexClassLoader
+			用来加载jar、apk、dex文件.加载jar、apk也是最终抽取里面的Dex文件进行加载.
+
+	三.	虚拟机拓展
+			java 虚拟机       加载 class
+
+			davlik 虚拟机     加载 dex  
+
+			art  虚拟机       加载 dex 
+			
+			种类：
+				android虚拟机：davlik(< Android 18) ，Art (>Android 21) ,在19，20两种都兼容
+			
+			区别：
+				对于手机来说，最终运行的都是 class字节码 ，
+				1> dalvik 采用的是 JIT 技术，字节码都需要通过即时编译器（just in time ，JIT）转换为机器码,
+				2> art虚拟机在安装耗时，加载dex->odex(包含机器指令，原dex内容太),直接读取odex指令，不需要转换就更快
 	
-	
-	android虚拟机,4.4之前是Dalvik虚拟机，4.4之后是art虚拟机
-	
+二.	主流方案介绍
+	一.	Sophix (付费，底层方法整体替换并兼容类加载方案)
 
-二.	虚拟机
-	jvm与Dalvik/ART 区别：
-		Jvm通过ClassLoader加载的class字节码，而Dalvik/ART VM通过ClassLoader加载则是dex
-		
-	art虚拟机 ：在Art虚拟机上目前也是是通过改变一个 ArtMethod的入口函数来实现
-	
-	类加载器ClassLoader	
-	
-	Android的类加载器分为两种,PathClassLoader和DexClassLoader，两者都继承自BaseDexClassLoader
-	
-	PathClassLoader代码位于libcore\dalvik\src\main\Java\dalvik\system\PathClassLoader.java 
-	DexClassLoader代码位于libcore\dalvik\src\main\java\dalvik\system\DexClassLoader.java 
-	BaseDexClassLoader代码位于libcore\dalvik\src\main\java\dalvik\system\BaseDexClassLoader.java
+	1.	加载机制
 
-	PathClassLoader
-		用来加载系统类和应用类
-	DexClassLoader
-		用来加载jar、apk、dex文件.加载jar、apk也是最终抽取里面的Dex文件进行加载.
+		class：是懒加载
+		
+		方法区域:
+			new,反射，native反射的时候才会创建方法表存在方法区域
+		堆区：
+			最开始 创建了 kclass 指向方法区域 里面的方法表
+		栈区：
+			
 
-二.	虚拟机拓展
-		java 虚拟机       加载 class
+			
+		对象调用方法流程：
+			堆区对象->找到方法区符号变量->class内存地址->找到内存地址里面的方法表->再对其方法进行压栈操作->再调用方法
+			
+			热修复就是把指向其方法（方法表）的指针改了，指向下载的包的方法，这样后续压栈就执行更改后的的
 
-		davlik 虚拟机     加载 dex  
-
-		art  虚拟机       加载 dex 
-		
-		种类：
-			android虚拟机：davlik(< Android 18) ，Art (>Android 21) ,在19，20两种都兼容
-		
-		区别：
-			对于手机来说，最终运行的都是 class字节码 ，
-			1> dalvik 采用的是 JIT 技术，字节码都需要通过即时编译器（just in time ，JIT）转换为机器码,
-			2> art虚拟机在安装耗时，加载dex->odex(包含机器指令，原dex内容太),直接读取odex指令，不需要转换就更快
-	
-
-二.	Sophix (付费，底层方法整体替换并兼容类加载方案)
-
-1.	加载机制
-
-	class：是懒加载
-	
-	方法区域:
-		new,反射，native反射的时候才会创建方法表存在方法区域
-	堆区：
-		最开始 创建了 kclass 指向方法区域 里面的方法表
-	栈区：
-		
-
-		
-	对象调用方法流程：
-		堆区对象->找到方法区符号变量->class内存地址->找到内存地址里面的方法表->再对其方法进行压栈操作->再调用方法
-		
-		热修复就是把指向其方法（方法表）的指针改了，指向下载的包的方法，这样后续压栈就执行更改后的的
-
-	env->findclass:
-		具体是在art/runting/class_jinker 里面找到方法 
-		1.	findclass->
-		2.	defineclass(定义空白class)->kclass== class
-		3.	->loadclass(加载class)
-		替换artmethod,网上下载的dex，解压class,找到method,生成artMethod，在把其替换到里面去
-		
-		做一个方法，注解指定包名，方法名，build编译成class文件，再sdk/build-tools 里面dex.pat 去打包成dex
-		(dex --dex --output,如果再腾讯，阿里，重命名apatch ),再dexFile加载dex到内存（dexFile.load->再dex.entries->遍历找到class,再
-		
-		new 一个classLoader去加载外置卡的class,）->
-		可以直接从class.getMethod得到所有方法，再遍历它，根据方法里面的注解 包名，方法名，查找到正确，错误的meThod()
-		->
-		在jni层操作了 ，，再把旧替换新方法（env->fromReflectedMethod()返回其artMethod,把artMethod.h文件导入进来，只
-		导入需要的声明就可以了，）
-		
-		-> 替换不需要全部替换，只需要替换其成员变量，赋值替换就可以了，
-		
-	缺点：
-		由于底层替换原理只支持方法替换，不支持方法的增加和减少，成员字段的增加和减少，所以部分修改会导致方法，字段的改变，
-		从而底层替换热部署失效
-		
-			1 非静态内部类
-				静态内部类编译后实际和外部类一样都是顶级类。外部类为了访问内部类的private field method，内部类额外会添加access方法。
-			2 匿名内部类
-				umber根据匿名内部类在外部类出现的先后次序依次累加。如果将匿名内部类的次序调整，我们无法区分修改前后的差异的。
-			3 静态field 静态代码块
-				这2块是被编译器翻译在clinit方法中，clinit方法是在类加载阶段调用，导致热部署方案失效
+		env->findclass:
+			具体是在art/runting/class_jinker 里面找到方法 
+			1.	findclass->
+			2.	defineclass(定义空白class)->kclass== class
+			3.	->loadclass(加载class)
+			替换artmethod,网上下载的dex，解压class,找到method,生成artMethod，在把其替换到里面去
+			
+			做一个方法，注解指定包名，方法名，build编译成class文件，再sdk/build-tools 里面dex.pat 去打包成dex
+			(dex --dex --output,如果再腾讯，阿里，重命名apatch ),再dexFile加载dex到内存（dexFile.load->再dex.entries->遍历找到class,再
+			
+			new 一个classLoader去加载外置卡的class,）->
+			可以直接从class.getMethod得到所有方法，再遍历它，根据方法里面的注解 包名，方法名，查找到正确，错误的meThod()
+			->
+			在jni层操作了 ，，再把旧替换新方法（env->fromReflectedMethod()返回其artMethod,把artMethod.h文件导入进来，只
+			导入需要的声明就可以了，）
+			
+			-> 替换不需要全部替换，只需要替换其成员变量，赋值替换就可以了，
+			
+		缺点：
+			由于底层替换原理只支持方法替换，不支持方法的增加和减少，成员字段的增加和减少，所以部分修改会导致方法，字段的改变，
+			从而底层替换热部署失效
+			
+				1 非静态内部类
+					静态内部类编译后实际和外部类一样都是顶级类。外部类为了访问内部类的private field method，内部类额外会添加access方法。
+				2 匿名内部类
+					umber根据匿名内部类在外部类出现的先后次序依次累加。如果将匿名内部类的次序调整，我们无法区分修改前后的差异的。
+				3 静态field 静态代码块
+					这2块是被编译器翻译在clinit方法中，clinit方法是在类加载阶段调用，导致热部署方案失效
 
 
-三.	AndFix（底层方法替换）
+	二.	AndFix（底层方法替换）
 
-	支持Android 2.3到6.0版本,通过官方提供的工具apkpatch生成一个.apatch格式的补丁文件,再将其加载
-	
-	AndFix更新的原理：
-		1.	首先通过虚拟机的JarFile加载补丁文件，然后读取PATCH.MF文件得到补丁类的名称
-		2.	使用DexFile读取patch文件中的dex文件，得到后根据注解来获取补丁方法，然后根据注解中得到雷鸣和方法名，
-		使用classLoader获取到Class，然后根据反射得到bug方法。
-		3.	jni层使用C++的指针替换bug方法对象的属性来修复bug。
+		支持Android 2.3到6.0版本,通过官方提供的工具apkpatch生成一个.apatch格式的补丁文件,再将其加载
 		
-			里面的替换：
-				1.打开链接库得到操作句柄，获取native层的内部函数，得到ClassObject对象
-				2.修改访问权限的属性为public
-				3.得到新旧方法的指针，新方法指向目标方法，实现方法的替换。
-				如果我们想知道补丁包中到底替换了哪些方法，可以直接方便易patch文件，然后看到的所有含有@ReplaceMethod注解的方法
-				基本上就都是需要替换的方法了
-	缺点：
-		1.能支持所有的方法修复
-		2.不支持YunOS
-		3.无法添加新类和新的字段
-		4.需要使用加固前的apk制作补丁，但是补丁文件很容易被反编译，也就是修改过的类源码容易泄露。
-		5.使用加固平台可能会使热补丁功能失效
-	区别：art虚拟机是替换了很多参数，这个是旧方法替换了新方法
-	
-	
-	拓展：阅读源码之后，发现新旧方法替换的时候，需要设置原来的类CLASS_INITIALIZED状态，目的是为了跳过verify
-	（主要是对类进行的一个验证过程）
-	
-		只要A类引用了B类，就会在A类上面打上CLASS_INITIALIZED 标签，在我们修复B类的时候，如果是修复类，那么因
-		为标签指向，修复的类在A类中不是不是标签指向，所以就会爆错，
+		AndFix更新的原理：
+			1.	首先通过虚拟机的JarFile加载补丁文件，然后读取PATCH.MF文件得到补丁类的名称
+			2.	使用DexFile读取patch文件中的dex文件，得到后根据注解来获取补丁方法，然后根据注解中得到雷鸣和方法名，
+			使用classLoader获取到Class，然后根据反射得到bug方法。
+			3.	jni层使用C++的指针替换bug方法对象的属性来修复bug。
+			
+				里面的替换：
+					1.打开链接库得到操作句柄，获取native层的内部函数，得到ClassObject对象
+					2.修改访问权限的属性为public
+					3.得到新旧方法的指针，新方法指向目标方法，实现方法的替换。
+					如果我们想知道补丁包中到底替换了哪些方法，可以直接方便易patch文件，然后看到的所有含有@ReplaceMethod注解的方法
+					基本上就都是需要替换的方法了
+		缺点：
+			1.能支持所有的方法修复
+			2.不支持YunOS
+			3.无法添加新类和新的字段
+			4.需要使用加固前的apk制作补丁，但是补丁文件很容易被反编译，也就是修改过的类源码容易泄露。
+			5.使用加固平台可能会使热补丁功能失效
+		区别：art虚拟机是替换了很多参数，这个是旧方法替换了新方法
 		
-		所以设置这个就是为了跳过这个验证，但是AndFix 是替换方法，那么久不存在此问题，所有原理上不设置也不
-		会有问题
+		
+		拓展：阅读源码之后，发现新旧方法替换的时候，需要设置原来的类CLASS_INITIALIZED状态，目的是为了跳过verify
+		（主要是对类进行的一个验证过程）
+		
+			只要A类引用了B类，就会在A类上面打上CLASS_INITIALIZED 标签，在我们修复B类的时候，如果是修复类，那么因
+			为标签指向，修复的类在A类中不是不是标签指向，所以就会爆错，
+			
+			所以设置这个就是为了跳过这个验证，但是AndFix 是替换方法，那么久不存在此问题，所有原理上不设置也不
+			会有问题
 
-三.	tinker(multidex类加载方案)
-	使用apkpatch得到拆分包，用于合成新的包
-	原理：
-		在编译时通过新旧两个Dex生成差异patch.dex。在运行时，将差异patch.dex重新和原始安装包的旧Dex合并还原为新的Dex。
-		这个过程可能比较耗费时间与内存，所以tinker单独放在一个后台进程:patch中处理。为了补丁包尽量的小，微信自研了
-		DexDiff算法，它深度利用Dex的格式来减少差异的大小。由于采用ClassLoader机制，所以需要app重启
+	三.	tinker(multidex类加载方案)
+		使用apkpatch得到拆分包，用于合成新的包
+		原理：
+			在编译时通过新旧两个Dex生成差异patch.dex。在运行时，将差异patch.dex重新和原始安装包的旧Dex合并还原为新的Dex。
+			这个过程可能比较耗费时间与内存，所以tinker单独放在一个后台进程:patch中处理。为了补丁包尽量的小，微信自研了
+			DexDiff算法，它深度利用Dex的格式来减少差异的大小。由于采用ClassLoader机制，所以需要app重启
 
-		一个补丁的patch.dex放到了dexElements的第一位，那么当加载一个bug类时，发现在patch.dex中，则直接加载这个类，
-		原来的bug类可能就被覆盖了
-		
-		ClassLoader会遍历这个数组,然后加载这个数组中的dex文件. 
-		而ClassLoader在加载到正确的类之后,就不会再去加载有Bug的那个类了,我们把这个正确的类放在Dex文件中,
-		让这个Dex文件排在dexElements数组前面即可
-	实现步骤：
-		Install() 实现获取DexClassLoader 解压缩dex文件，根据不同的平台版本加载补丁
-		通过反射将多余的dex file 添加到DexPathList的pathList数组字段里
-		DexPathList的makeDexElements, 我们继续跟踪makeDexElements具体实现，发现它调用了loadDexFile
-		loadDexFile, 最终它调用DexFile.loadDex(),加载dex
-	缺点：
-		涉及dex文件的重新解压缩合并等处理，消耗内存大，耗时长，在系统低内存时容易导致热更新失败
-		
-	流程：
-		下载更新包->copy到当前目录
-		classLoader->pastList->dexElement
-		->makeDexElements创建新的数组
-		-> 合并数组，并把加载的dex放到数组的前面
-		->再重置dexElement数组到pathList
+			一个补丁的patch.dex放到了dexElements的第一位，那么当加载一个bug类时，发现在patch.dex中，则直接加载这个类，
+			原来的bug类可能就被覆盖了
+			
+			ClassLoader会遍历这个数组,然后加载这个数组中的dex文件. 
+			而ClassLoader在加载到正确的类之后,就不会再去加载有Bug的那个类了,我们把这个正确的类放在Dex文件中,
+			让这个Dex文件排在dexElements数组前面即可
+		实现步骤：
+			Install() 实现获取DexClassLoader 解压缩dex文件，根据不同的平台版本加载补丁
+			通过反射将多余的dex file 添加到DexPathList的pathList数组字段里
+			DexPathList的makeDexElements, 我们继续跟踪makeDexElements具体实现，发现它调用了loadDexFile
+			loadDexFile, 最终它调用DexFile.loadDex(),加载dex
+		流程：
+			patch.dex 下发 -> 与原有的dex合成新的dex -> dex进行oat优化 -> 下次加载classloader把其插入elements前面
+		缺点：
+			涉及dex文件的重新解压缩合并等处理，消耗内存大，耗时长，在系统低内存时容易导致热更新失败
+			
+		流程：
+			下载更新包->copy到当前目录
+			classLoader->pastList->dexElement
+			->makeDexElements创建新的数组
+			-> 合并数组，并把加载的dex放到数组的前面
+			->再重置dexElement数组到pathList
+	四.	robust
+		针对所有方法前插入代码，添加一个判断，是否需要补丁，补丁就调用补丁的方法代码
+		优点：
+			java hook 代表
+			即时生效，完美兼容性
+		缺点：
+			侵入业务代码
+			增加包体积5%
+	五.	qzone（tinker的前身）
+		dex插入classLoader的elements前面
+		优点：
+			代码无侵入，兼容性高
+			dalvik存在pre-verified问题
+		缺点：
+			为了解决pre-verified问题，导致性能下降
