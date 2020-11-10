@@ -90,6 +90,8 @@ JsonViewer	Json 格式化插件
 
 LeetCode editor leetCode刷题
 
+SequenceDiagram 一键生成序列图（右键->SequenceDiagram）
+
 
 
 

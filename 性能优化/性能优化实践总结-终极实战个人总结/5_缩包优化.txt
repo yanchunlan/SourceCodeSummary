@@ -1,81 +1,91 @@
-一.	常规缩包措施
-	1.	R文件删除
-		通过自定义gradle遍历存储所有R文件的常量值，在遍历文件通过asm修改引用R文件常量值，
-		删除R的常量引用值
-		插件地址：https://github.com/houjinyun/Android-ThinApk
-	2.	代码混淆和压缩
-		ProGuard 会检测和移除代码中未使用的类、字段、方法和属性，除此外还可以优化字节码，移除未使用的代码指令，以及用短名称混淆类、字段和方法
-		shrinkResources 开启资源压缩（最终资源是空资源占位）
-		resConfigs 去除多余语言包
-		
-		proguard ：
-		-dontshrink
-			声明不进行压缩操作。
-		-dontoptimize
-			不对 class 进行优化，默认是开启优化的。由于优化会进行类合并、内联等，使用热修复的应用，建议关闭优化
-		资源也可以不压缩，keep住
-		<resources
-			xmlns:tools="http://schemas.android.com/tools"
-			tools:shrinkMode="safe"
-			tools:keep="@mipmap/emoji_*,@mipmap/jietiao_ic_module_*"
-			>
-		</resources>
-		
-		1>	R文件解释
-			格式 ：0xpptteeee；  pp：表示 package id ，tt：表示 type id ，eeee：表示 entry id
-			资源混淆，实质上就是改短资源名字，然后同步修改resources.arsc里面的引用
-		
-	3.	资源混淆
-		直接使用AndResGuard插件，其原理就是开启一个任务，打包ok后，解压APK，识别 resources.arsc 资源表，混淆 res所有资源文件，同步修改资源表，然后重新打包签名
-		核心就是对resources.arsc 资源表的解析修改，所以需要熟系resources.arsc 文件格式
+一.	缩包策略
+	1.	apk压缩
+		1>	ap_资源文件压缩（zip压缩选项）
+			booster- ap_
+	2.	资源优化
+		1>	图片压缩
+			TinyPng压缩
+			使用.9代替大图
+			使用xml代替图片
+			其余图片使用webP(>20kb使用webP,小于20kb使用tinypng压缩)
+			1.	MCImage:	https://github.com/smallSohoSolo/McImage
+				原理就是在mergeTask执行之后添加个task,执行寻找到资源文件，然后对资源进行压缩或者转webP
+			2.	booster - webP/png
+				booster-task-compression  等效于 MCImage 并且还多具备资源删除，压缩resourceXX.ap_文件中的资源，可以支持压缩assets里面的资源等
+			3.	matrix
+				appChecker：包大小监控
+		2>	重复资源去重
+			通过apkChecker检测出重复资源去重
+		3>	多dpi去重，保留最高dpi即可
+			booster-
+		4>	去除无用资源
+			booster-removeUserRes
+		5>	bundle apk 上架google play
+			aab资源压缩：https://github.com/bytedance/AabResGuard
+		6>	资源混淆
+			直接使用AndResGuard插件，其原理就是开启一个任务，打包ok后，解压APK，识别 resources.arsc 资源表，混淆 res所有资源文件，同步修改资源表，然后重新打包签名
+			核心就是对resources.arsc 资源表的解析修改，所以需要熟系resources.arsc 文件格式
+		7>	混淆和压缩
+			ProGuard 会检测和移除代码中未使用的类、字段、方法和属性，除此外还可以优化字节码，移除未使用的代码指令，以及用短名称混淆类、字段和方法
+			shrinkResources 开启资源压缩（最终资源是空资源占位）
+			resConfigs 去除多余语言包
+			
+			proguard ：
+			-dontshrink
+				声明不进行压缩操作。
+			-dontoptimize
+				不对 class 进行优化，默认是开启优化的。由于优化会进行类合并、内联等，使用热修复的应用，建议关闭优化
+			资源也可以不压缩，keep住
+			<resources
+				xmlns:tools="http://schemas.android.com/tools"
+				tools:shrinkMode="safe"
+				tools:keep="@mipmap/emoji_*,@mipmap/jietiao_ic_module_*"
+				>
+			</resources>
+			
+			1>	R文件解释
+				格式 ：0xpptteeee；  pp：表示 package id ，tt：表示 type id ，eeee：表示 entry id
+				资源混淆，实质上就是改短资源名字，然后同步修改resources.arsc里面的引用
 
-	4.	图片压缩
-		TinyPng压缩
-		使用.9代替大图
-		使用xml代替图片
-		其余图片使用webP(>20kb使用webP,小于20kb使用tinypng压缩)
+	3.	代码优化
+		1>	debugItem复用
+			修改dex文件，保留一个debugItem，所有方法都指向它，其余的debugItem都删除了，并且此指令集行号和源文件行号一致，这样不管查行号拿到的都是指令集行号
+			把其行号表关系dump成一个dexpcmapping,上传服务器，当异常时候，上报异常指令集行号上报，通过服务器的dexpcmapping反解出正确行号
+		2>	字节码优化
+			1.	去除R文件
+				通过自定义gradle遍历存储所有R文件的常量值，在遍历文件通过asm修改引用R文件常量值，删除R的常量引用值
+				booster - R -inline
+				bytex - r -inline
+				Android-ThinApk：https://github.com/houjinyun/Android-ThinApk
+			2.	bytex 缩包一系列
+				access-inline-plugin（access方法内联）
+				shrink-r-plugin（R文件瘦身和无用资源检查）
+				const-inline-plugin（常量内联）
+				field-assign-opt-plugin（优化多余赋值指令）
+				getter-setter-inline-plugin （getter和setter方法内联）
+				method-call-opt-plugin（干净地删除某些方法调用，如Log.d）
+			3.	booster-transform-shrink  等效于 Android-ThinApk
+				1.	删除无用name
+				2.	合并重复字符串
+				3.	删除无用文案
+		3>	R8接入
+			D8编译器
+			AS3.1以上默认支持，D8编译器是dex编译的工具，编译出来的dex小，
+			gradle.properties 中配置 android.enableD8=true
+		4>	native 公共代码抽离so,共享C++库，so符号精简等
+			appChecker 可以检测so是否有c++静态共享库
 
-	5.	D8编译器
-		AS3.1以上默认支持，D8编译器是dex编译的工具，编译出来的dex小，
-		gradle.properties 中配置 android.enableD8=true
+	4.	动态化
+		assets/so动态下发：
+			下发可以通过前后台，或者第一次启动下发等
+			使用可通过修改字节码，在调用处替换为自定义的封装类，在封装类内部有判断是否从远端plugin加载资源
+	
+	5.	监控
+		appChecker：包大小监控，结合CI平台
 
-	6.	资源压缩框架
-		1.	MCImage:	https://github.com/smallSohoSolo/McImage
-			原理就是在mergeTask执行之后添加个task,执行寻找到资源文件，然后对资源进行压缩或者转webP
-		2.	booster
-			booster-transform-shrink  等效于 Android-ThinApk
-			booster-task-compression  等效于 MCImage 并且还多具备资源删除，压缩resourceXX.ap_文件中的资源，可以支持压缩assets里面的资源等
-		3.	matrix
-			appChecker：包大小监控
-	7.	包大小监控
-		appChecker：包大小监控
-	8.	中台包远程下载
 
-二.	硬核缩包措施
-	1.	压缩
-		booster - webP/png
-	2.	重复资源去重
-		通过apkChecker检测出重复资源去重
-	3.	多dpi去重，保留最高dpi即可
-		booster-
-	4.	去除无用资源
-		booster-removeUserRes
-	5.	去除R文件
-		booster - R -inline
-		bytex - r -inline
-	6.	ap_资源文件压缩
-		booster- ap_
-	7.	bytex 缩包一系列
-		access-inline-plugin（access方法内联）
-		shrink-r-plugin（R文件瘦身和无用资源检查）
-		const-inline-plugin（常量内联）
-		field-assign-opt-plugin（优化多余赋值指令）
-		getter-setter-inline-plugin （getter和setter方法内联）
-		method-call-opt-plugin（干净地删除某些方法调用，如Log.d）
-	8.	bundle apk 上架google play
-		aab资源压缩：https://github.com/bytedance/AabResGuard
-	9.	arsc优化
-		1.	删除无用name
-		2.	合并重复字符串
-		3.	删除无用文案
-	10.	结合CI平台，包大小监控
+
+	
+
+	
+	

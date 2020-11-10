@@ -1,0 +1,4 @@
+1.	分析对比竞品fps,jank,memory,network
+	preDog
+2.	
+	
