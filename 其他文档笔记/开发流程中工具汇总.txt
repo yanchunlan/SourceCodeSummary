@@ -1,0 +1,27 @@
+1.	设计
+	蓝湖zplin(>10人收费): https://lanhuapp.com/?zeplin
+
+
+
+5.	代码管理
+	gitlab:	https://git.lug.ustc.edu.cn/users/sign_in
+
+
+
+3.	文档管理，记录
+	wiki:	
+	有道云：
+
+
+
+4.	项目管理
+	tapd:	https://www.tapd.cn/
+
+
+
+5.	bug
+	jare:	
+
+
+
+

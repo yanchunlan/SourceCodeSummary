@@ -5,3 +5,6 @@
 4.	simplePref(android 5.0只支持c++,9.0是支持java/c++)
 	分析方法:
 	具体是根据systrace定位具体范围，再根据traceView定位具体方法
+
+
+AX2C:	

@@ -1,0 +1,22 @@
+一.	SC-Feature抽离SDK笔记
+	1.	依赖删除
+		dependsKiller
+
+	2.	自动发布 autoMvnPublish
+		制作了脚本，自动让其发布
+		delete project depends
+		add maven depends
+
+	3.	目的是CI集成
+
+	4.	当前库与其他库的冲突检测,然后上报，主要是为了方便接入
+		transfrom:	接入冲突检测， depends ,abi ,class ,attr
+
+	5.	提供对外便捷可定制的UI
+		UI定制，提供一个VIewBinder可支持View定制
+
+	6.	持续迭代
+		代码检测，防止异常
+			asm扫描工具，防止class no found,method no found
+		支持旧版
+			支持support库，包含旧的代码，支持兼容
