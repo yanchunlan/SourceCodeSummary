@@ -1,10 +1,86 @@
-1.	gfxinfo
-2.	cpu profile(是traceView，systrace，simplePref三大工具的集成)
-2.	traceView
-3.	systrace(完整版android 4.3sdk)
-4.	simplePref(android 5.0只支持c++,9.0是支持java/c++)
-	分析方法:
-	具体是根据systrace定位具体范围，再根据traceView定位具体方法
+一.	优化工具
+	1.	lint
+		自定义lint，检测重复的背景等
 
+	2.	Gpu overdraw $ Gpu rendering
+		大概的看看过度绘制，大致的层级等级
 
-AX2C:	
+	3.	layout inspector
+		layout层级查看
+
+二.	监控工具
+	1.	gfxinfo
+		adb shell dumpsys gfxinfo 输出各阶段发生的动画以及帧相关的性能信息
+
+	2.	cpu profile(是traceView，systrace，simplePref三大工具的集成)
+
+	3.	traceView
+		可用于锁定具体耗时方法，但是因为
+	4.	systrace(完整版android 4.3sdk)
+
+	5.	simplePref(android 5.0只支持c++,9.0是支持java/c++)
+		分析方法:
+		具体是根据systrace定位具体范围，再根据traceView定位具体方法
+
+三.	自动监控
+	1.	监控控件单个创建耗时
+		LayoutInflaterCompat.setFactory2（getLayoutInflater，new LayoutInflater.Factory2（）{
+			public View onCreateView(View view,...){
+				return view;
+			}
+		}）
+
+	2.	监控整个方法耗时ß
+		Aspectj或者ASM打点
+
+	3.	绘制监控
+		getWindow.getDecorView.getViewTreeObserver.addOnDrawListener{
+			Choreographer.getInstance.postFrameCallback({
+				public void doFrame(long frameTimeNanos){
+
+				}
+			})
+		}
+		通过其监控时间，超过阀值，就在异步线程采样当前堆栈信息
+		matrix：	ASM插桩的方式统计，支持fps和堆栈获取的定位。根据ASM插桩来分析堆栈
+		fpsviewer：Choreographer.FrameCallback监控时间，异步线程周期采样，超过阀值保存当前帧，带需要时展示
+
+四.	优化
+	1.	xml优化
+		x2c：https://github.com/iReaderAndroid/X2C/blob/master/README_CN.md
+			原理：
+			1> @xml修复layout，使用时调用X2C.setContentView/X2C.inflate会反射初始化编译文件，成功返回，失败调用原生方法
+			2> 编译XmlProcessor的init:
+				filer.createSourceFile找到xxx/app作为rootFiles,根据rootFiles找到Manifest,解析获取packageName
+				filer.createSourceFile找到xxx/app/build/generated/source/apt/debug,替换apt为r,结合packageName找到R.java，读取public static final class layout并map缓存(key为其decode)
+				读取module下的X2C_CONFIG.xml，并存储在map中
+			3> 编译XmlProcessor的process：
+				扫描rootFiles下面的layout存储map中，从R表中获取当前layoutName的资源id，在判断当前是否做了layout读取，未做读取才开始执行layout读取操作
+				从layout表中获取当前layoutName的layout的路径集合，LayoutReader遍历并解析layout,生成文件包名+x2c+layou>>24+资源名
+				SAXParser解析的startElement就开始创建集合缓存后面文件方法的字符串，endElement递归遍历读取的属性生成方法的字符串，再调用LayoutWriter相对应的方法，文件
+				通过MapWriter写文件，通过javaport创建方法createView，创建类X2C+layou>>24+_资源名，创建文件
+			待优化：
+				agp>3.3后R文件编译中删除，需要插件检测R文件生成之后，生成layout的资源文件
+				inflate支持异步加载，线程池多线程加载
+
+		AsyncInfalte：
+			原理：
+			1> infalte 构建请求request,将其放到线程中执行（线程有阻塞队列，线程start的时候就一直等待队列取数据）
+			2> 子线程取到数据，执行inflate操作，infalte结束，发送message消息将其返回给主线程
+			3>	handlerMessage接受到消息，回调加载完成接口
+			待优化：
+				layout支持预加载，开启线程池执行，infalte加载支持可拓展
+
+		层级缩减
+		viewStub/merge
+		去除重叠绘制
+		measure/layout/draw优化
+		view缓存复用
+
+	2.	硬件加速
+
+	3.	RenderThread/RenderScript
+		RenderThread:	实现动画的异步渲染
+		RenderScript:	对图片进行各种操作处理
+
+	4.	litho/flutter
