@@ -120,3 +120,14 @@ git push origin :refs/tags/** 删除远程标签
 git config --global core.quotepath false  解决git中文显示是数字
 
 
+git rebase 总结：
+	1.	合并多次提交记录
+		
+	2.	分支合并（实质上是把当前分支暂存，然后把target分支代码同步当前在恢复当前分支暂存代码）
+
+	git rebase -i HEAD~4 rebase最近四次提交
+
+	git rebase --continue rebase继续
+
+	git rebase —abort 停止rebase,并分支回到rebase开始前的状态
+	
