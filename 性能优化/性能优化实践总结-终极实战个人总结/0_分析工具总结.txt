@@ -1,4 +1,12 @@
 1.	分析对比竞品fps,jank,memory,network
 	preDog
-2.	
+
+2.	Systrace
+	https://www.cnblogs.com/1996swg/archive/2018/11/23/10007602.html
+	备注：
+		m 高亮
+		Wall duration”，他代表着这一区块的开始到结束的耗时
+		CPU Duration一项中显示了实际CPU在处理这一区块所消耗的时间
+
+3.	
 	
