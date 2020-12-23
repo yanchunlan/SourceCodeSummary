@@ -1,0 +1,21 @@
+一.	启动
+	launch: 不返回结果
+	async：允许使用await暂停函数返回结果
+二.	创建
+	runblocking：线程柱塞，适合单元测试
+	GlobalScope.launcher: 全局单列，容易内存泄漏
+	CoroutineScope.launcher: 推荐使用，可以控制生命周期
+三.	安卓中的协程
+	1.	suspend
+		被suspend修饰的函数，编译后，会新增1个参数：continuation: Continuation<T>
+		interface Continuation<in T> {
+		    val context: CoroutineContext
+		    fun resumeWith(result: Result<T>)
+		}
+		Kotlin使用堆栈帧来管理要运行哪个函数以及所有的局部变量。暂停协程时会复制并保存当前的堆栈帧以供
+		稍后使用；恢复协程时会将堆栈帧从其保存位置复制回来，然后函数再次开始运行
+四.	协程调度
+	Dispatchers.Main：主线程
+	Dispatchers.Default：io线程
+	Dispatchers.IO：io线程
+	withContext: 函数是个suspend函数，可以用于调度线程
