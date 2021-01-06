@@ -7,7 +7,7 @@ export PATH
 export CLASSPATH
 
 #git
-export GIT_HOME=/usr/bin/git
+export GIT_HOME=/usr/local/bin/git
 export PATH=$GIT_HOME/bin:$PATH
 
 #androidStudio

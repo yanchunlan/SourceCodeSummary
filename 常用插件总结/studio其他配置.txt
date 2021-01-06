@@ -1,11 +1,14 @@
-1.	setting -> editor -> file and code templates -> file header :
+1.	setting -> Appearance & Behavior -> size  14
+	setting -> editor -> font -> size  15
+
+2.	setting -> editor -> file and code templates -> file header :
 	/**
 	 * author:  ycl
 	 * date:  ${YEAR}/${MONTH}/${DAY} ${TIME}
 	 * desc:  
 	 */
 	 
-2.	setting -> editor -> Live templates -> AndroidLog :
+3.	setting -> editor -> Live templates -> AndroidLog :
 
 	1>	kd			klog.d
 		com.xianghe.ivy.utils.KLog.d("$content$");
@@ -18,15 +21,15 @@
 		com.xianghe.ivy.utils.KLog.i("$content$");
 		java -> statement					shorten FQ names
 		
-3.	setting -> editor -> general ->	Auto import
+4.	setting -> editor -> general ->	Auto import
 	add unambig......
 	optimize import ......
 	
-4.	setting -> editor -> code style -> java -> code generation:
+5.	setting -> editor -> code style -> java -> code generation:
 		field  				m
 		static field        s
 		parametor			m
 
-5.	setting -> editor -> Color Scheme -> Android Logcat 设置log控制台颜色
-6.	adb: F:\androidStudio3_4\sdk\platform-tools 配置在环境变量path中，可以使用adb查看是否成功
-7.	ndk-stack: F:\ndk\android-ndk-r15b-windows-x86_64\android-ndk-r15b 配置在环境变量，可以使用ndk-stack查看成功
+6.	setting -> editor -> Color Scheme -> Android Logcat 设置log控制台颜色
+7.	adb: F:\androidStudio3_4\sdk\platform-tools 配置在环境变量path中，可以使用adb查看是否成功
+8.	ndk-stack: F:\ndk\android-ndk-r15b-windows-x86_64\android-ndk-r15b 配置在环境变量，可以使用ndk-stack查看成功
