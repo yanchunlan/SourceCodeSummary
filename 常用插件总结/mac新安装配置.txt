@@ -1,0 +1,38 @@
+1.	google浏览器下载安装，并同步账户信息 （同步下载其他软件，含androidStudio）
+
+2.	jdk下载及安装，并配置环境变量
+	下载地址：https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html
+	默认目录：/Library/Java/JavaVirtualMachines/jdk1.8.0_211.jdk/Contents/Home
+	配置环境变量：
+		touch ~/.bash_profile
+		open ~/.bash_profile
+		source ~/.bash_profile
+
+		touch ~/. zshrc
+		open ~/. zshrc	在其中添加：source ~/.bash_profile
+		source ~/. zshrc
+
+		java -version
+	 
+3.	git 下载安装并配置环境变量
+	brew下载：/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+	下载地址：brew install git
+	查看git目录：which git
+	配置环境变量：
+		git --version
+		
+	ssh 生成，一路enter
+
+4.	androidStudio 下载安装及配置环境变量
+	下载地址：https://developer.android.google.cn/studio/
+	配置环境变量：
+
+
+5.	flutter 下载与环境配置
+	下载地址：https://flutter.dev/docs/development/tools/sdk/releases?tab=macos#macos
+	配置环境变量：
+		export PATH=`pwd`/flutter/bin:$PATH
+
+	setting -> plugin -> dart/flutter 下载
+	
