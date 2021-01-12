@@ -55,5 +55,49 @@
 	其他URL：https://blog.csdn.net/lyb2518/article/details/79178386
 		
 		
-		
+------------------------------------------------------------------------------------------------------
+
+插件化总结
+
+1.	加载代码
+	ActivityThread 中的 loadApk 查看加载apk流程
+	1>	dexClassLoader加载代码
+	问题：
+		1）类冲突问题，插件宿主同名类
+		2）使用同样第三方库带来的问题
+		3）混淆后类名冲突问题
+		4）用不同的classLoader加载，代码复用问题
+		5）dex2oat问题
+
+2.	加载资源
+	1>	使用同一个resource，通过里面的assetManager.addpath添加资源
+	2>	使用不同resource
+	3>	通过context pluginContext=context.createPackageContext(xxx,flag), 解决
+	问题：
+		1）资源冲突问题
+			1.	修改aapt，每个插件宿主分配不同资源id package范围
+			2.	固定id
+
+3.	启动代码
+	1>	所有插件activity,service都继承一个特殊activity,编译时完成	-	腾讯shadlew
+	2>	hook + 占坑方式
+	3>	一个hook插件化实现 	-	360 instrucationIn
+	4>	0hook，0反射		-	编译时更改activity继承关系
+		1.	hook instrucation
+		2.	hook activityManager,并动态代理
+		3.	hook xxxManager ,目的是把里面的包名改为数组自己的【原因是系统发现包名跟当前包名不同就会获取不到服务】
+	四大组件处理：
+	activity:	launcher mode ？ 简单启动，判断是哪个插件，通过intent里面存储信息处理，
+	service:	通过自己制作service自己管理，处理service的启动与生命周期管理，
+	contentprovider:	跟service一样的处理
+
+4.	插件化问题
+	activity的launcher mode,少有框架实现对的
+	插件service生命周期，少有实现对的
+	插件加载慢，dex2oat问题，不好避免
+	系统碎片化，兼容性问题【另外的应用也hook了mH类，怎么解决这种冲突？】
+	插件拆分不好把握
+	插件与插件之间，插件与宿主之间依赖问题，必须清晰确定的接口
+	插件之间代码复用，资源复用，若过于独立，又会导致包太大，如果复用太多又会导致依赖关系复杂
+	插件机制与安全软件hook冲突带来的兼容性问题
 	
