@@ -1,0 +1,55 @@
+一.	原理分析
+	1.	KOOM初始化流程：
+		开启了一个handlerThread去check有无未完成的hporf文件，如果有就触发解析，没有就监控内存，KOOMInternal
+
+	2.	heap dump流程
+		监控Manager：MonitorManager中开启HandlerThread监控线程，5s检测一次是否超过阀值，超过3次就触发dump,执行HeapDumpTrigger.trigger流程，
+		dump hprof：fork子进程处理，完成之后触发回调HeapAnalysisTriggerstartTrack执行heap分析流程
+		其中具体的dump是jni层做的 fork子进程，dump文件解决dump耗时问题
+
+	3.	heap analysis流程
+		HeapAnalysisTrigger.startTrack触发hprof文件分析
+		trigger触发的文件分析是单独进程service处理，主要检测内存泄露（activity/fragment/bitmap/window）和泄露数据整理缓存为json文件上报
+			activity: 反射属性 mFinished,mDestroyed为true,实例还存在的Activity，就是泄露对象
+			fragment: FragmentManager实例为null(fragment remove了),反射属性 mFragmentManager 判断 mCalled为true,就说明非perform状态，生命周期被回调，但是实列还存在就泄露
+			bitmap: bitmap的widthxheight>768x1366
+			nativeAllocationRegistry: 直接+1，暂时不参与对象泄露检测
+			window: 直接+1，不参与对象泄露检测
+
+二.	重点流程分析
+	1.	内存监控触发dump规则
+	HeapMonitor.isTrigger:	5s循环检测，内部内存判断，超高3次最大内存80%（不同内存大小阀值不同）比例，且上升就触发dump
+
+	2.	fork进程执行dump
+	ForkJvmHeapDumper.dump:	
+	  int pid = trySuspendVMThenFork(); // 暂停虚拟机，copy-on-write，fork子进程	
+      if (pid == 0) {	// 子进程
+        Debug.dumpHprofData(path);	// dump hprof
+        exitProcess(); // 退出进程
+      } else {	// 父进程
+        resumeVM();	// resume当前虚拟机
+        dumpRes = waitDumping(pid);	// waitpid异步等待pid进程结束
+      }
+     自研kwai-linker，caller address替换和dl_iterate_phdr解析绕过android7.0对系统调用库的限制
+
+     3.	内存泄露检测实现
+     SuspicionLeaksFinder.find:
+		buildIndex:	
+			将Hrpof文件按照扫描的格式解析为结构化的索引关系图,索引化后的内容封装为HprofHeapGraph,由它去通过对应的起始索引去定位每类数据,(copy from squere HAHA)
+		initLeakDetectors:
+			初始化Activity，Fragment，Bitmap+NativeAllocationRegistry，window
+		findLeaks:
+			检测泄露类及其子类有无满足泄露条件，把泄露的类添加进json
+三.	优点
+	1.	内存泄露检测
+		轮训查询是否到达峰值
+	2.	dump pref 
+		开辟单独进程dump
+
+
+四.	同类
+	tailor:
+		对内存hprof文件的裁剪库，根据hprof文件格式，去除了一些无用的格式，仅保留byte[]、char[] 和 hprof 格式裁剪
+	matrix:
+		Debug.dumpHprofData直接dump完整hprof文件，分析hprof文件格式，裁剪掉数据相同的 Bitmap 对象和 String 对象
+		问题点： 直接hprof文件较大，裁剪不彻底
