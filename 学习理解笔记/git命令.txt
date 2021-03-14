@@ -131,3 +131,12 @@ git rebase 总结：
 
 	git rebase —abort 停止rebase,并分支回到rebase开始前的状态
 	
+
+git cherry-pick 总结：
+	1.	git cherry-pick A 转移一个提交（分支名/提交名）
+	2.	git cherry-pick A..B 转移多个提交
+
+git squash (多个提交合并为一个)总结：
+	1.	git rebase -i HEAD~3 ，执行需要合并之前的是哪一个
+	2.	第一个是pick,第二个及其之后为s/squash,wq保存
+	3.	输入一个message信息，wq保存
