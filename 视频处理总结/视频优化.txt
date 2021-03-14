@@ -1,0 +1,52 @@
+一.	方向总览
+	核心算法：编解码算法，图像算法，传输算法
+	难点突破：AI人工智能参与，HDR，高清分辨力，
+	协同：cpu,Gpu，huawei 处理器的充分利用协作
+
+二.	直播多码率协议优化
+
+
+三.	播放优化
+	1. 建立监控
+		dns_analyze			stream_info			v_dec_opened/v_pkt_pre_dec/v_pkt_dec  		v_render
+		connect			->	a_pkt_recv		-> 											->	
+		first_data			v_pkt_recv			a_dec_opened/a_pkt_pre_dec/a_pkt_dec 		a_render
+
+	2.	播放器优化
+		1>	首帧优化
+			http dns
+			a/v interleave
+			m3u8和ts相同域名
+			tcp连接复用
+			启播seek	：请求一次之后，直接seek到精确点
+			web端hls支持流式处理
+			dns-prefetch
+			加载缓冲产品设计
+			ts overhead reduce
+			kwai manifest
+		2>	预加载优化
+			预加载队列，滑动更新，滑动停止实时更新
+			预加载只加载前面2/3秒的分片，不加载太多数据
+四.	发布优化
+	1. 流程优化
+		转码+上传（串行改为并行）
+	2.	转码优化
+		1>	动态转码决策：动态每次转码选择最好的参数
+			文件大小：cape ,根据不同的内容预计其码率和文件大小
+			转码速度：benchmark,不同的机型预计编码类型和转码速度
+			网络带宽决定：rickon测速
+		2>	内容感知视频处理和编码
+			解码采集一帧，输入到算法仓库，建立模型，计算出来合适的码率
+			算法仓库：
+				清晰度的定义：psnr/ssim/ms-ssim/vmaf
+		3>	转码benchmark
+
+
+
+四. 架构优化
+	模块支持组建华，插件化
+
+	
+
+
+

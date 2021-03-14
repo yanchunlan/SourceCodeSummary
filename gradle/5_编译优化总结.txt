@@ -51,6 +51,24 @@
 	3.	transforms/task优化
 		所有的task与transfroms都应该支持增量编译
 		编译时都应该开启线程池，支持并行编译
+			1>	transfrom增量编译：
+				1. not isIncremental,transfrom之前执行outputProvider.deleteAll()
+				2. 针对jar,根据jarInput.status
+				isIncremental
+					ADDED：解压，处理临时文件，重新压缩jar输出
+					CHANGED：执行ADDED相同（若想能够上报待删除文件，在执行ADDED之前，分别解压缓存前后jar内的class文件，比对差异有差异的文件，再解压源文件，回调需删除文件）
+					REMOVED：删除文件（若想能够上报待删除文件，在执行ADDED之前，分别解压缓存前后jar内的class文件，比对差异有差异的文件，再解压源文件，回调需删除文件）
+				not isIncremental
+					解压，处理临时文件，重新压缩jar输出
+				3.	针对dir
+				isIncremental
+					ADDED/CHANGED：扫描文件，处理文件
+					REMOVED：删除目录和文件
+				not isIncremental
+					扫描文件，处理文件
+			2>	transfrom线程池优化
+				
+
 
 	4.	dexBuilder/dexArchive优化
 		问题：实际上编译一个文件，jar编译是全编译，这种效率太慢了，导致上述task执行非常慢

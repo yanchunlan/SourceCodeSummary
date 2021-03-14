@@ -3,3 +3,25 @@
 apk安装到手机：	adb install xxxx.apk（拖动apk到cmd命令窗口显示目录）
 无线连接局域网:	adb connect to 192.168.1.27:5555
 启动app:		adb shell am start 包名/.Activity (要启动的Activity) 
+
+
+无线wifi链接adb 
+1.	连接手机[手机电脑同一局域网才生效]
+	adb tcpip 5555
+	adb shell netcfg - 寻找手机IP[设置-关于手机-状态]
+	adb connect 172.31.69.8:5555 该设备将被成功添加。
+	adb devices - 列出所有连接的设备
+
+
+	使用结束：
+	adb disconnect 192.168.1.5:5555
+	setprop service.adb.tcp.port -1
+    stop adbd
+    start adbd
+
+    adb查看log(忽略大小写):
+    adb logcat | grep -i xxx 
+
+ 2. as 插件
+ 	android wifi adb 
+ 	adb path = sdk/platform-tools
