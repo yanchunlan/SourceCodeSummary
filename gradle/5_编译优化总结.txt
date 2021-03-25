@@ -67,8 +67,11 @@
 				not isIncremental
 					扫描文件，处理文件
 			2>	transfrom线程池优化
-				
-
+				dir内的每个处理创建为一个Callable，并添加集合存储，并添加线程池submit
+				执行完transfrom的时候，executor..invokeAll(集合)，把没有处理完的invoke
+			3>	transfrom编译调试
+				buildSrc+settings
+				Composing builds
 
 	4.	dexBuilder/dexArchive优化
 		问题：实际上编译一个文件，jar编译是全编译，这种效率太慢了，导致上述task执行非常慢

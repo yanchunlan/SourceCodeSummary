@@ -8,5 +8,5 @@
 		Wall duration”，他代表着这一区块的开始到结束的耗时
 		CPU Duration一项中显示了实际CPU在处理这一区块所消耗的时间
 
-3.	
+3.	Perfetto(android sdk>10)
 	
