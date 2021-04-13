@@ -16,6 +16,25 @@
 		稍后使用；恢复协程时会将堆栈帧从其保存位置复制回来，然后函数再次开始运行
 四.	协程调度
 	Dispatchers.Main：主线程
+		内部的消息发送在handler,依赖于Android的消息机制
 	Dispatchers.Default：io线程
+		调度器的核心线程池和处理器的线程数是相等的，因此它可以用于处理密集型计算，适合在主线程之外执行占用大量CPU资源的工作，例如：对列表排序和解析JSON
 	Dispatchers.IO：io线程
+		Dispatchers.Default调度器和Dispatchers.IO调度器是共用同一个线程池的
 	withContext: 函数是个suspend函数，可以用于调度线程
+
+五.	指定coroutineScope
+	用户离开应用中内容区域时停止执行协程，可以确保所有正在运行的操作都能正确停止
+	生命周期感知型指定coroutineScope如下：
+			ViewModelScope
+				viewModelScope.launch{}
+			LifecycleScope
+				lifecycle.coroutineScope.launch{}
+				lifecycleOwner.lifecycleScope.launch{}
+				lifecycleScope.launch{
+					whenCreateed {}
+					whenStarted {}
+					whenResumed {}
+				}
+			liveData
+

@@ -84,3 +84,16 @@
 		RenderScript:	对图片进行各种操作处理
 
 	4.	litho/flutter
+
+	5.	根据绘制流程去寻找预创建的点
+		1>	window 预创建(目前主要是webView的情况使用)
+		2>	预加载
+			class/drawable/attr等等
+		3>	缓存前一贞计算结果到下一贞使用
+			带有复杂布局（文字排版/复杂设计）
+		4>	textureView/surfaceView 子线程创建，绘制
+			列入列表滑动出现粒子动画
+		5>	view-tree代理方案
+			自动减少不会绘制的容器，列入linearlayout
+		6>	view快照
+			缓存view-tree，下次直接使用
