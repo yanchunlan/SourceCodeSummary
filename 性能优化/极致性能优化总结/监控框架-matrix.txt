@@ -4,14 +4,26 @@
 二.	Resource Canary
 	弱引用统计activity的泄漏，类似于blackCanary
 	依赖haha库对bitmap重复检测
-
+	流程：
+		主线程统计WeakReference+ReferenceQueue统计activity的泄漏，主线程dump,新进程对hprof文件做shrink操作
+	最终在服务中执行上报。
+	
 三.	Trace Canary
 	字节码插桩相应代码，统计如下几大点
 	界面流畅性fps
-	启动耗时
+	启动耗时:
+		StartupTracer
+		打点插桩
 	页面切换耗时
-	慢函数
-	卡顿
+	慢函数：
+		EvilMethodTracer
+		方法执行时间超过700ms，dump信息
+	卡顿：
+		TracePlugin方案
+		1. 主要是在Looper设置Printer 2. 调用FrameTrace的doFrame
+	ANR:
+		AnrTracer
+		主要是对主线程消息做5s的检测，anr dump
 
 四.	SQLite Lint
 	lint检测sqlite的语句是否ok

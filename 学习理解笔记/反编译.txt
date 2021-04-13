@@ -1,0 +1,30 @@
+一. AS APK Analyzer
+	build -> Analyzer APK
+	可以查看资源，无法查看具体类
+二. Android-classyshark
+	在终端执行：java -jar Classyshark.jar
+	可以查看所有的文件
+三. dex2jar & jd-gui & apktool
+	1. apkTools
+		apk逆向工具
+		1>	下载：brew install apktool 
+			或直接去官网下载apktool文件与apktool.jar，并移动到/usr/local/bin目录
+		2>	给权限
+			chmod +x apktool.jar
+ 			chmod +x apktool
+ 		3>	验证
+ 			终端输入：apktool
+ 		操作流程：
+ 			sh apktool.sh apktool d xxx.apk，只能查看资源，文件是smail格式
+ 			
+ 	2.	dex2jar（dex文件转换成jar文件）
+ 			解压dex2jar，d2j_invoke.sh & d2j-dex2jar.sh & lib，他们在同一目录级别
+ 			chmod a+x d2j_invoke.sh
+			chmod a+x d2j-dex2jar.sh
+		jd-gui（把jar文件转换成java文件）
+
+ 		操作流程：
+ 			1>	apk后缀修改为zip,并解压获取dex
+ 			2>	dex移动在dex2jar目录
+ 			3>	sh d2j-dex2jar.sh classes.dex  ,生成classes-dexjar.jar
+ 			4>	双击bin/jd_gui，打开生成的classes-dexjar.jar

@@ -3,9 +3,14 @@
 apk安装到手机：	adb install xxxx.apk（拖动apk到cmd命令窗口显示目录）
 无线连接局域网:	adb connect to 192.168.1.27:5555
 启动app:		adb shell am start 包名/.Activity (要启动的Activity) 
+从设备上下载文件到电脑:		adb pull <远程路径> <本地路径>
+命令行提取hprof文件：
+	通过进程名：	adb shell am dumpheap <processname> <FileName><hprof文件的名>
+	通过PID：	adb shell am dumpheap <PIDxxx> <FileName><hprof文件的名>
+	下载hprof文件：	adb pull <FileName> <Dir>
 
 
-无线wifi链接adb 
+#无线wifi链接adb 
 1.	连接手机[手机电脑同一局域网才生效]
 	adb tcpip 5555
 	adb shell netcfg - 寻找手机IP[设置-关于手机-状态]
@@ -25,3 +30,20 @@ apk安装到手机：	adb install xxxx.apk（拖动apk到cmd命令窗口显示�
  2. as 插件
  	android wifi adb 
  	adb path = sdk/platform-tools
+
+#从设备下载文件到电脑
+1.	不同系统手机的系统问题定位
+	1>	下载framework源码：adb pull system/framework 
+	2>	解压framework.jar压缩文件
+	3>	双击jadx-gui,查看反编译源码
+2.	修改framework资源
+	1>	下载
+	adb remount
+	adb pull /system/framework/framework-res.apk D:\
+	2>	推送
+	adb remount
+	adb adb push D:\framework-res.apk /system/framework
+	adb shell chmod 644 /system/framework/framework-res.apk
+	3>	重启
+	adb reboot
+
