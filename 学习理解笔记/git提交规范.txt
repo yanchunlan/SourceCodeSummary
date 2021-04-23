@@ -32,3 +32,11 @@ Commit message 都包括三个部分：Header，Body 和 Footer。
 			after:	xxx
 	2>	关闭issue
 		close #123
+
+
+4.	代码合入流程
+	自测 -> 	cr+1					-> 测试 -> vr+2 -> 合入
+		增量检查（diff文件没有引入增量代码缺陷）
+		包大小检查
+		编译检查
+		静态代码扫描

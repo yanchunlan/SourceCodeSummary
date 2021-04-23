@@ -30,3 +30,8 @@ export PATH=$PATH:$MONO_HOME/bin
 if [ -f ~/.bashrc ]; then
    source ~/.bashrc
 fi
+
+#python3
+#PATH="/usr/local/bin:${PATH}"
+#export PATH
+alias python="/usr/local/bin/python3"
