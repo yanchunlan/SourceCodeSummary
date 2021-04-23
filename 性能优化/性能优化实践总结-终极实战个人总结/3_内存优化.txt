@@ -1,1 +1,15 @@
-Koom
+一.	监控
+
+二.	优化
+	Koom
+
+
+1.	lowmemorykiller
+	ActivityManagerService 统计所有进程状态，并时时更新进程对应的oomAdj，并传递到kernel层，kernel低内存回收机制，在内存到阀值触发清理oomadj值高的进程
+	oomadj划分16级，-17～16
+2.	android Q 内存压缩优化方案
+三.	防裂化
+
+
+
+	

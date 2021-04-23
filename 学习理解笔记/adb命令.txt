@@ -33,7 +33,7 @@ apk安装到手机：	adb install xxxx.apk（拖动apk到cmd命令窗口显示�
 
 #从设备下载文件到电脑
 1.	不同系统手机的系统问题定位
-	1>	下载framework源码：adb pull system/framework 
+	1>	下载framework源码：adb pull system/framework (system/framework/framework.jar)
 	2>	解压framework.jar压缩文件
 	3>	双击jadx-gui,查看反编译源码
 2.	修改framework资源

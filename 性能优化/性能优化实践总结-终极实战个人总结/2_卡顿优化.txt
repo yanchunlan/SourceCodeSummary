@@ -1,0 +1,3 @@
+头条Rhea
+线上trace: 通过Trace 的获取函数，对生成的.trace文件进行裁剪，只部分信息生成该文件
+后续：基于 Android atrace 的实现原理，我们同步参考了 Facebook 的 profilo
