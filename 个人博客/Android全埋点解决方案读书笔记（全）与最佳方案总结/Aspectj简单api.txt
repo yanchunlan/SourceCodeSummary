@@ -1,23 +1,29 @@
-一.	注解类
-	1.	#aspectj
-		描述切面类
-	2.	@poingCut
-		定义切点，标记方法，
+一.	核心语法
+	1.	切面 Aspect
+		描述切面类。类是对物体特征的抽象，切面就是对横切关注点的抽象
+	2.	连接点 JoinPoint
+		被拦截到的点（如方法、字段、构造器等等
+	3.	切入点 PointCut
+		JoinPoint 进行拦截的定义。定义切点，标记方法，
 		如果后面是**（..）就可以匹配所有的@xxx标记的方法
-	3.	@Before
-		前置增强，在连接点之前执行的增强
-		在方法执行之前执行某些操作
-	4.	@After
-		后置增强，在某些连接点之后执行的增强
-		方法执行之后执行
-	5.	@Around
-		环绕增强，在切点前后执行
-		内部可执行 joinpoint.proceed，可在其方法前后插入代码，也得到执行
-	6.	@AfterReturn
-		返回增强，切入点方法返回结果之后执行
-		在方法返回结果之后打印值
-	7.	@AfterThrowing
-		异常增强，切点抛出异常时执行
+	4.	通知 Advice
+		用于捕捉连接点集合，一般指拦截到 JoinPoint 后要执行的代码，分为 前置、后置、环绕 三种类型
+		1>	@Before
+			前置增强，在连接点之前执行的增强
+			在方法执行之前执行某些操作
+		2>	@After
+			后置增强，在某些连接点之后执行的增强
+			方法执行之后执行
+		3>	@Around
+			环绕增强，在切点前后执行
+			内部可执行 joinpoint.proceed，可在其方法前后插入代码，也得到执行
+		4>	@AfterReturn
+			返回增强，切入点方法返回结果之后执行
+			在方法返回结果之后打印值
+		5>	@AfterThrowing
+			异常增强，切点抛出异常时执行
+		注意：	当 Advice 为 Before、After 时，方法入参为 JoinPoint。当 Advice 为 Around 时，方法入参为 ProceedingPoint
+
 二.	切点表达式
 	1.	实例：execution(* android.xxx(xxx))
 		格式：execution(<修饰符模式>？<返回类型模式><方法名模式>(<参数模式>)<异常模式>？)
@@ -50,3 +56,9 @@
 三.	calls与execution区别
 	calls 调用点，用在方法的调用前后
 	execution 执行点，用在方法内部的前后
+
+四.	异常
+	java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.Object java.util.Hashtable.get(java.lang.Object)' on a null object reference
+	at org.aspectj.runtime.reflect.Factory.makeClass(Factory.java:62)
+	修复：是因为aspectj指定的横切面太广阔导致，已经横切到org.aspectj库里面了，通过within(com.xxx..*)指定横切范围解决
+
