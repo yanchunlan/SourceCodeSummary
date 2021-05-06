@@ -1,12 +1,14 @@
 一. AS APK Analyzer
 	build -> Analyzer APK
 	可以查看资源，无法查看具体类
+
 二. Android-classyshark
 	在终端执行：java -jar Classyshark.jar
 	可以查看所有的文件
+
 三. dex2jar & jd-gui & apktool
 	1. apkTools
-		apk逆向工具
+		apk逆向工具，分别执行对应文件的格式解析，生成smail源码和资源文件  (源码：https://github.com/iBotPeaches/Apktool)
 		1>	下载：brew install apktool 
 			或直接去官网下载apktool文件与apktool.jar，并移动到/usr/local/bin目录
 		2>	给权限
@@ -28,3 +30,68 @@
  			2>	dex移动在dex2jar目录
  			3>	sh d2j-dex2jar.sh classes.dex  ,生成classes-dexjar.jar
  			4>	双击bin/jd_gui，打开生成的classes-dexjar.jar
+ 	3.	jadx
+ 		借助asm生成代码，（源码：https://github.com/skylot/jadx）
+ 		解析dex -> smail源码 -> 解析smail指令 -> 借助asm生成class文件 -> 解析class文件得到java源码
+
+ 四.	Xposed & ZjDroid & Cydia Substrate
+ 	1.	xposed
+ 		修改系统 zygote 进程的实现将代码注入应用进程中的，可用于应用脱壳，编写游戏外挂等
+ 		1. 安装条件
+ 			1>	系统注入技术，需要root权限
+ 			2>	不是适配所有机型
+ 			3>	需要针对自己的设备安装正确的xposed版本
+ 		2.	环境搭建
+ 			最好是刷机，当前：小米3移动版本+android原生4.4系统+xposed_v33版本
+ 			下载 XposedInstaller或者通过 clone XposedInstaller 项目后自行编译，然后安装在root设备，打开XposedInstaller
+ 		3.	编写模块功能
+ 			1>	新建模块项目
+ 				导包xposed
+ 			2>	编写模块代码
+ 				实现IXposedHookLoadPackage接口，
+ 				XposedHelpers.findAndHookMethod/XposedBridge.hookMethod
+ 			3>	添加模块入口
+ 				assets入口xposed_init文件
+ 			4>	添加模块入口信息
+ 				manifest里面添加meta-data信息
+ 		4.	运行模块
+ 			重启设备，运行模块，可以看到hook的信息
+ 		简单案例：https://github.com/fourbrother/xposedhookdemo
+ 		源码学习：
+ 			https://github.com/rovo89/Xposed 
+ 			Xposed Native 层代码的实现，主要修改了系统 app_process 的实现（即 zygote 服务进程的实现）。
+
+ 			https://github.com/rovo89/XposedBridge
+ 			Xposed Java 层的代码，它将单独作为一个 jar 包的形式通过 zygote 的分裂（fork）注入到每一个应用进程中，内部会 Xposed 模块，并为 Xposed 模块中的 Hook 操作提供 API 支持。
+
+ 			https://github.com/rovo89/XposedInstaller
+ 			统一管理 Xposed 框架的 Android 应用，也是一个 Xposed 框架安装器，用于安装更新 Xposed 框架核心以及作为统一管理 Xposed 模块安装的模块管理器。
+
+ 			https://github.com/rovo89/android_art
+ 			Xposed 修改后的 Android ART 虚拟机的实现，将编译出 libart.so 和其依赖库，替换系统的 ART 虚拟机实现。包含方法 Hook 的核心实现。
+
+ 			https://github.com/rovo89/XposedTools
+ 			用于编译 Xposed 框架的脚本工具。
+
+ 	2.	ZjDroid脱壳神器
+ 		基于xposed的脱壳神器 (源码：https://github.com/halfkiss/ZjDroid)
+ 		assets里面有xposed_init入口，拦截application在onCreate里面添加广播接受者，执行对应的命令：
+ 		1>	dump_info
+ 			获取运行时dex的DumpDexInfoCommandHandler(pathClassLoader->pathList->dexFile->mCookie)
+ 		2>	dump_dexfile
+ 			封装在native实现，无法观看
+ 		3>	backsmail
+ 			跟上面一致，仅多了一个操作，把dex转换为smail文件
+ 		4>	dump_mem
+ 			dump内存，native层实现，无法观看
+ 		5>	dupm_heap
+ 			dump堆内存，native层实现，无法观看
+
+ 	3.	Cydia Substrate（native hook神器）
+ 		hook底层库非常方便，特别是so（源码下载位置：http://www.cydiasubstrate.com/）
+ 		1>	环境搭建
+ 		2>	java hook
+ 		3>	native hook
+ 		4>	注意事项
+
+
