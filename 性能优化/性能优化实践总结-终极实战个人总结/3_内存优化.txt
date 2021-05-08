@@ -3,11 +3,11 @@
 二.	优化
 	Koom
 
-
-1.	lowmemorykiller
-	ActivityManagerService 统计所有进程状态，并时时更新进程对应的oomAdj，并传递到kernel层，kernel低内存回收机制，在内存到阀值触发清理oomadj值高的进程
-	oomadj划分16级，-17～16
-2.	android Q 内存压缩优化方案
+	1.	lowmemorykiller
+		ActivityManagerService 统计所有进程状态，并时时更新进程对应的oomAdj，并传递到kernel层，kernel低内存回收机制，在内存到阀值触发清理oomadj值高的进程
+		oomadj划分16级，-17～16
+	2.	android Q 内存压缩优化方案
+		app compaction 是以进程为单位触发文件页，匿名页回收的内存优化策略，上层FW提供优化，的进程依据。该策略在kernel很早就已经有了， 只是到Android Q才开始在FW上层做逻辑，AOSP该功能目前是默认关闭的，并且策略稍显简单
 三.	防裂化
 
 
