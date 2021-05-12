@@ -38,6 +38,10 @@
 	
 	拓展:
 		PLTHook中hook_plt_method第一个参数是排除xxx.so,
+
+
+	xhook:pltHook方案
+
 四.	运行时aop
 	1. Xposed: dalvik，需要root, Hook系统任意一方法
 	2. Dexposed: dalvik,不需要root,只能hook本进程
