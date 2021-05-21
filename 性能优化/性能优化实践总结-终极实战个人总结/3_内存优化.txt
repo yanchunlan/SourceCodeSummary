@@ -1,8 +1,8 @@
 一.	分析工具
 	1.	adb
 		smaps：
-			adb run-as xxx.xxx.xxx cat /process/pid/status 的VmSize字段
-			adb run-as xxx.xxx.xxx cat /proc/pid/smaps
+			cat /proc/pid/status 的VmSize字段
+			cat /proc/pid/smaps
 
 		pmap：
 			1.	读取前后pmap数据，脚本删除重复项，相同内容合并，其他增量显示
@@ -15,7 +15,8 @@
 				mallinf/ getRuntime / proc/PID/smaps / d/kgsl/proc/PID/mem
 
 		dumpheap:
-			adb shell am dumpheap xxx.xxx.xxx >~/Desktop/dump.hprof
+			adb shell am dumpheap xxx.xxx.xxx 
+			adb pull xxx
 			hprof-conv ~/Desktop/dump.hprof >~/Desktop/dump1.hprof
 
 	2.	memory profiler
@@ -48,7 +49,11 @@
 	4.	线程数量
 		/proc/pid/status 的Threads字段
 		Thread.getAllStackTraces() 获取当前所有线程的信息，线程名、调用栈及状态
-
+		步骤：(可以在debug包，adb shell ，run-as 包名,一般是在异常的时候通过readlink的方式读取该字段并上报)
+			ls -a -l /proc/<pid>/fd
+			ps -t <pid>
+			抓取hprof
+			
 	5.	Native内存
 		主要是java堆内存，Debug.getMemoryInfo()以及/proc/pid/smap文件分析
 		当前使用：nativePss
