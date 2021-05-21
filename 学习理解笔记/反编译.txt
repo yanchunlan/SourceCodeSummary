@@ -90,8 +90,52 @@
  	3.	Cydia Substrate（native hook神器）
  		hook底层库非常方便，特别是so（源码下载位置：http://www.cydiasubstrate.com/）
  		1>	环境搭建
+ 			必须root，官网：http://www.cydiasubstrate.com/
  		2>	java hook
+ 			1.	导入包
+ 			2.	编写hook入口类
+ 			3.	配置xml信息
+ 				配置权限和mate-data数据
+ 			4.	安装运行
+ 				安装Cydia框架apk
+ 				安装hook后的apk
  		3>	native hook
+ 			1.	导入包
+ 				头文件和so文件
+ 			2.	编写hook入口类
+ 				1>	找到函数名
+ 					导出设备的so,adb pull system/lib/xxx.so
+ 					
+ 			3.	配置xml信息
+ 				配置权限和mate-data数据
+ 			4.	安装运行
+ 				安装Cydia框架apk
+ 				安装hook后的apk
  		4>	注意事项
 
 
+拓展：run-as 
+	需要manfest里面的android:debugable=true
+	linux里面除了rwx权限，还有特殊的s(setuid)权限和g(setgid)权限，s权限可以使得低权限用户以该程序的所有者的权限去执行命令，列入root
+	限制：
+		1.	运行的uid限制，运行命令的用户id只能是shell和root用户
+			Android源码目录\system\core\run-as源码里面观测到
+		2.	这个应用的安装必须合法
+			通过读取data/system/packages.list判断package的来源是否合法，我们可以通过dumpsys packageinfo观测
+		3.	应用的uid必须合法
+			\system\core\include\private\android_filesystem_config.h，发现
+			AID_ROOT 	root 	uid=0
+			AID_SYSTEM	system	uid=100
+			AID_SHELL	shell	uid=2000
+			AID_APP		app	uid=10000
+			所以>10000就是合法uid
+		4.	应用是否是debug模式
+	
+	setuid与setgid:
+		setgid 使其拥有所有者的权限:	 chmod 4755 program 或 chmod u+s program（只对文件有效）
+		setgid 使其拥有该程序所有组的权限: chmod 2755 dir 或 chmod g+s dir (setgid 只对目录有效)
+			
+	步骤：	
+		adb shell
+		run-as 报名
+		...
