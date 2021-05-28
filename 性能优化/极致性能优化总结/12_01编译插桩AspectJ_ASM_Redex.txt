@@ -1,4 +1,4 @@
-﻿一.	基本知识
+一.	基本知识
 	Dagger、ButterKnife 根据apt
 	Kotlin 的编译器
 	1.	使用场景
@@ -47,6 +47,9 @@
 			Dexmaker，用来生成 Dalvik 字节码的代码。
 			Soot，修改 Dex 的方法很另类，是先将 Dalvik 字节码转成一种 Jimple three-address code，
 			然后插入 Jimple Opcode 后再转回 Dalvik 字节码，具体可以参考例子
+	4.	Soot
+		静态分析和优化 Java 字节码的框架，下面的论文100行就可以实现，解压dex,插桩在压缩成apk,做竞品分析
+		https://github.com/yanchunlan/SourceCodeSummary/blob/master/%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/%E6%9E%81%E8%87%B4%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96%E6%80%BB%E7%BB%93/jimple-sable-tr-1998-4.pdf
 三.	总结
 	ASM处理工具：Hunter（https://github.com/Leaking/Hunter），Hibeaver（https://github.com/BryanSharp/hibeaver）
 	Javassist处理工具：DroidAssist（https://github.com/didi/DroidAssist）

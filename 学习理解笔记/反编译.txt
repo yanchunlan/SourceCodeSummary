@@ -95,24 +95,27 @@
  			1.	导入包
  			2.	编写hook入口类
  			3.	配置xml信息
- 				配置权限和mate-data数据
+ 				配置权限和mate-data数据,入口函数等
  			4.	安装运行
  				安装Cydia框架apk
  				安装hook后的apk
  		3>	native hook
  			1.	导入包
- 				头文件和so文件
- 			2.	编写hook入口类
- 				1>	找到函数名
- 					导出设备的so,adb pull system/lib/xxx.so
- 					
- 			3.	配置xml信息
- 				配置权限和mate-data数据
+ 				头文件和Substrate so文件
+ 			2.	寻找hook的函数名
+ 				下载so:
+ 					导出设备的so,ls !grep yoda.db
+ 					exit
+ 				寻找函数名：
+ 					ida打开，寻找加载的dex函数 xxx
+ 			2.	编写hook代码
+ 				MSImageRef image=msGetImageByName("/xxx.so")
+ 				void * method=MSFindSymbol(image,"xxxmethod")
+ 				MSHookFunction(method,(void*)&newxxx.(void*)oldxxx)
+ 					newxxx -> 获取进程name，排除无效进程，构造dex文件名，保存dex文件,返回原始的函数(不能影响正常的流程)
+ 			3.	编写cmake文件
+ 				hookxxx.cy(文件名一定要有cy结尾)
  			4.	安装运行
- 				安装Cydia框架apk
- 				安装hook后的apk
- 		4>	注意事项
-
 
 拓展：run-as 
 	需要manfest里面的android:debugable=true
