@@ -48,8 +48,13 @@
 		开辟单独进程dump
 
 四.	同类
-	tailor:
+	tailor: 获取内存快照工具，并进行裁剪压缩操作
 		对内存hprof文件的裁剪库，根据hprof文件格式，去除了一些无用的格式，仅保留byte[]、char[] 和 hprof 格式裁剪
+		xHook native hook dump的时候必定会执行open/write函数，对此hook实现dump之后的裁剪操作，并实现zlib压缩，
+		其中一个环节裁剪流程：
+			nOpen（）：开启对native 层open/write_proxy的hook代理
+			Debug.dumpHprofData()：调用open，hook代理里面找到目标文件fd，write的时候找到目标fd写入数据并裁减压缩
+			nClose（）：清除hook代理
 
 	matrix:
 		Debug.dumpHprofData直接dump完整hprof文件，分析hprof文件格式，裁剪掉数据相同的 Bitmap 对象和 String 对象

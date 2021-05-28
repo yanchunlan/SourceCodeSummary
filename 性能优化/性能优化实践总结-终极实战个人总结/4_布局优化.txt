@@ -21,6 +21,15 @@
 	5.	simplePref(android 5.0只支持c++,9.0是支持java/c++)
 		分析方法:
 		具体是根据systrace定位具体范围，再根据traceView定位具体方法
+	6.	perfetto
+		adk>=9/10 Pixel手机具备
+		Android 11（R）所有手机都有
+		开始录制trace:
+			进入设置界面：adb shell am start com.android.traceur/com.android.traceur.MainActivity
+			或者开发者模式->系统跟踪->显示“凯捷设置”图块->控制中心开启system tracing->record trace
+		adb pull data/local/traces
+		查看网址：https://ui.perfetto.dev/#!/
+		网址：https://www.jianshu.com/p/f4cf101cc64f
 
 三.	自动监控
 	1.	监控控件单个创建耗时
