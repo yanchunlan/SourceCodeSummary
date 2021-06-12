@@ -1,6 +1,6 @@
 一.	源码总结
 	1.	粗劣的流程
-		绘制开始ViewRootImpl.scheduleTraversals -> performTraversals -> measure，layout，draw
+		绘制开始ViewRootImpl.scheduleTraversals ->. postSyncBarrier && choreographer.postcallback -> performTraversals -> measure，layout，draw
 	2.	细分的流程
 		scheduleTraversals 
 		-> mChoreographer.postCallback
@@ -26,6 +26,32 @@
             doCallbacks(Choreographer.CALLBACK_COMMIT, frameTimeNanos);// 遍历完成的提交操作，用来修正动画启动时间
 		->	doCallbacks
 		->	内部维护四种链表
+
+		总结：（同步屏障，队列，异步消息，runnable）
+			1. 	发送消息：invalidate -> requestLayout -> postSyncBarrier && mChoreographer.postRunnable（mChoreographer队列添加runnable）
+			2.	new+delayMillis<=now 订阅vsync信号，否则发送Traversal异步消息到队列,接收到直接执行performTraversal
+			3.	订阅vsync信号：postRunnable插入队列后 -> sheduleFrameLocked -> nativeScheduleVsync(mReceiverPtr)
+			4.	接受vsync信号：mReceiverPtr.onVsync -> handler.sendMessageAtTime 发送异步消息
+					     mReceiverPtr.run（消息接受到回调）
+					     -> doFrame 
+					     -> doCallBack[performTraversal -> input/animation/traversal(从队列获取runnable,执行run方法mesure/layout/draw)]
+						mesure/layout/draw -> viewRootImpl.mesure/layout/draw,其中draw划分为硬软件绘制
+						软件绘制：
+							-> drawSoftware
+								surface.lockCanvas
+								view.draw(drawback/onDraw/dispatchDraw)
+								surface.unlockCanvasAndPost
+						硬件绘制：
+							判断manfest android:hardwareAccrlerated = true 是否
+							mAttach.mThreadRenderer.draw
+								updateRootDisplatList 将view视图抽象RenderNode对象，并构建view的drawOp树
+								-> updateViewTreeDisplayList 构建树
+								   缓存drawOP
+								RenderProxy向RenderThread发送消息，请求openGL线程渲染
+								
+						
+		监控的原理：实质就是往队列插入消息，并订阅vsync信号，当接收到vsync回调到doFrame，执行系统层，也会执行你发送的消息，如果系统层没有post消息到对列那么消息也不会系统的其他回调
+
 	3.	绘制总结
 		从上可知，vsync信号是底层硬件中断，16ms产生依次，会回调onVsync方法
 		1.	切换到 Choregrapher创建时所在的线程去调用scheduleFrameLocked()方法,设置mFrameScheduled = true

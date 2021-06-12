@@ -32,6 +32,10 @@
       }
      自研kwai-linker，caller address替换和dl_iterate_phdr解析绕过android7.0对系统调用库的限制
 
+     关键点：
+     	>=Android Q ，系统加载so库会检测是否是系统so，仅加载系统so,多一个判断逻辑
+     	kwai-linker的目的就是加载每个so都能够获取到一个回调，dl_iterate_phdr函数可以从回调找到某一个so对应的函数指针并返回
+
      3.	内存泄露检测实现
      SuspicionLeaksFinder.find:
 		buildIndex:	
@@ -46,36 +50,5 @@
 		轮训查询是否到达峰值
 	2.	dump pref 
 		开辟单独进程dump
-
-四.	同类
-	tailor: 获取内存快照工具，并进行裁剪压缩操作
-		对内存hprof文件的裁剪库，根据hprof文件格式，去除了一些无用的格式，仅保留byte[]、char[] 和 hprof 格式裁剪
-		xHook native hook dump的时候必定会执行open/write函数，对此hook实现dump之后的裁剪操作，并实现zlib压缩，
-		其中一个环节裁剪流程：
-			nOpen（）：开启对native 层open/write_proxy的hook代理
-			Debug.dumpHprofData()：调用open，hook代理里面找到目标文件fd，write的时候找到目标fd写入数据并裁减压缩
-			nClose（）：清除hook代理
-
-	matrix:
-		Debug.dumpHprofData直接dump完整hprof文件，分析hprof文件格式，裁剪掉数据相同的 Bitmap 对象和 String 对象
-		问题点： 
-			hprof文件较大，无法存储
-			裁剪中的大文件 I/O 和 hprof 分析，对app性能有影响
-			裁剪不彻底，存在大量无用数据和可能存在的隐私问题
-
-	拓展（hprof格式）：
-		由 Header和 Record 组成 
-		1.	Header
-			"JAVA PROFILE 1.0.2" + indetifiers + timestamp (13byte + 4byte + 8byte)
-		2.	Record 
-			tag + time + length + body（1byte + 4byte + 4byte + byte[$length]）
-		android dump出来的hprof文件也遵循 hprof 格式，不同之处在于其一级TAG只有：
-			STRING、LOAD_CLASS、HPROF_TAG_STACK_TRACE、HEAP_DUMP_SEGMENT、HEAP_DUMP_END。
-		HEAP_DUMP_SEGMENT又分很多二级tag，既有标准 hprof 定义，也有Android 自定义的 TAG，跟裁剪关系比较
-		紧密的二级 TAG 是 PRIMITIVE_ARRAY_DUMP，存放的是诸如 byte[] 、char[] 、int[]等类型的数据
-
-		裁剪 byte[]和 char[]就可以实现对 Bitmap/String 对象的裁剪，无用数据有timestamp、class-serial-number、
-		stack-serial-number、reserved 数据等等，4byte 的 length/number也可以压缩3byte/2byte
-
 
 

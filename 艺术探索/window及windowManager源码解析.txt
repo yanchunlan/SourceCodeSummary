@@ -103,5 +103,13 @@ windowManager 管理window,window的具体实现是WindowManagerService，window
 			注意：dialog 传入的context 需要是activity的，因为是当前activity上面的window 上面添加View
 	3.Toast的Window创建过程
 		
-		
+四.总结
+	ActivityThread.perfromLaunchActivity->
+
+	Instruation.newActivity
+	activity.attach
+	activity.onCreate
+
+	attach -> 
+
 			

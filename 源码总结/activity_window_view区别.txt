@@ -1,4 +1,4 @@
-activity��window,ViewD�Ĵ�������
+activity中window,ViewD的创建过程
 
 ->	scheduleLaunchActivity
 ->	handleLaunchActivity
@@ -7,14 +7,16 @@ activity��window,ViewD�Ĵ�������
 		->	 mInstrumentation.newActivity
 		->	r.packageInfo.makeApplication
 		->	 activity.attach						
-			-> ������ǰPhoneWindow����
-			 mWindow.setWindowManager // ����Ibinder,֪��view�������ĸ�Activieity,,
-			 // WindowManagerService ����ͨ����� IBinder ������ Activity ��� View
+			->mWindow=new PhoneWindiw(xxx) // 创建当前PhoneWindow对象
+			  mWindow.setWindowManager // 传入Ibinder,知道view是属于哪个Activieity,,
+			 // WindowManagerService 就是通过这个 IBinder 来管理 Activity 里的 View
 			 
 			 
-		->	mInstrumentation.callActivityOnCreate
+		->	activity.onCreate
+			mInstrumentation.callActivityOnCreate
 			->	setContentView
-			->	installDecor //���ݲ�ͬ�� Theme��������ͬ�� DecorView��DecorView ��һ�� FrameLayout
+			->	installDecor //根据不同的 Theme，创建不同的 DecorView，DecorView 是一个 FrameLayout
+				并解析layout生成对应的代码，并将当前布局添加在DecorView
 			
 	
 	3.	handleResumeActivity
@@ -22,16 +24,26 @@ activity��window,ViewD�Ĵ�������
 			->	activity.performResum
 			
 		->	activityResumed
-			->	r.activity.makeVisible(); 
-			->	wm.addView() 
+			->	r.activity.makeVisible();
+			->	wm.addView()
+			->	viewRootImpl.setView()
+				requestLayout
+				mWindowSession.addToDisplay -> wms.addWindow
+				设置一系列输入事件
+					->	触屏时间屏幕发起经过一些列优化
+					->	socket通知到framework的wms
+					->	xxx impl InputState
+					->	view.dispatchPointEvent
+					->	phoneWindow.callback.dispatchTouchEvent
+					->	acivity.dispatchTouchEvent
 			...
 			...
 			
-�ܽ�
-	Window ��ʲô��
-		Window �� Android �д��ڵĺ�۶��壬��Ҫ�ǹ��� View �Ĵ������Լ��� 
-		ViewRootImpl �Ľ������� Activity �� View ���
+总结
+	Window 是什么？
+		Window 是 Android 中窗口的宏观定义，主要是管理 View 的创建，以及与 
+		ViewRootImpl 的交互，将 Activity 与 View 解耦。
 
-	Activity �� PhoneWindow �� DecorView ֮��ʲô��ϵ��
-		һ�� Activity ��Ӧһ�� Window Ҳ���� PhoneWindow��һ�� PhoneWindow ����һ��
-		 DecorView ��ʵ����DecorView ������һ�� FrameLayout��
+	Activity 与 PhoneWindow 与 DecorView 之间什么关系？
+		一个 Activity 对应一个 Window 也就是 PhoneWindow，一个 PhoneWindow 持有一个
+		 DecorView 的实例，DecorView 本身是一个 FrameLayout。

@@ -1,0 +1,58 @@
+packageManagerService
+一.	流程
+	 -> packageInstallerActivity 点击安装
+	 ->	packageInstallerSession
+	 -> pms.commitLocked
+	 ->	pms.installStage
+
+	 ->	发送handler消息，INIT_COPY，创建installparams到message.obj
+	 	PackageHandler 接受消息,执行connectToService
+	 	new Intent().setCom(defaultContainerService)
+	 	defaultContainerService.onServiceConnection
+	 	发送handler消息,MCS_Bound
+
+	 ->	pendingInstalls.get(0)，从等待队列获取isntall参数
+	 	startCopy
+	 	后续执行2个流程
+	 		1. 拷贝安装包
+			2. 装载代码
+	1.	
+	 	installparams.handleStartCopy
+	 		1. 设置安装位置手机/sdcard
+	 		2. createInstallArgs 判断apk安装位置
+	 		3. copyApk
+
+	 	copyApk 
+	 -> doCopyApk
+	 		1. allocateStageDirLegacy 创建安装包路径data/app/包名
+	 		2. copyPackage 拷贝apk到目标路径
+	 		3. copyNativeBinariesWithOverride 拷贝so文件到目标路径
+
+	 	copyPackage
+	 ->	copyFile
+
+	 2.
+	 	handleReturnCode
+	 ->	processPendingInstall.run
+	 	1. doPreInstall 预安装，检查安装包状态
+	 	2. installPackageLI 添加trace,调用installPackageLI
+	 	3. doPostInstall 处理安装完成之后操作
+
+	 	installPackageLI
+	 ->	1. parsePackage 解析apk文件，解析manifest,记录信息到framework层，便于后续启动
+	 	2. collectCertificates 签名校验
+	 	   collectManifestDigest 清单信息收集，防止重复安装2个apk
+	 	3. packageDexOptimizer.performDexOpt dex2oat转换
+	 	4. installNewPackageLI 安装新apk
+
+	 ->	installNewPackageLI
+	 	1. scanPackageLI 扫描解析apk安装包文件，保持apk信息到pms,并创建data/data/包名
+	 	2. updateSettingLI 安装成功，更新设置应用信息，比如应用权限等
+	 	3. deletePackageLI 安装失败，删除安装包与缓存
+	 	安装成功，发送ACTION_PACKAGE_ADDED，系统接受就将启动icon显示在桌面上
+
+
+二.	总结
+	packageInstallerActivity 点击安装
+	1.	拷贝安装包
+	2.	装载代码
