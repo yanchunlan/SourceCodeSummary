@@ -1,7 +1,5 @@
 一.	分析工具
 	1.	adb
-		ps -A | grep "xxx" 列出目标进程信息
-
 		smaps：
 			cat /proc/pid/status 的VmSize字段
 			cat /proc/pid/smaps

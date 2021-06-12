@@ -1,4 +1,4 @@
-﻿一.	Activity的工作过程
+一.	Activity的工作过程
 	startActivity->startActivityForResult->mInstrumentation.execStartActivity(checkStartActivityResult)
 	->ActivityManager.getService().startActivity->AMS的startActivity->
 	
@@ -64,3 +64,8 @@
 		如果Application已经被创建郭，那么久不会再重复创建了，这也意味着一个应用只有一个Application,Application对象的创建也是通过
 		Instrumentation来完成的，这个过程和Activity对象的创建一样，都是通过类加载器来完成的，Application创建后，系统会通过Instrumentation
 		的callApplicationOnCreate来调用Application的onCreate
+
+二.	总结
+	1.	activity->ams.startActivity
+	2.	ams.startActivity->ApplicationThread, 根据intent创建flag，创建taskRecord,ActivityRecord,创建进程，创建ApplicationThread，并执行ApplicationThread.execute
+	3.	ApplicationThread.scheduleLauncherActivity -> H -> instrumentation.newActivity/instrumentation.attach/instrumentation.onCreate

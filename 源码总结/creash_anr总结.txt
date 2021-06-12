@@ -95,6 +95,7 @@
 五.	anr日志生成与捕获分析
 	1.	anr的生成
 		实质都是启动过程中先发送了一个msg消息，执行anr弹窗操作，然后在启动结束回调中移除此消息
+		先发送超时消息，再发送具体消息
 		1>	Service每个函数（前台20s，后台200s）：
 			as.realStertServiceLocked ->
 				bumpServiceExecutiongLocked ->
@@ -127,8 +128,16 @@
 
 		上面发生anr的日志生成：
 			发送超时消息之后， -> 	
-			AppErrors.appNotResponding (收集信息，调用服务，dump写入数据，添加DropBox弹窗ANR,发送handler消息SHOW_NOT_RESPONDING_UI_MSG,)
-
+			AppErrors.appNotResponding (收集信息，调用服务，dump写入数据，添加DropBox弹窗ANR,发送handler消息SHOW_NOT_RESPONDING_UI_MSG)
+			systemServer
+			-> 添加所有进程id
+			-> suppend thread 
+			-> dump java/native trace
+				具体是打开trace文件，设置内容追加模式，
+				创建socket超时监听
+				创建管道，并与socket超时绑定，若对方超时则结束流程
+				向指定进程发送sigquit信号，通知dump文件（sigquit在虚拟机注册与监听）
+				监听管道读取管道内容，写入制定trace文件，
 	2.	anr的分析
 		分析总共可发分为如下4步：
 		1>	确定ANR发生时间,关键字:am_anr,ANR in
@@ -178,6 +187,8 @@
 
 		总结：
 			xcrash 与bugly都是采用上述方式
+		日志收集：
+			java 层获取线程堆栈，反射获取虚拟机内部dump线程堆栈接口，并在内存映射函数地址，强制调用接口，将数据映射到本地
 
 	4>	anr 捕获第三方
 		ANRWatchDog：
