@@ -41,6 +41,10 @@
 		大小：Runtime.getRuntime().maxMemory
 		当前：Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
 		具体分析：Dubug.dumpHprofData(String fileName)
+		
+		adb shell am dumpheap xxx
+		adb pull xxx
+		hprof-conv  xxx.hprof  xxx.hprof
 
 	3.	FD数量
 		IO、Socket及线程操作都有对应的FD，主要读取/proc下的虚拟文件

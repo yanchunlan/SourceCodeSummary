@@ -1,0 +1,44 @@
+一.	activity，activityRecord，tastRecord之间的关系
+	应用进程
+	1.	ActivityClientRecord
+		bundle status
+		Activity activity
+
+	2.	ActivityThread
+		arrayMap<IBInder,ActivityClientRecord> mActivitys
+
+	系统服务进程
+	1.	ActivityRecord
+		Bundle icicle
+		TaskRecord task(作为parent)
+
+	2.	TaskRecord
+		ArrayList<ActivityRecord> mActivitys
+		ActivityStack mStack(作为parent)
+
+	3.	ActivityStack
+		ArrayList<TaskRecord> mTaskHistory
+		mRootActivityContainer mRootActivityContainer(mRootActivityContainer.getActivityDisplay(mDisplayId))
+
+	ActivityManagerService【ams的助手，帮助分担部分ams的工作】
+
+	1.	ActivityDisplay
+		ArrayList<ActivityStack> mStack
+
+	2.	RootActivityContainer
+		ArrayList<ActivityDisplay> mActivityDisplay
+
+	3.	ActivityStackSupervisor
+		RootActivityContainer	mRootActivityContainer
+
+	4.	ActivityManagerService
+		ActivityStackSupervisor	 mActivityStackSupervisor
+
+	拓展1: fragment.saveinstance(bundle) 存储数据 -> ActivityClientRecord.status -> ActivityRecord.icicle
+	拓展2: activity摧毁后怎么重建？
+		因为saveinstance(bundle)回哦保存数据在系统服务进程，后面重启
+		RootActivityContainer查找已存在对应的activityRecord->
+		launchActivityItem->
+		handlerLauncherActivity.prefLauncherActivity->
+		handlerStartActivity
+			

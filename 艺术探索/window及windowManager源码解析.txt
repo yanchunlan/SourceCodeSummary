@@ -112,4 +112,59 @@ windowManager 管理window,window的具体实现是WindowManagerService，window
 
 	attach -> 
 
+五. 几个问题
+	1. token的作用，来源
+	来源(dialog的token)：
+	windowManagerGlobal.addView->
+	window.adjustLayoutParamsForSubWindow进行窗口token赋值，根据window.type设置token类型应用层/子窗口/系统窗口
+	
+	使用位置：
+	ViewRootImpl.setView 内部的addToDisplay返回值是add_bad_app_token/add_bad_subwindow_token则抛出异常
+	wms.addView 获取token并返回 res类型（主要的校验位置在这里）
+
+	activity的token:
+	activityStarter.startActivity->
+		activityRecord =new ActivityRecord->
+		appToken=new Token()
+	activityStack.startActivityLocked -> 发送token到wms
+		r.createWindowContainer 
+		mWindowContainerController=new AppWindowContainerController
+		atoken=createAppWindow
+		new AppWindowToken(父类windowToken构造)
+		new windowToken
+		onDisplayChange
+		displayContent.reParentWindowToken
+		addWindowToken
+		mTokenMap.put(binder,token)后续wms对比也是根据binder获取到token判断是否正确
+	activityStackSupervisor.realStartActivityLocked->
+	TransactionExecutor.execute->
+	TransactionExecutor.executeCallbacks->
+		IBinder token=transaction.getActivityToken
+	launcherActivityItem.execute(IBinder token)->
+	activityRecord=new ActivityClientRecord(token)
+	activityRecord.handlauncherActivity ->
+	preformLauncherActivity->
+	activity.attach(activityClientRecoed.token)->
+		window=new phoneWindow  
+		window.setWindowManager(token)
+		mwindowManager= window.getWindowManager
+		activity内部执有windowManager，windowManager执有phoneWindow，phoneWindow执有token(activityClientRecoed.token)，
+
+	application的token:
+	application没有赋值token,直接通过contextImpl.getSystemService获取windowManager，
+	
+	
+	2. Activity/dialog/popupwindow 中的token对比
+		activity的第一个window/dialog的window的token相同都是activity.token,所以他们是同一层级
+		popupwindow的window的token是 activity的第一个window的window值 即viewRootimpl.mwindow
+		
+	
+	3. Activity/dialog/popupwindow 中的window对比
+		wms.addView会找到activityRecord.children,然后判断是不是childWindow
+		Activity/dialog 的window在同一个层级，存储在activityRecord.mChildren<windowState>
+		popupwindow 的window存储在activityRecord.children<windowState>.window.mChildren<windowState>
+
+		
+	
+	
 			

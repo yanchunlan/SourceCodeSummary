@@ -1,0 +1,55 @@
+一.	应用程序启动
+	001进程创建
+		-> runSelectLoop前是讲启动参数封装为ZygoteState，Zygote的loop接收到socket请求信息，runOnce开始读取参数列表 
+		-> forkAndSpecialize创建进程，之后创建binder线程池并反射调用main函数 
+		-> ActivityThread.main 创建ActivityThread，并运行Looper.loop
+		-> ActivityThread.attach
+		-> AMS.attachApplicationLocked
+		-> ActivityThread.bindApplication
+			load resource
+			load class
+			create context 
+			init Instrumentation
+			application.onCreate
+		-> Instrumentation.startActivity
+		-> scheduleLaunchActivity
+		-> setContentView  创建decorView
+		-> makeVisible
+			WindowManagerGlobal。addView
+
+二.	首帧的绘制与渲染
+		Choreographer.doFrame
+		-> performMeasure/performLayout/performDraw
+		-> draw 划分为软/硬绘制
+		-> 		主要是构建display数据（view tree的每个view对应RenderNode，
+				通过绘制引擎把视图View转化为绘制操作的op，保存在对应View.displayList，
+				子View再作为一个op保存在父容器视图的DisplayList）
+				创建RenderThread，并绑定Surface，通过eglSurface去执行dequeueBuffer/queueBuffer
+		-> syncFrameState/prepareThree ： 将UI thread的DisplayList同步到RenderThread
+		-> dequeueBuffer：Surface申请存放绘制数据的buffer
+		-> flash commands：DisplayList按层重新组织数据：LayerBuilder ，并转为OpenGL命令，缓存在本地的GL命令缓冲区
+		-> swapbuffers：通过Surface queueBuffer将数据放在之前申请的buffer中，并通知SurfaceFlinger去合成
+		-> 
+		-> 
+		-> 
+		-> 
+		-> 
+		-> 
+		-> 
+		-> 
+		-> 
+		-> 
+		-> 
+
+三.	首帧的合成与送显
+
+
+
+四.	其他概念
+	1. 60fps
+		1秒60帧，目前还支持有90fps，针对不同fps系统，卡顿耗时定义的时间不一致
+	2.	cpuInfo
+
+
+
+

@@ -34,6 +34,9 @@
 			主要是检测thread创建的时候，新加一个方法执行线程设置name方法
 		3.	线程池静态方法替换
 			替换为新增了name的初始化方法
+			有2种替换方式：
+			1.	替换原生thread为新增了name参数的thread类
+			2.	替换自定义Thread,仅在name使用的位置，替换为能够获取包名类名的name，其中有一个难点：name不是最后一个参数的情况，处理方式是置位name,stackSize，然后更换name,再置位回去
 	4.	sharePreferences 优化
 		apply，只是数据加在队列,在pause的时,从队列取出,主线程执行队列消息的run，容易造成anr
 		通过自定义的sharePreference，asm方式动态替换解决onPause(), onDestroy()回调时在主线程的同步操作
@@ -182,4 +185,14 @@
 		task 插件
 	3.	transform
 		插状具体
-		
+	4.	结构划分
+		transfrom：javassist/asm
+		classTransfrom：输入输出均为classFile 
+			asm：ClassNode
+			javassist:ctClass
+		Variant Processor：
+			TaskGraph支持创建task，修改task依赖关系
+			修改configuration 依赖，注入第三方库
+			操作 Gradle、Project 相关
+	5.	线程情况
+		一个 boosterTransfrom 内部执行多个transfrom,并行执行

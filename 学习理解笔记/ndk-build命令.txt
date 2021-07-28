@@ -1,0 +1,30 @@
+官网下载：
+	https://developer.android.com/ndk/downloads/index.html
+
+配置环境变量：
+	export ANDROID_NDK_HOME=/Users/user01/Development/android-ndk-r16b
+	export PATH=${PATH}:${ANDROID_NDK_HOME}:${ANDROID_NDK_HOME}/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64/bin
+
+配置命令：
+	open -e ~/.bash_profile
+	source ~/.bash_profile
+	ndk-build -h
+
+编译命令：
+	强制重新构建所有源代码：			ndk-build -B
+	清理生成的二进制文件和目标文件：		ndk-build clean
+	编译文件：						ndk-build -C ~/Desktop/test/jni
+	编译文件执行几次命令：				ndk-build -C ~/Desktop/test/jni -j + (次数，不输入次数为1次) 
+	编译文件输出log：					ndk-build -C ~/Desktop/test/jni NDK_LOG=1
+	实际执行的构建命令:				ndk-build U=1
+	生成文件：
+		test - jni
+			 - libs - armeabi
+			 		- armeabi-v7a
+			 - obj 	- local - armeabi
+			 				- armeabi-v7a
+
+必须手机运行,主要是手机提供运行的环境：
+	push:	adb push libs/armeabi-v7a/demo /data/local/tmp
+	授权：	adb shell 'chmod 777 /data/local/tmp/demo'
+	运行：	adb shell '/data/local/tmp/demo'

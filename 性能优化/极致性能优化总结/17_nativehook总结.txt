@@ -47,3 +47,4 @@
 	2. Dexposed: dalvik,不需要root,只能hook本进程
 	3. Epic: art不需要root，本质上inline hook
 	4. AndroidMethodHook: Andfix + Dexmaker 非系统方法
+	5. frida python+java 二进制hook工具

@@ -1,0 +1,67 @@
+一. window
+	1.	window创建
+		handlerLauncherActivity ->
+			windowManagerGlobal.init
+			prefromLauncherActivity  ->
+				activity.attach ->
+					mWindow = new PhoneWindow
+					mWindow.setWindowManager(mToken)
+
+	2.	window添加
+	handlerResumeActivity ->
+	wm.addView ->
+	windowManagerGlobal.addView ->
+	viewRootImpl.setView ->
+		new windowSession()
+	windowSession.addToDisplay ->
+	(wms)mService.addWindow ->
+		通过type与token对window进行分类和验证
+		构造windowState和window一一对应
+		window根据其token存储在windowMap，session存储在session-set
+		通过token与window进行分组
+		对window进行层级分级
+
+	3.	问题点
+		activityRecord创建时，会缓存一份token到wms，这里是否使用到？
+
+二.	decorview加载流程
+	1.	setContentView流程
+		1. installDecor
+			创建decorView对象
+			配置不同窗口修饰属性
+			R.id.content赋值给mContentParent
+
+		2. layoutInflate.inflate(mContentParent)
+			解析出View对象
+			解析出view对应的params，并设置给view
+	2.	decorView的添加
+		handlerResumeActivity ->
+		activity.makeVisible ->
+		wm.addView ->
+		mGlobal.addView ->
+		root.setView ->
+		...	 上面有了，不需重复写入
+
+三.	控件渲染流程
+	performTraversals
+	relayoutWindow
+	prefromMeasure
+		MeasureSpec：理解为一种数据存储方式，减少对象的创建
+			SpecMode：0011 << 30左移30位，measureSpec & mode_mask 高2位运算
+			SpecSize：measureSpec & ~MODE_MASK 低30位运算
+		MeasureSpec由父容器的MeasureSpec和自身的LayoutParams共同决定
+		ViewGroup的子类就必须要求ViewGroup的子类就必须要求，否则无法使用layout_margin
+	prefromLayout
+	prefromDraw
+		background.draw ->
+		onDraw ->
+		dispatchDraw ->
+		onDrawScrollBars ->
+		拓展：
+			View.setWillNotDraw 不需要绘制内容使用此
+			View.forceLayout 下次当前view.layout,不调用父类的requestLayout
+
+四.	activity,window,view区别
+	
+
+

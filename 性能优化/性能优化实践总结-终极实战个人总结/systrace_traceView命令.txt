@@ -6,7 +6,7 @@ python $ANDROID_HOME/platform-tools/systrace/systrace.py gfx view wm am pm ss da
 
 python $ANDROID_HOME/platform-tools/systrace/systrace.py -o /Users/yanchunlan/AndroidStudio/ycl/systrace/live/kuai.html -t 10 -a com.xiatou.hlg gfx input view webview wm am sm audio video camera hal app res dalvik rs bionic power sched irq freq idle disk mmc load sync workq memreclaim regulators
 
-python $ANDROID_HOME/platform-tools/systrace/systrace.py gfx view wm am pm ss dalvik app sched -b 90960 -a com.xiatou.hlg  -o /Users/yanchunlan/AndroidStudio/ycl/systrace/live/kuai5.html
+python /Users/yanchunlan/AndroidStudio/project/catapult/systrace/systrace.py gfx view wm am pm ss dalvik app sched -b 90960 -a com.smile.gifmaker -o /Users/yanchunlan/AndroidStudio/systrace/02/kuai0.html
 
 
 

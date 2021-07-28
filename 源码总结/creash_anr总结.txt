@@ -154,6 +154,36 @@
 
 		4>	源码及逻辑分析
 
+		5>	trace日志解析
+			----- pid 901 at 2015-11-28 14:38:34 -----
+			Cmd line: system_server 				
+			【说明了发生ANR的进程id、时间和进程名称】
+
+			JNI: CheckJNI is off; workarounds are off; pins=6; globals=2154 (plus 409 weak)
+
+			DALVIK THREADS:
+			(mutexes: tll=0 tsl=0 tscl=0 ghl=0)
+			【tll:thread list lock、tsl:thread suspend lock、tscl:thread suspend count lock、ghl:gc heap lock、hwl:heap worker lock、hwll:heap worker list lock】
+
+			"main" prio=5 tid=1 NATIVE 		【线程名称、线程的优先级、线程锁id和线程状态】
+			  | group="main" sCount=1 dsCount=0 obj=0x415a4e88 self=0x414c48d8	【线程组名称，线程被挂起的次数，被调试器挂起的次数，Java对象的地址，本身的地址】
+			  | sysTid=901 nice=-2 sched=0/0 cgrp=apps handle=1073926484	线程的调度信息【Linux的内核线程id，调度优先级，调度策略和优先级，调度属组，处理函数地址】
+			  | state=S schedstat=( 303590361913 618664734427 651535 ) utm=19466 stm=10893 core=0   上下文信息【调度状态，（/proc/[pid]/task/[tid]/schedstat读取；cpu上执行的时间、线程的等待时间和线程执行的时间片长度），线程用户态下使用的时间值，内核态下的调度时间值，cpu核的序号】
+			  #00  pc 00021914  /system/lib/libc.so (epoll_wait+12)
+
+
+			线程的状态如下：
+				THREAD_ZOMBIE		0	TERMINATED
+				THREAD_RUNNING		1	RUNNABLE or running now
+				THREAD_TIMED_WAIT	2	TIMED_WAITING in Object.wait()
+				THREAD_MONITOR		3	BLOCKED on a monitor
+				THREAD_INITIALIZING	5	allocated not yet running
+				THREAD_STARTING		6	started not yet on thread list
+				THREAD_NATIVE		7	off in a JNI native method
+				THREAD_VMWAIT		8	waiting on a VM resource
+				THREAD_SUSPENDED	9	suspended usually by GC or debugger 	用来区分是否是debug包
+
+
 	3.	anr的日志收集方式
 		1>	低版本	FileObserver+ProcessErrorStateInfo
 			FileObserver:
@@ -194,6 +224,7 @@
 		ANRWatchDog：
 			创建单独进程，向主线程handler发送+1消息，并定义anr阀值，休眠后判断变量是否+1完成，未完成就警告并抓取anr信息，堆栈信息
 
+	5>	卡顿捕获第三方：
 		BlockCanary：
 			主线程looper的loop方法在寻找msg.target.dispatchMessage(msg)，前后打印log,时间差，满足阀值就定义是卡顿
 
