@@ -92,6 +92,10 @@ LeetCode editor leetCode刷题
 
 SequenceDiagram 一键生成序列图（右键->SequenceDiagram）
 
+CodeMetrics java 代码查看复杂度
+
+MetricsReloaded Java代码查看复杂度（在Actions选择Caculate Metrics - 选择范围与Complexity metrics（圈复杂度））
+
 
 
 

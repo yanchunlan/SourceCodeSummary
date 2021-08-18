@@ -9,4 +9,4 @@
 		CPU Duration一项中显示了实际CPU在处理这一区块所消耗的时间
 
 3.	Perfetto(android sdk>10)
-	
+	https://ui.perfetto.dev/#!/

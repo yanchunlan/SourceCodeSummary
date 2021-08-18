@@ -194,21 +194,27 @@
 
 	最终的问题划分为3个问题：java heap，native heap，kernel
 	1> java heap
-		生成hprof文件，mat观测
+		生成hprof文件，mat观测. 单位1000000=1MB
 		mat关注点：
 		1）主要关注点
 			histogram 	基于类观测
 				shallow heap:指的是某一个对象所占内存大小
 				retained heap:指的是一个对象及其引用的对象所包含对象所占内存的总大小[一般使用此判断内存问题]
 			dominator_tree 	基于对象观测
-				找到耗时对象，右键选择List Objects -> with incoming reference（引用树中的父节点）
-					右键选择Immediate Dorminator（引用树中的子节点）
+				找到耗时对象，右键选择List Objects -> with incoming reference（引用树中的父节点,被哪些别人调用）
+					右键选择Immediate Dorminator（引用树中的子节点,调用别人哪些）
 				exclude all phantom/weak/soft etc. references（弱引用、软引用及影子引用）
 			top consumers 	占用内存比较高的对象
 			leak suspects 	内存泄漏怀疑点
 			OQL  		sql操作
 					select * from instanceof android.app.Activity
 		2）查询集合划分
+		
+		3) bitmap && byte[]
+			选中mBuffer 右键copy -> save value to file -> xxx.data文件
+			选择bitmap 打开inspector窗口可以查看尺寸，使用GIMP工具，打开xxx.data文件，选择rgb alpha填入宽高，即可观测到图片
+		4）堆对比
+			打开2个文件，打开navigation history点击historgam,选择add to comp are basket 选择compare the result
 			
 		https://blog.csdn.net/yxz329130952/article/details/50288145
 	2> native heap

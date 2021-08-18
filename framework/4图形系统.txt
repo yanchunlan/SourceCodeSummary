@@ -64,4 +64,109 @@
 四.	activity,window,view区别
 	
 
+五.	surface图形系统概述
+	
+
+六.	surfaceFlinger服务连接过程
+	viewRootImpl.setView ->
+	mwindowSession.addToDisplay ->
+	win.attach ->
+	mSession.windowAddedLocked ->
+	surfaceSession.nativeCreate ->
+	surfaceComposerClient.onFirstRef ->
+	getComposerService   binder获取这是surfaceFlinger服务的代理接口
+
+	surfaceComposerClient  -> binder -> ComposerService -> biner -> surfaceFlinger
+	
+七.	surfaceFlinger中创建surface过程
+	wms.relayoutWindow ->
+	winState.createSurfacelocked ->
+	new Surface ->
+	surface_init ->
+	curfaceComposerClient.createSurface ->
+	surfaceFlinger.createSurface ->
+		根据不同的参数创建不同的layer ->
+		layer.setBuffer 创建了surfaceLayer并保存在mSurface中
+		initStates 初始化这个新layer的一些状态
+		addLayer 将其添加在z轴集合中
+
+	返回 surfaceLayer的Binder代理 到应用层 ->
+	surface.init ->
+	new ShareBufferClient
+
+
+	getTokenForSurface ->
+	layer.setToken ->
+
+	总结：
+		1. 分层：
+			surfaceFlinger层：
+				创建surface,layer,Surfacelayer,sharedBufferServer
+			应用层：
+				surfaceControl,surface,sharedBufferClient
+			java 层：
+				surfaceControl copyFrom 返回给客户端
+		2.	一个应用窗口，创建2个surface,wms与应用程序进程，
+			应用程序：
+				java 层surface 在c++层关联一个surface对象，用于绘制应用程序UI
+				应用层UI绘制，一般使用2个surface进行绘制
+			wms:
+				java 层surface 在c++层关联一个surfaceControl对象,用于设置窗口属性
+				为什么存在窗口属性这个wms管理，因为窗口属性是全局的，需要一个统筹管理
+
+八.	surfaceFlinger共享UI元数据过程
+	安卓应用程序与surfaceFlinger服务之间使用匿名共享内存方案shareClient，其中一个shareClient有31个sharedBufferStack，一个sharedBufferStack里面有n个缓冲器GraphicBuffer【双缓冲front/back buffer | 三缓冲front/back/tripple buffer】
+
+九.	view.canvas，surface关系
+	view.draw ->
+	drawSoftware ->
+	mSurface.lockCanvas ->
+		nativeLockCanvas ->
+		surface.lock ->
+		surface.dequeueBuffer ->
+		向surfaceFlinger申请GrapHicBuffer，创建SkCanvas，构造SKBitmap
+
+	view.draw ->
+		canvas.translate ->
+		native_translate ->
+			getNativeCanvas 返回一个SKCanvas
+			skia引擎
+		SkCanvas.translate 
+
+	surface.unlockCanvasAndPost ->
+		unlockSwCanvasAndpost ->
+		nativeUnlockCanvasAndPost ->
+		surface.unlockAndPost ->
+		queueBuffer ->
+			buffer.clear
+			onFrameAvailable
+			broadCast 通知surfaceFlinger消费
+
+十.	surfaceFlinger启动与图层合成送显过程
+	init:
+		init.rc
+		surfaceFlinger.main
+		surfaceFlinger.onFirstRef
+		eventQueue.init (开启消息队列)
+			init egl
+			hwComposer
+			启动EventThread
+			启动开机动画
+	合成：
+		消息队列有接受2种类型的消息，invalidate,refresh
+	流畅度
+	Vsync信号
+	
+十一. 硬件绘制
+	updateRootDisplayList ->
+	View.updateDisplayListIfDirty ->
+		1. renderNode.start 初始化displayList,DisplayList的DisplayListCanvas
+		2. dispatchDraw
+		通过DisplayListCanvas对view tree的每个view.draw构建op并存储在DisplayList
+			主要是 将disPlay地址存储在mStagingDisplayList，并存储在RenderNode
+			然后调用DisplayListCanvas会调用drawRenderNode将其子RenderNode封装进RenderNodeOp并插入在父容器的DisplayList
+	类关系：
+		RootRenderNode.mDisplayList ->
+		DisplayList.RenderNodeOp ->
+		RenderNode.mDisplayList ...循环
 

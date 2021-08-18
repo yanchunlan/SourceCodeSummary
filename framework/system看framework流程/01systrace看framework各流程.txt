@@ -18,7 +18,7 @@
 			WindowManagerGlobal。addView
 
 二.	首帧的绘制与渲染
-		Choreographer.doFrame
+	Choreographer.doFrame
 		-> performMeasure/performLayout/performDraw
 		-> draw 划分为软/硬绘制
 		-> 		主要是构建display数据（view tree的每个view对应RenderNode，
@@ -29,24 +29,33 @@
 		-> dequeueBuffer：Surface申请存放绘制数据的buffer
 		-> flash commands：DisplayList按层重新组织数据：LayerBuilder ，并转为OpenGL命令，缓存在本地的GL命令缓冲区
 		-> swapbuffers：通过Surface queueBuffer将数据放在之前申请的buffer中，并通知SurfaceFlinger去合成
-		-> 
-		-> 
-		-> 
-		-> 
-		-> 
-		-> 
-		-> 
-		-> 
-		-> 
-		-> 
-		-> 
 
 三.	首帧的合成与送显
+	SurfaceFlinger 初始化之后，开启消息队列，waitForEvent等待消息
+	-> onMessageReceived接收到消息，能够执行invalidate或者refresh
+		1. 执行invalidate
+			handleMessageInvalidate
+			-> handlePageFlip
+				从各Layer对应的BufferQueue中拿图形缓冲区数据，并根据内容更新脏区域，并且把GraphicBuffer映射为OpenGL的texture
 
+		2. 执行refresh
+			handleTransaction，针对Layer和Display的变化更新脏区域
 
+	-> handleMessageRefresh
+		preComposition(); //合成前的准备
+			合成前再过一遍Layer是否被更新了，有则触发signalLayerUpdate，通过EventThread安排一次invalidate sf vsync
+		rebuildLayerStacks(); //重建layer堆栈
+			提取可见的Laye并计算可见区域，为合成准备好数据材料
+		setUpHWComposer();//hwcomposer的设定
+			决定由谁进行最终的合成工作，openGl or HWC
+		doComposition();//正式的合成处理
+		postComposition(refreshStartTime);//合成后期的处理
+			将图像传递到物理屏幕。但是在下一个vsync信号才被消费
+
+		完成合成之后，releaseBuffer，这里释放的是之前latchBuffer 获取的GraphicsBuffer
 
 四.	其他概念
-	1. 60fps
+	1.	60fps
 		1秒60帧，目前还支持有90fps，针对不同fps系统，卡顿耗时定义的时间不一致
 	2.	cpuInfo
 

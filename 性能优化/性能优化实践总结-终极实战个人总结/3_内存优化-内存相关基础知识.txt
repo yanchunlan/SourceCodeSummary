@@ -1,1 +1,15 @@
-一.	
+一.	内存分析命令
+	USS: 物理内存		进程独占的内存
+	PSS: 物理内存		PSS= USS+ 按比例包含共享库
+	RSS: 物理内存		RSS= USS+ 包含共享库
+	VSS: 虚拟内存		VSS= RSS+ 未分配实际物理内存
+
+	dumpsys meminfo
+		其中dumpsys源码位置在：/frameworks/native/cmds/dumpsys/dumpsys.cpp
+		dumpsys传进来的参数通过函数，checkService来找到具体的service,并执行该service的dump方法
+		dumpsys meminfo对应的服务是AMS,memBinder类的dump,
+		是一系列数据的汇总，
+	Debug.getMemoryInfo: 数据等效于/proc/$<pid>/smaps
+
+二.	内存知识
+	
