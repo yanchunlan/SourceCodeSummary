@@ -1,0 +1,50 @@
+一.	指标获取
+	fps
+		dumpsys gfxinfo 错误，无法获取SurfaceView的帧率
+		
+		dumpsys SurfaceFlinger 获取当前测试图层LayerName，再通过
+		dumpsys SurfaceFlinger --latency LayerName 获取帧率数据
+
+		prefDog jank计算方法：
+		1.	当前帧耗时>前三帧平均耗时2倍。
+		2.	当前帧耗时>两帧电影帧耗时(1000ms/24*2=84ms)
+		严重卡顿BigJank:
+		1.	当前帧耗时>前三帧平均耗时2倍。
+		2.	当前帧耗时>三帧电影帧耗时(1000ms/24*3=125ms)。
+
+	cpu usage
+		读取 /proc/stat 和 /proc/<pid>/stat ，但是某些手机会关核导致无法计算
+		更换为/proc/uptime 读取idle数值来计算cpu使用率
+
+	cpu clock
+		/sys/devices/system/cpu/cpu[n]/cpufreq/scaling_cur_freq 获取cpu当前频率，但是太高
+		更换为 /sys/devices/system/cpu/cpu[n]/cpufreq/stats/time_in_state 计算两次采样间隔中运行时间最长的那个频率
+
+	memory usage
+		version < Q, ActivityManager.getProcessMemoryInfo 获得应用的内存使用信息
+		version > Q, ActivityManager.getProcessMemoryInfo 获得自身应用的内存信息 ，需要在加上读取 /proc/[pid]/status 
+
+	memory detail
+		dumpsys meminfo [pid] 性能损耗较大
+
+	gpu
+	高通Adreno
+		
+
+	ARM Mali
+
+
+
+	cpu
+
+
+	netWork
+
+
+	battery
+
+
+	screenShot
+
+
+

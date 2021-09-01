@@ -1,0 +1,28 @@
+一. so文件读取
+	1. readelf 查看ELF文件的头部和各个section内容
+		-a：--all 显示全部信息
+		-h：--file-header 显示elf文件开始的文件头信息.
+		-l：--program-headers --segments 显示程序头（段头）信息
+		-d：--dynamic 显示动态段的信息
+		-r：--relocs 显示可重定位段的信息
+		-s：--syms --symbols 显示符号表段的信息
+
+		ELF Header:
+		Section Headers:
+
+		elf.h文件地址：\external\kernel一headers\origlnal\asm一x86\elf.h
+		每个so文件格式均有对应的解析方式：https://github.com/fourbrother/parse_androidso
+
+	2. objdump 对elf的内容进行反汇编
+		-D： 反汇编所有section (-d反汇编特定section)
+		-s： 将所有段的内容以十六进制的方式打印出来
+		-S： 尽可能反汇编出源代码，尤其当编译的时候指定了-g这种调试参数时，效果比较明显。隐含了-d参数。
+
+
+
+		/Users/yanchunlan/AndroidStudio/ndk/android-ndk-r21e/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64/bin/arm-linux-androideabi-readelf -a /Users/yanchunlan/AndroidStudio/project/NativeApplication/app/build/intermediates/cmake/debug/obj/arm64-v8a/libnative-lib.so
+
+
+
+		/Users/yanchunlan/AndroidStudio/ndk/android-ndk-r21e/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64/bin/arm-linux-androideabi-objdump -D /Users/yanchunlan/AndroidStudio/project/NativeApplication/app/build/intermediates/cmake/debug/obj/arm64-v8a/libnative-lib.so
+

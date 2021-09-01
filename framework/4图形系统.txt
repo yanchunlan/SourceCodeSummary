@@ -156,14 +156,14 @@
 		消息队列有接受2种类型的消息，invalidate,refresh
 	流畅度
 	Vsync信号
-	
+
 十一. 硬件绘制
 	updateRootDisplayList ->
 	View.updateDisplayListIfDirty ->
 		1. renderNode.start 初始化displayList,DisplayList的DisplayListCanvas
 		2. dispatchDraw
 		通过DisplayListCanvas对view tree的每个view.draw构建op并存储在DisplayList
-			主要是 将disPlay地址存储在mStagingDisplayList，并存储在RenderNode
+			主要是将disPlay地址存储在mStagingDisplayList，并存储在RenderNode
 			然后调用DisplayListCanvas会调用drawRenderNode将其子RenderNode封装进RenderNodeOp并插入在父容器的DisplayList
 	类关系：
 		RootRenderNode.mDisplayList ->

@@ -43,6 +43,12 @@
 			长/短链接
 			kpn+任务聚合+状态监控+策略下发
 			管理平台
+		优化
+			时间戳年月日缓存
+			时间戳转String优化，申请char数组
+			上下文信息（进程名、pid、线程名、tid等）通过ThreadLocal缓存
+			编码优化：StringBuilder.append内部的编码优化
+				utf8替换为utf16
 	3.	网络优化
 		1>	dns
 			localDNS

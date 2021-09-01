@@ -21,14 +21,21 @@
 	Choreographer.doFrame
 		-> performMeasure/performLayout/performDraw
 		-> draw 划分为软/硬绘制
-		-> 		主要是构建display数据（view tree的每个view对应RenderNode，
+		-> 	硬绘制：	主要是构建display数据（view tree的每个view对应RenderNode，
 				通过绘制引擎把视图View转化为绘制操作的op，保存在对应View.displayList，
 				子View再作为一个op保存在父容器视图的DisplayList）
-				创建RenderThread，并绑定Surface，通过eglSurface去执行dequeueBuffer/queueBuffer
+				创建RenderThread，并绑定Surface，通过eglSurface.eglswapBuffer去执行dequeueBuffer/queueBuffer
+		->	软绘制： 
+			lockSurface -> dequeueBuffer
+			view.draw -> SKCanvas.draw 绘制数据
+			unlockSurface -> queueBuffer,并通知surfaceFlinger绘制完成
 		-> syncFrameState/prepareThree ： 将UI thread的DisplayList同步到RenderThread
 		-> dequeueBuffer：Surface申请存放绘制数据的buffer
 		-> flash commands：DisplayList按层重新组织数据：LayerBuilder ，并转为OpenGL命令，缓存在本地的GL命令缓冲区
 		-> swapbuffers：通过Surface queueBuffer将数据放在之前申请的buffer中，并通知SurfaceFlinger去合成
+
+		renderThread:
+			通过dequeueBuffer从surfaceFlinger里面的queueBuffer去拿buffer（binder通信），后面绘制完成数据
 
 三.	首帧的合成与送显
 	SurfaceFlinger 初始化之后，开启消息队列，waitForEvent等待消息
@@ -57,8 +64,130 @@
 四.	其他概念
 	1.	60fps
 		1秒60帧，目前还支持有90fps，针对不同fps系统，卡顿耗时定义的时间不一致
-	2.	cpuInfo
+	2.	正确理解流程
+		systemServer
+		SurfaceFlinger
+			卡顿可能导致原因：
+				RenderThread层：
+					RenderThread 本身耗时，任务比较繁忙
+					RenderThread 的任务受 CPU 影响（可能是频率低了、或者是跑到小核了）
+				SurfaceFlinger层
+					App 对应的 BufferQueue无可用buffer，缺少一帧SurfaceFlinger合成
+					App 对应的 BufferQueue无可用buffer，但是其他app层提供了buffer，正常SurfaceFlinger合成
+				调度问题需要查看cpuinfo
+		input
+			系统服务进程>
+				InputReader
+				InputDispatcher
+				OutboundQueue:即将派发给AppConnection
+				WaitQueue：已经派发给AppConnection，但是app还没有返回处理成功的事件
 
+			app进程>
+				PendingInputEventQueue：记录的应用进程里面App需要处理的 Input 事件
+				deliverInputEvent：标识 App UI Thread 被 Input 事件唤醒
+				InputResponse：Input 事件区域，可以看到Input_Down/Input_Move/Input_Up事件的处理阶段都算在这里
+				App 响应 Input 事件：app层的事件处理
+
+			所有流程如下：
+				InputReader 读取 Input 事件
+				InputReader 将读取的 Input 事件放到 InboundQueue 中
+				InputDispatcher 从 InboundQueue 中取出 Input 事件派发到各个 App(连接) 的 OutBoundQueue
+				同时将事件记录到各个 App(连接) 的 WaitQueue（每个app都有一个OutBoundQueue）
+				App 接收到 Input 事件，同时记录到 PendingInputEventQueue ，然后对事件进行分发处理
+				App 处理完成后，回调 InputManagerService 将负责监听的 WaitQueue 中对应的 Input 移除
+
+				总结：读取，分发，通知（先派发到InboundQueue，再派发到每个app的OutboundQueue），
+			其他：
+				InputDispatcher分发事件到其他app，主要是通过InputChannel完成，
+				InputChannel初始化：
+					WindowManagerService.addView ->InputChannel.openInputChannelPair 生成2个socket的file descriptor，管道，并初始化2个InputChannel对象
+				InputChannel Server端：
+					InputManagerService的registerInputChannel注册到InputDispatcher
+				InputChannel Client端：
+					InputChannel.transferTo将socket的fd返回给ViewRootImpl内部类WindowInputEventReceiver
+				应用进程接收事件：
+					InputEventReceiver -> 
+					ViewRootImpl -> 
+					WindowInputEventReceiver ->
+					dispatchInputEvent/onBatchedInputEventPending ->
+					postCallback(Choreographer.CALLBACK_INPUT)
+
+		Vsync
+			Choreographer初始化时机：
+				Activity.onResume ->Activity.makeVisible ->addView ->new ViewRootImpl ->Choreographer.getInstance
+			Vsync 的注册、申请、接收主要是 FrameDisplayEventReceiver负责
+				注册：
+					new Choreographer -> new FrameDisplayEventReceiver -> nativeInit -> BitTube(socket pair)
+				接收vsync:
+					SurfaceFlinger接收到vsync -> appEventThread -> BitTube-> DisplayEventDispatcher ->Choreographer.FrameDisplayEventReceiver.onVsync
+			doFrame:
+				Input,Animation,measure,layout,draw
+			apm监控：
+				1. FrameCallback 的 doFrame
+				2. FrameInfo
+					adb shell dumpsys gfxinfo com.meizu.flyme.launcher framestats
+					关注点：
+						Janky frames 超过 Vsync 周期的 Frame，不一定出现卡顿
+						95th percentile 95% 的值
+						HISTOGRAM 原始数值
+						PROFILEDATA 每一帧的详细原始数据
+				3. SurfaceFlinger
+					adb shell dumpsys SurfaceFlinger –latency com.meizu.flyme.launcher/com.meizu.flyme.launcher.Launcher#0
+				4. SurfaceFlinger PageFlip(需要root)
+					adb service call SurfaceFlinger 1013
+				5. looper.print
+			优化：
+				1. 移动事件优化
+					input添加在Choreographer里面，可做提前响应
+				2. 后台动画优化
+					Choreographer后台任务取消
+				3. 帧绘制优化
+					input被提前响应了，就直接通知SurfaceFlinger 合成，无需等待Vsync
+				4. 应用启动优化
+					对Message监控，把优先级低的排后
+		MainThread/renderThread
+
+		binder锁竞争
+			锁池申请锁
+		triple buffer
+			dequeueBuffer、queueBuffer、acquireBuffer、releaseBuffer 
+			2buffer
+				生产超过导致，合成时间来不及，错过合成
+			3buffer
+				缓解掉帧
+				减少主线程和渲染线程等待时间
+				降低GPU和surfaceFlinger瓶颈
+			Dumpsys SurfaceFlinger 可以查看SurfaceFlinger的性能指标，buffer状态，图层信息等
+			关闭Triple Buffer：
+				version<p
+					//控制代码
+					property_get("ro.sf.disable_triple_buffer", value, "1");
+					mLayerTripleBufferingDisabled = atoi(value);
+					ALOGI_IF(mLayerTripleBufferingDisabled, "Disabling Triple Buffering");
+					修改对应的属性值，然后重启 Framework
+					//按顺序执行下面的语句(需要 Root 权限)
+					adb root
+					adb shell setprop ro.sf.disable_triple_buffer 0
+					adb shell stop && adb shell start
+				version>p
+					//控制代码
+					property_get("ro.sf.disable_triple_buffer", value, "0");
+					mLayerTripleBufferingDisabled = atoi(value);
+					ALOGI_IF(mLayerTripleBufferingDisabled, "Disabling Triple Buffering");
+					修改对应的属性值，然后重启 Framework
+					//按顺序执行下面的语句(需要 Root 权限)
+					adb root
+					adb shell setprop ro.sf.disable_triple_buffer 1
+					adb shell stop && adb shell start
+
+		cpuinfo
+
+	3.	命令
+		input: adb shell dumpsys input
+	4.	掉帧定义
+		不是app层超过16ms，而是surfaceFlinger合成没有内容，buffer等（某时候超过16ms了，但是合成的时候有新的缓存就不会卡顿）
+
+		
 
 
 

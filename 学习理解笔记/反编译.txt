@@ -116,7 +116,7 @@
  			3.	编写cmake文件
  				hookxxx.cy(文件名一定要有cy结尾)
  			4.	安装运行
-
+ 			
 拓展：run-as 
 	需要manfest里面的android:debugable=true
 	linux里面除了rwx权限，还有特殊的s(setuid)权限和g(setgid)权限，s权限可以使得低权限用户以该程序的所有者的权限去执行命令，列入root
