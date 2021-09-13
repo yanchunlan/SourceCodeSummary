@@ -45,7 +45,23 @@
 		findLeaks:
 			检测泄露类及其子类有无满足泄露条件，把泄露的类添加进json
 
-三.	优点
+三.	分析hprof文件
+	KOOMInternal.onHeapDumped
+	HeapAnalysisTrigger.startTrack
+	HeapAnalysisTrigger.trigger
+	HeapAnalysisTrigger.doAnalysis
+	HeapAnalyzeService.runAnalysis : 启动一个 IntentService 服务
+	HeapAnalyzeService.doAnalyze
+	KHeapAnalyzer.analyze
+	
+	优化内容：
+	1、GC root 剪枝，由于我们搜索 Path to GC Root 时，是从 GC Root 自顶向下 BFS，如JavaFrame、MonitorUsed等此类 GC Root 可以直接剪枝。
+	2、基本类型、基本类型数组不搜索、不解析。
+	3、同类对象超过阈值时不再搜索。
+	4、增加预处理，缓存每个类的所有递归 super class，减少重复计算。
+	5、将object ID的类型从long修改为int，Android虚拟机的object ID大小只有32位，目前shark里使用的都是long来存储的，OOM时百万级对象的情况下，可以节省10M内存。
+
+四.	优点
 	1.	内存泄露检测
 		轮训查询是否到达峰值
 	2.	dump pref 

@@ -9,6 +9,22 @@
 
 		ELF Header:
 		Section Headers:
+		Key to Flags:
+			There are no section groups in this file.
+		Program Headers:
+ 		Section to Segment mapping:
+		Dynamic section at offset 0xdd8 contains 27 entries:
+		Relocation section '.rela.dyn' at offset 0x4f0 contains 4 entries:
+		Relocation section '.rela.plt' at offset 0x550 contains 2 entries:
+			The decoding of unwind sections for machine type AArch64 is not currently supported.
+		Symbol table '.dynsym' contains 14 entries:
+		Symbol table '.symtab' contains 71 entries:
+		Histogram for bucket list length (total of 3 buckets):
+		Histogram for `.gnu.hash' bucket list length (total of 3 buckets):
+		Version symbols section '.gnu.version' contains 14 entries:
+		Version needs section '.gnu.version_r' contains 1 entries:
+		Displaying notes found at file offset 0x00000200 with length 0x00000024:
+		Displaying notes found at file offset 0x00000630 with length 0x00000098:
 
 		elf.h文件地址：\external\kernel一headers\origlnal\asm一x86\elf.h
 		每个so文件格式均有对应的解析方式：https://github.com/fourbrother/parse_androidso
@@ -18,11 +34,34 @@
 		-s： 将所有段的内容以十六进制的方式打印出来
 		-S： 尽可能反汇编出源代码，尤其当编译的时候指定了-g这种调试参数时，效果比较明显。隐含了-d参数。
 
-
-
 		/Users/yanchunlan/AndroidStudio/ndk/android-ndk-r21e/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64/bin/arm-linux-androideabi-readelf -a /Users/yanchunlan/AndroidStudio/project/NativeApplication/app/build/intermediates/cmake/debug/obj/arm64-v8a/libnative-lib.so
 
-
-
 		/Users/yanchunlan/AndroidStudio/ndk/android-ndk-r21e/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64/bin/arm-linux-androideabi-objdump -D /Users/yanchunlan/AndroidStudio/project/NativeApplication/app/build/intermediates/cmake/debug/obj/arm64-v8a/libnative-lib.so
+
+二. hook原理
+	函数返回反汇编 -> .plt(PLT表的一个代码段) -> 地址计算得出地址 -> .got(GOT表中的一项)
+	hook的原理：	就是把.got中的指针改变指向其他地方
+	为什么有plt,不直接使用got：	因为动态链接耗时在于模块之间的函数引用符号的查找以及重定位，elf使用延迟绑定，就是要求第一次被用到的时候才进行绑定，所以增加了一层中间跳板，通过plt跳转
+
+三. so加固
+	1. section加密实现加固
+		加密流程： 
+		l ）从 50 文件头读取 section 偏移 shoff 、 shnum 和 Shstrtab 。 
+		2 ）读取 shstrtab 中的字符串，存放在 str 空间中。 
+		3 ）从 shoff 位置开始读取 section header ，存放在 Shdr 中。 
+		4 ）通过 sh dr 一＞ sh _ name 在 str 字符串中索引，与． mytext 进行字符串比较，如果不匹酉己，继续读取。 
+		5 ）通过 shdr 一＞ sh - - offset 和 shdr 一＞ s 址 size 字段，将． mytext 内容读取并保存在 content 中。 
+		6 ）为了便于理解，不使用复杂的加密算法。这里，只将 content 的所有内容取反，即 * content ＝一（ * content ）。 
+		7 ）将 content 内容写回 S 。文件中。 
+		8 ）为了验证第二节中关于 section 字段可以任意修改的结论，这里，将 shd ：一＞ addr 写人 ELF 头 e _ shoff ，将 shdr 一＞ sh _ size 和 addr 所在内存块写入 e _ entry 中，即 ehdr . e _ entry = ( l ength < < 16 ) + nsize 。当然，这样同时也简化了解密流程，还有一个好处是：如果将 so 文件头修正放回去，程序是不能运行的。解密时，需要保证解密函数在 so 加载时被调用，那函数声明为： init _ getstring _ attribute _ ( ( constructor ) ）。（也可以使用 c + ＋构造器实现，其本质也是用 attribute 实现的。）
+
+		解密流程： 
+		l ）动态链接器通过 call _ array 调用 init _ getstring 。第 14 章 Android 中的 50 加固原理 221 
+		2 ) Init _ getstring 首先调用 getLibAddr 方法，得到 50 文件在内存中的起始地力 l 二 
+		3 ）读取前 52 字节，即 ELF 头。通过 e _ shoff 获得． mytextl 勺存加载地址， ehdr . e _ cntry 获取． mytext 大小和所在内存块。 
+		4 ）修改． mytcxt 所在内存块的读写权限。 
+		5 ）将 【 e _ shoff , e _ shoff + size 』 内存 IK 域数据解密，即取反操作： * content ＝试＊ content ) 
+		6 ）修改回内存区域的读写权限。这里是对代码段的数据进行解密，需要写权限。如果对数据段的数据解密，是不需要更改权限而直接操作的。
+
+	2. 函数加密实现加固
 

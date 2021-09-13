@@ -29,22 +29,26 @@
 
 	gpu
 	高通Adreno
-		
+		/sys/class/kgsl/kgsl-3d0/gpuclk 获取GPU频率
+		/sys/class/kgsl/kgsl-3d0/gpubusy 获取GPU使用率
+		gpuclk 和 gpubusy 文件也有可能在 /sys/kernel/gpu 目录，
+		问题：他们是属于属于 graphics 组，其中shell用户权限无法读取的
 
 	ARM Mali
+		打开设备节点 /dev/mali0 并通过调用 ioctl 
 
-
-
-	cpu
-
+	cpu Temperature
+		读取/sys/class/thermal/thermal_zone[n]下面的type文件，读取到"cpu"、"system_h" 或者 "tsens_tz_sensor2"则继续读取该目录下的temp文件，把读到的值作cpu温度，部分机型权限不够无法读取再 dumpsys thermalservice 
 
 	netWork
-
+		<Q,/proc/net/xt_qtaguid/stats 
+		>Q,/proc/[pid]/net/dev 
 
 	battery
-
+		BatteryManager获取实时电流值，dumpsys battery获取电压值
 
 	screenShot
+		调用screencap命令获取
 
 
 

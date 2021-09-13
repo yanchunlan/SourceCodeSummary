@@ -203,7 +203,11 @@
 			dominator_tree 	基于对象观测
 				找到耗时对象，右键选择List Objects -> with incoming reference（引用树中的父节点,被哪些别人调用）
 					右键选择Immediate Dorminator（引用树中的子节点,调用别人哪些）
-				exclude all phantom/weak/soft etc. references（弱引用、软引用及影子引用）
+				查看引用链：
+					paths to gc roots -> exclude all phantom/weak/soft etc. references（弱引用、软引用及影子引用）
+				区别：
+					list objects 显示对象信息
+					show objects by Class从对象里面显示类信息
 			top consumers 	占用内存比较高的对象
 			leak suspects 	内存泄漏怀疑点
 			OQL  		sql操作
@@ -221,4 +225,35 @@
 		malloc debug 方案
 
 	3> kernel
+
+七.	内存监控统计
+	1. 采集方式
+		采样5min采样上报一次pss,java堆，图片总内存
+	2. 计算指标
+		内存异常率：内存 UV 异常率 = PSS 超过400MB 的 UV / 采集 UV （pss通过Debug.MemoryInfo 获取）
+		触顶率：内存 UV 触顶率 = Java 堆占用超过最大堆限制的 85% 的 UV / 采集 UV
+
+		是否触顶：
+		long javaMax = runtime.maxMemory();
+		long javaTotal = runtime.totalMemory();
+		long javaUsed = javaTotal - runtime.freeMemory();
+		// Java 内存使用超过最大限制的 85%
+		float proportion = (float)javaUsed / javaMax;
+
+	3. gc监控
+		Debug.startAllocCounting 开启gc监控，有性能影响
+
+		long allocCount = Debug.getGlobalAllocCount();
+		long allocSize = Debug.getGlobalAllocSize();
+		long gcCount = Debug.getGlobalGcInvocationCount();
+
+		version > 6.0 使用如下：
+		// 运行的GC次数
+		Debug.getRuntimeStat("art.gc.gc-count");
+		// GC使用的总耗时，单位是毫秒
+		Debug.getRuntimeStat("art.gc.gc-time");
+		// 阻塞式GC的次数
+		Debug.getRuntimeStat("art.gc.blocking-count");
+		// 阻塞式GC的总耗时
+		Debug.getRuntimeStat("art.gc.blocking-time");
 	

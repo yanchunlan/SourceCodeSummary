@@ -31,6 +31,7 @@ $ git remote remove origin
 
 $ git push -u origin master  // 将本地的master分支推送到远程的master分支中
 $ git push -u origin dev    // 本地切换到dev分支然后将本地的dev分支推送到远程
+$ git push -f origin master // 强制推送本地到远程
 
 
 
