@@ -72,12 +72,56 @@
 				内存回收手段：
 					根据回收目标区分有2种，zone/memcg，其中zone的内存回收方式主要是下面3种
 					快速内存回收：
-
+						遍历zonelist，如果空闲内存数量 < 阀值 + 保留页框数量（页框数量不达标），则进行快速内存回收，但是慢速内存回收也会存在此问题
 					直接内存回收：
-
+						慢速分配中，无法从所有的zone中以min阀值分配边框，就会直接内存回收，注意针对的是zonelist中的所有zone的
 					kswapd内存回收：
+						在kswapd内核线程中，每个node都有一个swapd内核线程，所以说针对kswapd线程的，只针对回收空闲内存数量 < 阀值 + 保留页框数量（页框数量不达标）
+				oom流程：
+					malloc -> alloc_page进行内存分配 -> __alloc_pages_nodemask -> 
+					1. 使用low阀值快速内存分配，判断有无zone满足分配连续页框，如果没有则失败继续下面
+					2. 进入slowpath慢速分配流程，唤醒所有node的kswapd内核线程，先min阀值快速内存分配，失败则kswapd回收，
+					3. 再失败则压缩规整系统可移动页，再次失败，则对zonelist所有zone直接内存回收
+					4. 再失败则oom
 
 	3.	虚拟机内存分配与回收
+		Image Space：连续地址空间，不进行垃圾回收，存放系统预加载类，一般开机启动就把系统类映射到Image Space
+		Zygote Space：连续地址空间，匿名共享内存，进行垃圾回收，管理Zygote进程在启动过程预加载和创建的各种对象、资源
+		Allocation Space：与Zygote Space一致，在Zygote进程fork第一个子进程之前，会把Zygote Space一分为二，已经使用的叫Zygote Space，未使用的叫Allocation Space，且后续对象分配在Allocation Space上分配
+		Large Object Space：离散地址空间，进行垃圾回收，用来分配一些大于12K的大对象
+			Image Space和Zygote Space在Zygote进程和应用程序进程之间进行共享，前者创建一次，后者需要在系统每次启动创建一遍
+			满足下面3条件，在large object heap分配：
+			1. 请求分配的内存大于等于Heap类变量large_object_threshold_指定的值，3个页面大小
+			2. 已经从Zygote Space划分Allocation Space，则Heap类的成员变量have_zygote_space_的值等于true
+			3. 被分配的对象是一个原子类型数组,既byte数组、int数组和boolean数组等
+
+		Art运行时为新创建对象分配内存过程：
+			1. 轻量级gc,尝试分配，轻量级gc,尝试分配，
+			2. 允许堆进行增长的情况下进行对象的分配
+			3. 进行一次允许回收软引用的GC的情况下进行对象的分配
+		涉及的几种引用类型：
+		强引用StrongReference/软引用SoftReference/WeakReference/虚引用PhantomReference
+
+		Art GC
+		与gc有关的参数
+		dalvik.vm.heapgrowthlimit 256m：  App可使用的Heap的最大值
+		dalvik.vm.heapsize  512m ：manifest的largeHeap属性，App可使用的Heap的最大值
+		dalvik.vm.heapmaxfree 8m ：系统分配给它的Heap初始大小，随着app使用增加
+		dalvik.vm.heapmaxfree 8m ：GC后，堆最大空闲值
+		dalvik.vm.heapminfree 512k：GC后，堆最小空闲值
+		dalvik.vm.heaptargetutilization 0.75：GC后，堆目标利用率
+
+		虚拟机主流gc算法
+			引用计数
+			可达性分析法
+				标记-清除：高效。内存粹片
+				复制：高效。需额外空间
+				标记-整理：无粹片，无额外空间。耗时，效率低
+
+		Art的3种gc策略
+			Sticky GC：
+			Partial GC：
+			Full GC：
 
 
 

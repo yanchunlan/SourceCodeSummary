@@ -1,0 +1,25 @@
+一.	源码流程
+	
+
+
+二.	流程汇总
+	安装apk -> 拷贝 -> /data/app/(pkg) -> 资源管理器注入资源 -> 解析androidManifest ->创建用户数据目录 -> /data/data/(pkg) -> dexopt -> 注册四大组件 -> 安装完毕发送广播
+
+三.	优化
+	优化收益判断：
+		1. 安装速度
+		2. 安装时的cpu频率
+			adb shell cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_cur_freq
+			adb shell cat /sys/devices/system/cpu/cpu7/cpufreq/cpuinfo_cur_freq
+	备注：
+	cpuinfo_max_freq cpuinfo_min_freq ：分别给出了 CPU 硬件所支持的最高运行频率及最低运行频率，
+		cpuinfo_cur_freq 则会从CPU 硬件寄存器中读取CPU 当前所处的运行频率。
+		Governor 在选择合适的运行频率时只会在scaling_max_freq 和 scaling_min_freq 所确定的频率范围内进行选择。
+		scaling_cur_freq 返回的是cpufreq 模块缓存的CPU当前运行频率，而不会对CPU 硬件寄存器进行检查。
+		scaling_available_governors 会告诉用户当前有哪些 governors 可供用户使用。
+		scaling_driver 则会显示该 CPU 所使用的变频驱动程序。
+		Scaling_governor 则会显示当前的管理策略，往这个上 echo 其他类型会有相应的转变。
+		scaling_setspeed ：需将 governor 类型切换为 userspace ，才会出现，往这个文件 echo 数值，会切换主频。
+
+
+

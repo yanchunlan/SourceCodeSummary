@@ -50,8 +50,25 @@
 		IO、Socket及线程操作都有对应的FD，主要读取/proc下的虚拟文件
 		大小限制：/proc/pid/limits 的Max open files字段
 		当前状态：/proc/pid/fd，计算文件数量
-		具体分析：/proc/pid/fd，通过Os.readlink解释文件链接
-
+		具体分析：
+			1. ls -la /proc/pid/fd分析哪一类文件描述符数量过高，缩小范围
+			2. Add shell dumpsys window 查看是否有异常window，解决 InputChannel 相关的泄漏
+			3. 线上监控，定时轮询fd,到阀值，就读取信息并上报后台【通过Os.readlink 获取FD对应文件信息的】
+			4. 关注logcat日志，是否有socket创建失败等
+		操作步骤：
+			adb shell 
+			run-as +包名
+			ls -la /proc/pid/fd
+		泄露场景：
+			1. handlerThread
+			looper.Prepare -> new Message -> nativeInit -> new NativeMessageQueue -> new Looper -> eventFd
+			2. IO
+			new FileOutPutString -> native open -> FileOutputStream_open0  -> fileOpen -> SET_FD
+			3. SQLite
+			Cursor. query -> moveToNext -> getCount -> fillWindow -> clearOrCreateWindow -> CursorWindow -> nativeCreate -> CursorWindow::create -> ashmem_create_region
+			4. InputChannel
+			WindowManager.addView -> ViewRootImpl.setView -> addToDisplay -> addWindow -> openInputChannel -> nativeOpenInputChannelPair -> socketpair 
+			
 	4.	线程数量
 		/proc/pid/status 的Threads字段
 		Thread.getAllStackTraces() 获取当前所有线程的信息，线程名、调用栈及状态
@@ -69,6 +86,7 @@
 			    -c 查看哪一个CPU在执行这个进程
 			    name|pid 用名字或pid过滤
 			列如：ps -A -T | grep 26308 | grep "GLThread" | wc -l   统计GLThread个数
+			列入：adb shell ps -A -T |grep 22425 > /xxx/thread-before.txt
 			
 	5.	Native内存
 		主要是java堆内存，Debug.getMemoryInfo()以及/proc/pid/smap文件分析
