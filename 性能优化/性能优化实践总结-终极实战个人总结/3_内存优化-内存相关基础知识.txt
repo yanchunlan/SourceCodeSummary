@@ -114,16 +114,89 @@
 		虚拟机主流gc算法
 			引用计数
 			可达性分析法
-				标记-清除：高效。内存粹片
-				复制：高效。需额外空间
-				标记-整理：无粹片，无额外空间。耗时，效率低
+				标记-清除（Mark-Sweep）：高效。内存粹片
+				复制（Coping）：高效。需额外空间
+				标记-整理（Mark-Compact）：无粹片，无额外空间。耗时，效率低
 
 		Art的3种gc策略
-			Sticky GC：
-			Partial GC：
-			Full GC：
+			Sticky GC：回收上一次GC到本次GC之间申请的内存
+			Partial GC：局部垃圾回收，回收Image Space和Zygote Space之外的垃圾
+			Full GC：全局垃圾回收，除了Image Space之外的Space之外的垃圾
 
+			效果对比：【gc pause长就影响大】
+			GC 暂停时间：Sticky GC < Partial GC < Full GC
+			回收垃圾的效率：Sticky GC > Partial GC > Full GC
 
+			前后台gc:
+				Mark-Sweep GC适合作为Foreground GC，Compacting GC适合作为Background GC
+
+			art 运行时gc过程：
+			非并行GC
+				1） 调用子类实现的成员函数InitializePhase执行GC初始化阶段。
+				2） 挂起所有的ART运行时线程。
+				3） 调用子类实现的成员函数Markingphase执行GC标记阶段。
+				4） 调用子类实现的成员函数ReclaimPhase执行GC回收阶段。
+				5） 恢复第2步挂起的ART运行时线程。
+				6） 调用子类实现的成员函数FinishPhase执行GC结束阶段。
+			除了当前执行GC的线程之外，其它的ART运行时线程都会被挂起，整个标记过程会稍长。
+			并行GC：
+				1） 调用子类实现的成员函数InitializePhase执行GC初始化阶段。
+				2） 获取用于访问Java堆的锁。
+				3） 调用子类实现的成员函数Markingphase执行GC并行标记阶段。
+				4） 释放用于访问Java堆的锁。
+				5） 挂起所有的ART运行时线程。
+				6） 调用子类实现的成员函数HandleDirtyObjectsPhase处理在GC并行标记阶段被修改的对象。
+				7） 恢复第4步挂起的ART运行时线程。
+				8） 重复第5到第7步，直到所有在GC并行阶段被修改的对象都处理完成。
+				9） 获取用于访问Java堆的锁。
+				10） 调用子类实现的成员函数ReclaimPhase执行GC回收阶段。
+				11） 释放用于访问Java堆的锁。
+				12） 调用子类实现的成员函数FinishPhase执行GC结束阶段。
+
+			gc log：
+				I/art: <GC_Reason> <GC_Name> <Objects_freed>(<Size_freed>)<Objects_freed>(<Size_freed>)_freed>(<Large_object_size_freed>) <Heap_stats> LOS objects, <Pause_time(s)>
+
+			GC.Reason ： GC触发原因（art/runtime/gc/gc_cause.h）
+				Concurrent ：并发GC,该GC是在后台线程运行的，并不会阻止内存分配。
+				AUoc ：当堆内存已满时，App尝试分配内存而引起的GC,这个GC会发生在正在分配内存的线程。
+				Explicit : App显示的请求垃圾收集，例如调用System.gc。。
+				NativeAlloc : Native内存分配时触发的GC。
+				CollectorTransition ：由堆转换引起的回收，这是运行时切换GC而引起的。收集器转换包括将所有对象从空闲列表空间复制到碰撞指针空间(反之亦然)。当前，收集器转换仅在以下情况下出现：在内存较小的设备上，App将进程状态从可察觉的暂停状态变更为可察觉的非暂停状态(反之亦然)
+				HomogeneousSpaceCompact ：齐性空间压缩是指空闲列表到压缩的空闲列表空间，通常发生在当App已经移动到可察觉的暂停进程状态。这样做的主要原因是减少了内存使用并对堆内存进行碎片整理。
+				DisableMovingGc :不是真正的触发GC原因，发生并发堆压缩时，由于使用了GetPrimitiveArrayCritical,收集会被阻塞。一般情况下，强烈建不要使用GetPrimitiveArrayCritical,因为它在移动收集器方面具有限制。
+				HeapTrim ：不是触发GC原因，但是请注意，收集会一直被阻塞，直到堆内存整理完毕。
+
+			GC_Name：垃圾收集器名称
+				Concurrent mark sweep (CMS) : CMS收集器是一种以获取最短收集暂停时间为目标收集器，采用了标记-清除算法(Mark-Sweep)实现。它是完整的堆垃圾收集器，能释放除了ImageSpace之外的所有的空间。
+				Concurrent partial mark swe叩：部分完整的堆垃圾收集器，能释放除了Image Space和Zygote Spaces之外的所有空间。
+				Concurrent sticky mark sweep :分代收集器，它只能释放自上次GC以来分配的对象。这个垃圾收集器比一个完整的或部分完整的垃圾收集器扫描的更频繁，因为它更快并且有更短的暂停时间。
+				Marksweep + semispace :非并发的GC,复制GC用于堆转换以及齐性空间压缩（堆碎片整
+				理）。
+				Objects freed ：本次GC从非Large Object Space中回收的对象的数量。
+				SizeJreed ：本次GC从非Large Object Space中回收的字节数。
+				Large objects freed ：本次GC从Large Object Space中回收的对象的数量。
+				Large object size freed ：本次GC从Large Object Space中回收的字节数。
+				Heap stats：堆的空闲内存百分比（已用内存）/ （堆的总内存）。
+				Pause times：暂停时间。
 
 	4.	内存回收主要手段
+		应用层
+			onTrimMemory：lmk触发，AMS抛出到应用层的回调，目的是做内存释放，或者作为系统内存过低的监听
+			gc 虚拟机层面的垃圾回收内存
+		系统层
+			Process.kill：signal 9 kill进程，释放占用的内存
+			lmk(lowmemorykiller)：内存不足时杀掉优先级较低的进程来回收内存的策略
+				lmk的演变：
+					=<8.1 kernelspace lmk 监听: kswapd触发的shrink回调
+					8.1-9.0 userspace lmk 监听：vmpressure
+					>=10 userspace lmk 监听：PSI（Pressure stall information）
+			app compaction(>=10):AMS与Kernel层联动对满足条件的App进行内存压缩
+			kswapd：周期内存回收，对当前非活跃lru链表链尾的文件页、匿名页进行回收，其中匿名页回收会写入zram区间
+				zram：Linux内核的功能,将内存的部分区域划分为压缩空间，内存较低时先通过内存压缩来变现获取更多内存使用空间，耗尽之后才使用磁盘, 变相提高内存利用率，本身会消耗部分CPU占用率来换内存空间的相对增加
+				
+				cat proc/meminfo（如果为0，则表明zram没有打开）
+					SwapTotal:       2306044 kB    zram配置大小
+					SwapFree:        1737380 kB    当前zram剩余大小
+
+
 

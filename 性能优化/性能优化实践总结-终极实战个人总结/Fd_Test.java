@@ -12,6 +12,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.http.util.TextUtils;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 /**
  * author:  yanchunlan
  * date:  2021/09/22 17:45
@@ -20,13 +24,26 @@ import java.util.Map;
 public class Fd_Test {
 
   public static void main(String[] args) throws IOException {
-    File file = new File("asmlib/src/main/java/thread");
+    Result result = new Result();
+    String dir = "asmlib/src/main/java/thread";
+    filterIncrement(dir, result);
+
+    String outPath = "fd-increment.txt";
+    File outFile = new File(dir, outPath);
+    save(outFile, result.toString().getBytes());
+    return;
+  }
+
+  @Nullable
+  private static void filterIncrement(String dir, Result result) throws IOException {
+    List<String> before = new ArrayList<>();
+    List<String> after = new ArrayList<>();
+    List<String> increment = new ArrayList<>();
+
+    File file = new File(dir);
     if (!file.isDirectory()) {
       return;
     }
-    Result result = new Result();
-    List<String> list = new ArrayList<>();
-    int count = 0;
     for (File f : file.listFiles()) {
       if (f.getName().startsWith("fd-")) {
         boolean isAfter = f.getName().contains("after");
@@ -39,13 +56,16 @@ public class Fd_Test {
               continue;
             }
             int start = line.indexOf("->") + 3;
+            if (start >= line.length()) {
+              continue;
+            }
             line = line.substring(start, line.length());
             if (isAfter) {
-              list.add(line);
+              after.add(line);
             } else {
-              list.remove(line);
+              before.add(line);
+              increment.remove(line);
             }
-            ++count;
           }
           br.close();
         } catch (Exception e) {
@@ -58,40 +78,61 @@ public class Fd_Test {
           }
         }
         if (isAfter) {
-          result.after_count = count;
-        } else {
-          result.before_count = count;
+          increment.addAll(after);
         }
-        count = 0;
       }
     }
+
+    // print after
+    String outPathAfter = "fd-after-calute.txt";
+    File outFileAfter = new File(dir, outPathAfter);
+    String outListAfter = sortResult(after).toString().replaceAll(", ", ", \n");
+    save(outFileAfter, outListAfter.getBytes());
+
+    // print before
+    String outPathBefore = "fd-before-calute.txt";
+    File outFileBefore = new File(dir, outPathBefore);
+    String outListBefore = sortResult(before).toString().replaceAll(", ", ", \n");
+    save(outFileBefore, outListBefore.getBytes());
+
+    result.before_count = before.size();
+    result.after_count = after.size();
+    result.increment = sortResult(increment);
+  }
+
+  private static void save(File file, byte[] bytes) throws IOException {
+    BufferedOutputStream fout = new BufferedOutputStream(new FileOutputStream(file));
+    fout.write(bytes);
+    fout.close();
+    fout.flush();
+  }
+
+  @NotNull
+  private static List<Map.Entry<String, Integer>> sortResult(List<String> list) {
     HashMap<String, Integer> map = new HashMap<>();
     for (String item : list) {
-      Integer value = map.get(item);
-      if (value == null || value == -1) {
-        if (item.startsWith("socket:[")) {
-          Integer v = map.get("socket:[xxx]");
-          if (v == null || v == -1) {
-            map.put("socket:[xxx]", 1);
-          } else {
-            map.put("socket:[xxx]", v + 1);
-          }
+      if (item.startsWith("socket:[")) {
+        Integer v = map.get("socket:[xxx]");
+        if (v == null || v == -1) {
+          map.put("socket:[xxx]", 1);
         } else {
+          map.put("socket:[xxx]", v + 1);
+        }
+      } else {
+        if (TextUtils.isEmpty(item) || item.contains("=") || item.equals(" ") || item.equals(", ")|| item.equals("")) {
+          continue;
+        }
+        Integer value = map.get(item);
+        if (value == null || value == -1) {
           map.put(item, 1);
-        }      } else {
-        map.put(item, value + 1);
+        } else {
+          map.put(item, value + 1);
+        }
       }
     }
     List<Map.Entry<String, Integer>> resultList = new ArrayList<>(map.entrySet());
     Collections.sort(resultList, (o1, o2) -> o2.getValue().compareTo(o1.getValue()));
-
-
-    result.increment = resultList;
-    File fileOut = new File(file, "fd-increment.txt");
-    BufferedOutputStream fout = new BufferedOutputStream(new FileOutputStream(fileOut));
-    fout.write(result.toString().getBytes());
-    fout.close();
-    fout.flush();
+    return resultList;
   }
 
   static class Result {
@@ -104,6 +145,7 @@ public class Fd_Test {
       return "{" +
           "\nbefore_count = " + before_count +
           ", \nafter_count = " + after_count +
+          ", \nincrement_count=" + (after_count - before_count) +
           ", \nincrement=" + getAddString(increment) +
           '}';
     }

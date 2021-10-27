@@ -17,9 +17,9 @@
 				mallinf/ getRuntime / proc/PID/smaps / d/kgsl/proc/PID/mem
 
 		dumpheap:
-			adb shell am dumpheap xxx.xxx.xxx 
-			adb pull xxx
-			hprof-conv ~/Desktop/dump.hprof >~/Desktop/dump1.hprof
+			adb shell am dumpheap com.android.browser /data/local/tmp/test.hprof
+			adb pull /data/local/tmp/test.hprof e:\
+			hprof-conv e:\test.hprof e:\test1.hprof
 
 	2.	memory profiler
 		必须debug包
@@ -71,6 +71,7 @@
 			
 	4.	线程数量
 		/proc/pid/status 的Threads字段
+		/proc/pid/task/tid/stat 文件较多io操作，设置阀值上报
 		Thread.getAllStackTraces() 获取当前所有线程的信息，线程名、调用栈及状态
 		步骤：(可以在debug包，adb shell ，run-as 包名,一般是在异常的时候通过readlink的方式读取该字段并上报)
 			ls -a -l /proc/<pid>/fd
@@ -87,6 +88,16 @@
 			    name|pid 用名字或pid过滤
 			列如：ps -A -T | grep 26308 | grep "GLThread" | wc -l   统计GLThread个数
 			列入：adb shell ps -A -T |grep 22425 > /xxx/thread-before.txt
+		线程获取：
+			通过ThreadGroup遍历systemThreadGroup，groups即可获取到所有线程
+		hook方式：
+			hook pthread_create、pthread_setname_np[过滤函数]传入pthread_t作为key，在函数回调里面监听pthread_key_create为退出时机
+			内存泄露的判断:
+			hook pthread_detach/pthread_join，并在函数执行的回调，读取pthread_attr_t线程是否detach：
+			如果为PTHREAD_CREATE_DETACHED，则移除
+			如果为PTHREAD_CREATE_JOINABLE，则设置标识，继续等待判断pthread_detach/pthread_join被调用，则移除缓存pthread_attr_t，此时线程已经泄露了
+			
+			最后dump的时候，标识的均为内存泄露的pthread_attr_t
 			
 	5.	Native内存
 		主要是java堆内存，Debug.getMemoryInfo()以及/proc/pid/smap文件分析
@@ -221,6 +232,8 @@
 			dominator_tree 	基于对象观测
 				找到耗时对象，右键选择List Objects -> with incoming reference（引用树中的父节点,被哪些别人调用）
 					右键选择Immediate Dorminator（引用树中的子节点,调用别人哪些）
+					
+					耗时对象：使用list object,不要转到class了
 				查看引用链：
 					paths to gc roots -> exclude all phantom/weak/soft etc. references（弱引用、软引用及影子引用）
 				区别：

@@ -1,0 +1,75 @@
+一. dart特性
+	1. jit和Aot
+	运行时JIT即时编译，发版时AOT提前编译
+	2. 内存分配和垃圾回收
+	创建对象等于堆上移动指针，线性增长，不需要查找内存
+	多生代回收，半空间机制，半个空间活跃的对象拷贝备用空间，然后释放当前所有空间内存
+	3. 单线程模型
+	没有抢占，没有锁，执有ISOlate,彼此之间不共享内存，通过looper发送消息通讯
+二.	dart语言
+	一切都是对象
+	1. 基本类型
+		num:int ,double
+		bool
+		String
+	2. 集合
+		list
+		map
+	3. 常量
+		const 编译时
+		final 运行时
+	4. 函数
+		{} 可选命名函数
+		void method1({bool a,bool b=false})
+		[] 可选参数
+		void method1(bool a,[bool b=false])
+
+		_method 函数前添加_代表私有函数 
+ 	5. 类
+ 		构造函数
+ 		class point{
+ 			Point(this.x,this.y)
+ 			Point(this.x,this.y):z=0;
+ 		}
+ 		继承 extend
+ 		接口 implements
+ 		复用 with
+	6. 运算符
+		?. 防止为null
+		??= null就赋值，不为null不赋值
+		？？ 等于三元运算符？：
+三.	Flutter 原理
+	1. 分层
+		embedder: 操作系统适配层，surface设置，线程设置，平台插件等平台相关特性的适配
+		engine：skia,dart,text,实现了flutter的渲染引擎，文字排版，事件处理，dart运行时功能
+		framework：UI sdk，包含动画，图形绘制，手势识别等
+	2. 绘制原理
+		布局
+			深度优先遍历渲染对象树，父对象控件逻辑决定子对象控件逻辑
+			【flutter引入的一个优化】布局边界：relayout boundary 只布局自己跟子节点，不影响到外部
+		绘制
+			深度优先的方式，（前序遍历）绘制自己再绘制子节点
+			【flutter引入的一个优化】重绘边界：repaint boundary 只绘制自己跟子节点，不绘制外部
+		合成
+			根据大小，层级，透明度等计算最终实际图层，相同图层合并简化图层
+		渲染
+			图层数据 -> skia -> 二维图像数据 -> GPU渲染
+四.	flutter语言
+	一切都是weight
+	1. weight
+		weight，element，renderObject，renderObjectWeight
+		流程：
+			1. 先遍历weight,调用renderObjectWeight中createElement -> 创建element
+			2. 调用element（子类renderObjectElement）的mount  -> 创建renderObject
+			3. 插入渲染树
+		改变：
+			weight改变，weight的element标记dirty,等待下一个vsync，触发element更新，并使用最新的weight数据更新自身以及关联的renderObject对象，其中后面的绘制与摆放都是renderObject控制
+			abstruct class renderObject xx{
+			void layout()
+			void paint()
+			}
+	2. state
+		stateLessWeight： 初始化参数控制显示 ， text源码
+		stateFulWeight:	 响应变化，重新build， Image源码
+	3. 生命周期
+		

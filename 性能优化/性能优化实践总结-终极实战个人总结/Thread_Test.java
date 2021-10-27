@@ -9,8 +9,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.apache.http.util.TextUtils;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * author:  yanchunlan
@@ -20,14 +26,27 @@ import java.util.Map;
 public class Thread_Test {
 
   public static void main(String[] args) throws IOException {
-    java.io.File file = new java.io.File("asmlib/src/main/java/thread");
+    Result result = new Result();
+    String dir = "asmlib/src/main/java/thread";
+    filterIncrement(dir, result);
+
+    String outPath = "thread-increment.txt";
+    File outFile = new File(dir, outPath);
+    save(outFile, result.toString().getBytes());
+    return;
+  }
+
+  @Nullable
+  private static void filterIncrement(String dir, Result result) throws IOException {
+    List<String> before = new ArrayList<>();
+    List<String> after = new ArrayList<>();
+    List<String> increment = new ArrayList<>();
+
+    File file = new File(dir);
     if (!file.isDirectory()) {
       return;
     }
-    Result result = new Result();
-    List<String> list = new ArrayList<>();
-    int count = 0;
-    for (java.io.File f : file.listFiles()) {
+    for (File f : file.listFiles()) {
       if (f.getName().startsWith("thread-")) {
         boolean isAfter = f.getName().contains("after");
         BufferedReader br = null;
@@ -35,15 +54,18 @@ public class Thread_Test {
           br = new BufferedReader(new FileReader(f));
           String line;
           while ((line = br.readLine()) != null) {
-            int start = (line.indexOf("0 S ") > 0 ?
-                line.indexOf("0 S ") : line.indexOf("0 R ")) + 4;
+            int findS = line.indexOf("0 S ");
+            int start = (findS > 0 ? findS : line.indexOf("0 R ")) + 4;
+            if (start >= line.length()) {
+              continue;
+            }
             line = line.substring(start, line.length());
             if (isAfter) {
-              list.add(line);
+              after.add(line);
             } else {
-              list.remove(line);
+              before.add(line);
+              increment.remove(line);
             }
-            ++count;
           }
           br.close();
         } catch (Exception e) {
@@ -56,48 +78,75 @@ public class Thread_Test {
           }
         }
         if (isAfter) {
-          result.after_count = count;
-        } else {
-          result.before_count = count;
+          increment.addAll(after);
         }
-        count = 0;
       }
     }
+
+    // print after
+    String outPathAfter = "thread-after-calute.txt";
+    File outFileAfter = new File(dir, outPathAfter);
+    String outListAfter = sortResult(after).toString().replaceAll(", ", ", \n");
+    save(outFileAfter, outListAfter.getBytes());
+
+    // print before
+    String outPathBefore = "thread-before-calute.txt";
+    File outFileBefore = new File(dir, outPathBefore);
+    String outListBefore = sortResult(before).toString().replaceAll(", ", ", \n");
+    save(outFileBefore, outListBefore.getBytes());
+
+    result.before_count = before.size();
+    result.after_count = after.size();
+    result.increment = sortResult(increment);
+  }
+
+  private static void save(File file, byte[] bytes) throws IOException {
+    BufferedOutputStream fout = new BufferedOutputStream(new FileOutputStream(file));
+    fout.write(bytes);
+    fout.close();
+    fout.flush();
+  }
+
+  @NotNull
+  private static List<Map.Entry<String, Integer>> sortResult(List<String> list) {
     HashMap<String, Integer> map = new HashMap<>();
     for (String item : list) {
-      Integer value = map.get(item);
-      if (value == null || value == -1) {
-        if (item.startsWith("pool-") && item.endsWith("-thread-")) {
-          Integer v = map.get("pool-xx-thread-");
-          if (v == null || v == -1) {
-            map.put("pool-xx-thread-", 1);
-          } else {
-            map.put("pool-xx-thread-", v + 1);
-          }
-        } else if (item.startsWith("Thread-")) {
-          Integer v = map.get("Thread-xx");
-          if (v == null || v == -1) {
-            map.put("Thread-xx", 1);
-          } else {
-            map.put("Thread-xx", v + 1);
-          }
+      if (item.startsWith("pool-") && item.endsWith("-thread-")) {
+        Integer v = map.get("pool-xx-thread-");
+        if (v == null || v == -1) {
+          map.put("pool-xx-thread-", 1);
         } else {
-          map.put(item, 1);
+          map.put("pool-xx-thread-", v + 1);
+        }
+      } else if (item.startsWith("Thread-")) {
+        Integer v = map.get("Thread-xx");
+        if (v == null || v == -1) {
+          map.put("Thread-xx", 1);
+        } else {
+          map.put("Thread-xx", v + 1);
+        }
+      } else if (item.startsWith("Binder:")) {
+        Integer v = map.get("Binder:xx");
+        if (v == null || v == -1) {
+          map.put("Binder:xx", 1);
+        } else {
+          map.put("Binder:xx", v + 1);
         }
       } else {
-        map.put(item, value + 1);
+        if (TextUtils.isEmpty(item) || item.contains("=") || item.equals(" ") || item.equals(", ")|| item.equals("")) {
+          continue;
+        }
+        Integer value = map.get(item);
+        if (value == null || value == -1) {
+          map.put(item, 1);
+        } else {
+          map.put(item, value + 1);
+        }
       }
     }
     List<Map.Entry<String, Integer>> resultList = new ArrayList<>(map.entrySet());
     Collections.sort(resultList, (o1, o2) -> o2.getValue().compareTo(o1.getValue()));
-
-
-    result.increment = resultList;
-    File fileOut = new File(file, "thread-increment.txt");
-    BufferedOutputStream fout = new BufferedOutputStream(new FileOutputStream(fileOut));
-    fout.write(result.toString().getBytes());
-    fout.close();
-    fout.flush();
+    return resultList;
   }
 
   static class Result {
@@ -110,6 +159,7 @@ public class Thread_Test {
       return "{" +
           "\nbefore_count = " + before_count +
           ", \nafter_count = " + after_count +
+          ", \nincrement_count=" + (after_count - before_count) +
           ", \nincrement=" + getAddString(increment) +
           '}';
     }

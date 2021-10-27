@@ -1,0 +1,57 @@
+https://source.android.com/setup/build/running
+
+1. 下载platform-tools.zip
+	主要是使用其中的一个工具fastboot，
+
+2. 进入刷机界面
+	有2种方式：
+	1> 命令方式
+		adb reboot bootloader
+	2> 手机组合键
+		开关机+音量+/-
+
+3. 解锁引导加载程序
+	有2种方式：
+	1> 命令方式
+		1) 设备出厂日期>2015，fastboot flashing unlock 
+		fastboot工具在sdk/platform-tools，SDK Platform Tools下载地址：https://developer.android.google.cn/studio/releases/platform-tools.html
+			刷回：fastboot flashing lock
+		2）Pixel 2 XL 之前的设备，需要对关键分区解锁 fastboot flashing unlock_critical
+		3）设备出厂日期<2014 fastboot oem unlock
+			刷回：fastboot oem lock
+	2> 手机组合键
+		开发者选项 -> USB调试 ->  OEM 解锁
+
+	问题：	FAILED (remote: 'Fastboot command (boot) is not allowed when locked')
+
+4. 下载
+	Google Pixel(sailfish) 镜像： https://twrp.me/Devices/，
+	下载最小版本sailfish及其最低版本一致的.zip/.img文件（3.2.3.1），下载Magisk（https://github.com/topjohnwu/Magisk/releases/download/v18.0/Magisk-v18.0.zip）
+
+5. 把TWRP.img和Magisk.img文件push到手机内存里
+	adb push D:\root\Magisk-v18.0.zip /system
+	adb push D:\root\twrp-pixel-installer-sailfish-3.2.3-1.zip /system
+
+6.	进入安装模式
+	1> TWRP模式:
+		fastboot boot d:\twrp-3.2.3-1-sailfish.img
+
+	2> fastboot模式:
+		adb reboot bootloader
+		fastboot boot D:\root\twrp-3.2.3-1-sailfish.img
+	3> 组合键
+		开关机+音量+/-
+
+7.	安装img文件
+	进入安装页面，点击install，选择/system/twrp-pixel-installer-sailfish-3.2.3-1.zip安装
+	安装完成后返回首页，再次点击install按钮，选择/system/Magisk-v18.0.zip进行安装
+
+8. root授权
+	
+
+
+
+
+
+
+

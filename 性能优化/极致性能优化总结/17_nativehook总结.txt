@@ -44,7 +44,36 @@
 
 四.	运行时aop
 	1. Xposed: dalvik，需要root, Hook系统任意一方法
-	2. Dexposed: dalvik,不需要root,只能hook本进程
-	3. Epic: art不需要root，本质上inline hook
+	2. Dexposed: dalvik,不需要root,只能hook本进程, https://github.com/alibaba/dexposed（2.0-5.0）
+	3. Epic: art不需要root，本质上inline hook    https://github.com/tiann/epic （5.0-11）
 	4. AndroidMethodHook: Andfix + Dexmaker 非系统方法
 	5. frida python+java 二进制hook工具
+
+五.	hooK总结 【上层到下层顺序排序】
+	1. java hook (反射/动态代理hook)
+		动态代理构造代理对象，反射替换进程对象。 列如：修改activityThread，修当前进程系统调用
+	2. jni hook
+		jni函数指针都保存在虚拟机的表，修改函数指针可以实现
+	3. classLoader
+		提前编译好修改好的class去替换
+	4. Xposed
+		java method保存在表，且每个方法都存在标识是否是jni函数，通过jni函数可查找native函数。 方案就是把hook函数修改为jni函数，并实现一个native函数。【总结：函数表中修改jni标志位，并指向一个native函数】
+
+上面都是修改java层,下面开始修改native hook	
+
+	5. got hook (动态链接库)
+		加载动态链接库，通过dlopen函数把so读入当前进程内存区域，调用so时直接跳转到so的内存区域执行，so对外提供的函数表和函数地址都在这块内存中。 修改方案修改这块的函数地址。 列如native的IO重定向，malloc/free/open/write/read
+		缺点：只能hook函数的入口，无法hook函数内部，so出现内联调用（不查表直接跳地址）出现异常
+	6.	inline hook
+		目标函数区域插入jump指令，使得cpu跳转到hook函数中，如果hook函数与原函数签名不一致，需要额外保持寄存器信息，跳转回原函数恢复寄存器信息。
+		缺点：处理细节多，每个平台指令（armv7/armv8/x86）都需要兼容,稳定性不确定
+
+Android 进程通信hook(进程数据交换依赖linux内核提供的进程通信接口，列如socket,binder)
+	7.	binder进程通信hook
+		动态代理替换proxy/imp等达到监控，列如：hook ams/wms/ims，如virtualApp,自动化检测等
+	8.	socket 进程通信hook
+		1. java层，xposed hook socket相关class即可
+		2. 如果支持重连，可以自己构造socket去connect
+		3. native层，got hook
+	9.	IO 重定向
+		建议使用got hook方式解决
