@@ -11,6 +11,27 @@
 		是一系列数据的汇总，
 	Debug.getMemoryInfo: 数据等效于/proc/$<pid>/smaps
 
+	总结：
+	1. RSS , VSS 对于监控有一定用途
+	2. 几个文件用途：
+		/proc/self/status  
+			VmSize     -> vss
+			VmRSS		-> rss
+			Threads
+		/proc/meminfo
+			MemTotal
+			MemFree
+			MemAvailable
+			CmaTotal
+			ION_heap
+		内存可利用率：ratio = MemAvailable/MemTotal
+		javaHeap
+			max = Runtime.getRuntime().maxMemory()
+    		total = Runtime.getRuntime().totalMemory()
+    		free = Runtime.getRuntime().freeMemory()
+    		used = total - free
+    		rate = 1.0f * used / max
+
 二.	内存知识
 	1.	内存管理框架
 		1>	物理地址与虚拟地址

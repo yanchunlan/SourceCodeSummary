@@ -70,9 +70,7 @@
 			WindowManager.addView -> ViewRootImpl.setView -> addToDisplay -> addWindow -> openInputChannel -> nativeOpenInputChannelPair -> socketpair 
 			
 	4.	线程数量
-		/proc/pid/status 的Threads字段
-		/proc/pid/task/tid/stat 文件较多io操作，设置阀值上报
-		Thread.getAllStackTraces() 获取当前所有线程的信息，线程名、调用栈及状态
+		1. Adb 方式获取
 		步骤：(可以在debug包，adb shell ，run-as 包名,一般是在异常的时候通过readlink的方式读取该字段并上报)
 			ls -a -l /proc/<pid>/fd
 			ps -t <pid>
@@ -88,8 +86,18 @@
 			    name|pid 用名字或pid过滤
 			列如：ps -A -T | grep 26308 | grep "GLThread" | wc -l   统计GLThread个数
 			列入：adb shell ps -A -T |grep 22425 > /xxx/thread-before.txt
-		线程获取：
+		2. 代码获取
+		1> JAVA层		
+			线程获取：参考 https://github.com/yanchunlan/HookDemo/blob/master/lib/src/main/java/com/example/lib/thread/ThreadUtils.java
 			通过ThreadGroup遍历systemThreadGroup，groups即可获取到所有线程
+
+			获取线程堆栈：
+			Thread.getAllStackTraces() 获取当前所有线程的信息，线程名、调用栈及状态
+
+		2> native层
+		/proc/pid/status 的Threads字段
+		/proc/pid/task/tid/stat 遍历文件有较多io操作，设置阀值上报
+
 		hook方式：
 			hook pthread_create、pthread_setname_np[过滤函数]传入pthread_t作为key，在函数回调里面监听pthread_key_create为退出时机
 			内存泄露的判断:
@@ -98,6 +106,10 @@
 			如果为PTHREAD_CREATE_JOINABLE，则设置标识，继续等待判断pthread_detach/pthread_join被调用，则移除缓存pthread_attr_t，此时线程已经泄露了
 			
 			最后dump的时候，标识的均为内存泄露的pthread_attr_t
+
+			获取线程堆栈：
+			32位 libunwind_stack
+			64位 fp_unwind
 			
 	5.	Native内存
 		主要是java堆内存，Debug.getMemoryInfo()以及/proc/pid/smap文件分析

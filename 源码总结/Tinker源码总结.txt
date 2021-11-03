@@ -96,3 +96,11 @@
 			dex_meta.txt
 			so_meta.txt
 			res_meta.txt
+
+三.	tinker遇到的问题
+	问题1： > Android 10，dex2oat 失败 【https://mp.weixin.qq.com/s/5kwU-84TbsO3Tk5QDzNKwA】
+		原因：
+			1. >10系统删除了构建classLoader触发dex2oat的相关代码,限制应用进程 触发dex2oat的入口
+			2.SELinux规则变更，限制应用进程 触发dex2oat
+		解决方式：
+			使用PackageManager的Binder，并设定code=SHELL_COMMAND_TRANSACTION，然后将命令以数组的形式封装到data内即可

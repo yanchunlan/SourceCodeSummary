@@ -60,6 +60,11 @@
 	3、同类对象超过阈值时不再搜索。
 	4、增加预处理，缓存每个类的所有递归 super class，减少重复计算。
 	5、将object ID的类型从long修改为int，Android虚拟机的object ID大小只有32位，目前shark里使用的都是long来存储的，OOM时百万级对象的情况下，可以节省10M内存。
+	
+	汇总描述：：
+		1、分析 hprof 文件，获取镜像所有的 instance 实例。
+		2、遍历所有的实例，判断这个实例与各个 Detectors 是否有存在泄漏，如果有，则记录 objectId 到集合。
+		3、根据 objectId 集合获取各个泄漏实例引用链，分析出 gcRoot，并遍历 gcRoot 下的引用路径。
 
 四.	优点
 	1.	内存泄露检测

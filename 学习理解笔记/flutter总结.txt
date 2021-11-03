@@ -72,4 +72,244 @@
 		stateLessWeight： 初始化参数控制显示 ， text源码
 		stateFulWeight:	 响应变化，重新build， Image源码
 	3. 生命周期
-		
+		state生命周期：
+			创建：start -> 构造方法 -> initState -> didchangeDependencies -> build 
+			更新：setState / didchangeDependencies（state变化） / didUpdateWidget（weight变化调用） -> 
+			销毁：tree -> deactivate -> dispose -> end
+		app生命周期：
+			widgetBIndingObserver类具备很多接口回调
+			resumed -> inactive -> paused : 前后台切换中间必定经过inactive
+		帧回调：
+			widgetsBinding.addPostFrameCallback : 回调一次
+			widgetsBinding.addPersistentFrameCallback: 回调多次
+	4. 基础控件
+		1. 文字
+			布局： 
+				textalign 布局对齐
+				textdirection 排版方向
+				maxlines 最大行
+				overflow 文本截断
+			样式	: 
+				fontFamily 字体名称
+				fontSize 字体大小
+				color 字体颜色
+				shadows 字体阴影
+			text 单文字
+			textSpan 分片
+		2. 图片
+			Image
+			FadeInImage 支持占位，动画
+			cachedNetworkImage 支持磁盘缓存
+		3. 按钮
+			floatingActionButton  圆形按钮
+			FlatButton  扁平按钮
+			RaisedButton  凸起按钮
+		4. 列表
+			ListView
+				listTitle 小组件单元
+			ListView.Builder 适用于子weight较多的情况
+				itemCount 元素个数
+				itemExtent 列表高度
+			ListView.separated 设置分割线，与ListView.Builder类似
+
+			CustomScrollView 处理多个滚动效果的weight
+				AppBar -> SliverAppBar
+							floating 设置悬浮样式
+							flexibleSpace 悬浮背景
+				ListView -> SliverList
+							delegate -> SliverChildBuilderDelegate 列表项
+			ScrollController
+				具体添加位置在：ListView.builder(
+					controller: -> 
+				)
+				addListener
+				dispose
+			ScrollNotification
+				具体添加位置在：child: ListView.builder
+				scrollStartNotification
+				scrollUpdateNotification
+				scrollEndNotification
+	5. 容器控件
+		1. 单子weight布局
+			container
+				padding
+				margin
+			padding 单独设置一个内边距
+			center 居中
+		2. 多子weight布局
+			Row 水平，行排列
+			Column 垂直，列排列
+			Expanded 剩余补全
+				flex 分配比例
+
+			对齐规则：
+				mainAxisAlignment 横向 
+					start/center/end/spaceEvenly（固定间距对齐）
+				crossAxisAlignment 纵向
+			对齐负责：
+				mainAxisSize 对齐规则
+					min -> 等效wrap_content
+					max -> 等效于match_parent
+		3. 层叠weight布局
+			stack 层叠布局
+				positioned 设置子weight位置的
+	6. 组合和自绘
+		组合 拆解布局然后定义为一个组件
+		自绘 
+			xx extend customPaint{
+				paint(canvas){
+					drawLine
+					drawRect
+					drawPoint
+					drawPath
+					drawCircle
+					drawArc
+				}
+			}
+	7. 夜间模式
+
+	8. 依赖管理
+
+	9. 事件
+
+	10. 数据交互
+
+	11. 路由跳转
+
+五.	flutter进阶
+	1. 动画
+	2. 单线程模型
+		event Loop机制
+			dart是单线程的，与异步并不冲突，通过event Loop交互
+		异步任务 （Future）
+			有2个队列，一个事件队列Event Queue，一个微任务队列Microtask Queue,执行顺序：微任务队列 -> 事件队列
+			微任务队列：手势识别，文本输入，滚动视图，保持页面效果等
+			事件队列：io,绘制，定时器等
+
+			then与Future公用一个事件循环，执行顺序： 事件对垒 -> then事件
+		异步函数
+			如果调用需要同步等待，则:
+			async{
+				(await futurex()) // futurex为future函数
+			}
+		多线程并发 (ioslate)
+			Isolate.spawn(fun(),"msg") 执行一个并发任务
+
+			并发任务之间的消息通讯，需要使用ReceivePort来解决
+			并发计算任务可以采用 compute函数执行
+				swait compute(funx(),value)
+	3. http网络编程与json解析
+		1. http网络编程
+			httpClient(dart:io)
+				async{
+					httpClient=new httpClient
+					httpClient.idleTimeout // 超时
+					request=await httpClient.getUrl() // 设置url
+					response=await request.close // 发送请求
+					if(response.statusCode==HttpStatus.ok) // 收到响应
+				}
+				所有的请求使用Future包装async外包装，请求位置若需要同步等待，则使用swait。
+			http（dart原生）
+				dependencies{
+					http : '>=0.11.3+12'
+				}
+				saync{
+					client=new http.client
+					response=swait client.get(url,header) // 设置url并请求
+					if(response.statusCode==HttpStatus.ok) // 收到响应
+					{
+						response.body
+					}
+				}
+			dio(三方库) 
+				dependencies{
+					dio : '>2.1.3'
+				}
+				saync{
+					dio=new dio
+					response=swait dio.get(url,options) // 设置url并请求
+					if(response.statusCode==HttpStatus.ok) // 收到响应
+					{
+						response.date.toString
+					}
+					// 上传文件  
+					formData=FormData.from()
+					response=swait dio.post(url,formData)
+					// 下载文件
+					dio.download(url,"x.zip")
+					// 多请求
+					List<response> response=Future.wait()[dio.get,dio.get]
+					// 拦截器
+					dio.interceptors.add()
+					// 异常捕获
+					try{
+					response=swait dio.get(url,options)
+					}catch(e)
+				}
+		2. Json解析
+			json.decode("json") // 返回Map<String,dynamic>类型
+
+			在数据量计算很大的情况下，可使用isolate优化，如下：
+				compute（funx(),"json"）.then(print(xx))
+	4. 本地存储与数据库
+		1. 文件
+			目录有2个：
+				1. temporaryDirectory 等效于cacheDir
+				2. Documentirectory 等效于appData
+			async{
+				dir=await getApplicationDocumentirectory() //	获取文件目录
+				file(dir/xxx.txt).writeAsString	// 写
+				file(dir/xxx.txt).readAsString	// 读
+			}
+		2. sharedPreferences
+			async{
+				preference=await getSharepreference.getInstance()
+				preference.getInt('x')
+				preference.setInt('x')
+			}
+		3. 数据库
+			async{
+				db=await openDatabase(join(await getDataBasePath,"x.db"),
+					onCreate: => db.execute
+					onUpdate => 
+					version:1
+				)
+				await db.insert('x',"xx",conflictAlgorithm:ConflictAlgorithm.replace) // 插入
+				List list=await db.query('x'）
+				db.close
+			}
+	5. 兼容android/ios平台
+		调用底层方法主要依赖于method channel
+		1. method channel
+	6. 混编flutter工程
+
+	7. 导航栈管理
+
+	8. 状态管理
+
+	9. 推送
+
+	10. 多语言适配
+
+	11. 分辨率适配
+
+	12. 编译模式
+
+	13. hot reload原理
+
+	14. 优化调试效率
+
+	15. 检测优化flutter性能
+
+	16. 自动化测试
+
+六.	flutter综合
+	1. 异常捕获
+
+	2. 线上质量指标
+
+	3. 组件化
+
+	4. 打包环境优化
+
+	5. 构建混合开发框架
