@@ -96,12 +96,12 @@
 
 		2> native层
 		/proc/pid/status 的Threads字段
-		/proc/pid/task/tid/stat 遍历文件有较多io操作，设置阀值上报
+		/proc/pid/task/tid/comm 或者stat 遍历文件有较多io操作，设置阀值上报
 
 		hook方式：
 			hook pthread_create、pthread_setname_np[过滤函数]传入pthread_t作为key，在函数回调里面监听pthread_key_create为退出时机
 			内存泄露的判断:
-			hook pthread_detach/pthread_join，并在函数执行的回调，读取pthread_attr_t线程是否detach：
+			hooK了on_pthread_exit，内部判断线程状态
 			如果为PTHREAD_CREATE_DETACHED，则移除
 			如果为PTHREAD_CREATE_JOINABLE，则设置标识，继续等待判断pthread_detach/pthread_join被调用，则移除缓存pthread_attr_t，此时线程已经泄露了
 			

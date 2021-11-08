@@ -167,8 +167,45 @@
 				}
 			}
 	7. 夜间模式
-
+		主要是themeData控制
+			brightness 明暗模式
+			primaryColor 主色调
+			accentColor 次色调
+			fontFamily 文本字体
+			cursorColor 光标颜色
+		全局主题：MaterialApp控制
+		局部主题：
+			Theme(data:ThemeData(iconThemedata)) // 新建一个主题
+			Theme(data:Theme.of(context).copyWith(x)) // 更新部分主题, theme.of(Context) 获取到上层weight的theme
+		分平台定制主题
+			TargetPlatform.ios? iosTheme :AndroidTheme
 	8. 依赖管理
+		pubspec.yaml 职责：主要是管理资源和依赖，比如第三方库，dart运行环境，flutter sdk版本等
+		资源管理
+			资源放入目录：assets
+			声明在配置文件中
+			flutter:
+				assets:
+					- assets/
+					- assets/icons
+			加载方式： rootBundle.load(二进制文件)/loadString(字符串资源)
+
+			如果是有几倍图的情况：
+			资源目录：
+			assets
+				back.jpg
+				2.0x - back.jpg
+			声明1倍图资源就可，flutter会自动去加载分辨率最近的资源
+		字体
+			资源放入目录：assets/fonts
+			声明
+				fonts:
+					- family:xxx
+					  font:
+					   - assets:asset/fonts/xx
+					   style:xx
+					   wight:100
+		原生平台的资源，直接去修改原生代码目录即可
 
 	9. 事件
 
@@ -280,8 +317,44 @@
 			}
 	5. 兼容android/ios平台
 		调用底层方法主要依赖于method channel
-		1. method channel
+		1. method channel [flutter控制原生响应]
+		flutter:
+		const platform = MethodChannel('');
+		fun() async{
+			try{
+				result= await platform.invorkMethod('')
+			}catch(e)
+		}
+		原生侧：
+		new MethodChannel(getFlutterView(),'').setMethodCallHandler{
+			onMethodCall(){
+				call.method.equals(''){
+					result.success/error
+				}
+			}
+		}
+		2. 安卓的view显示在flutter中
+		flutter:
+		viewFactory extends platformViewFactory{
+			platformView create 
+		}
+		viewControl implements platformView{
+			getview
+			dispose
+		}
+		Register register =registarFor('')
+		viewFactory factory=new ViewFactory(register.messenger())
+		register.platformViewRegistry()
+
+		如果想动态的调整，就需要参数传递  [flutter控制原生响应]
+		通过method channel的方式传递数据
 	6. 混编flutter工程
+		flutter作为原生的aar工程
+
+		添加flutter library
+			打包aar, flutter build apk --debug
+			添加依赖
+			配置使用，setContentView(Flutter.createView(this,getLifecycle,"defaultRoute"))
 
 	7. 导航栈管理
 

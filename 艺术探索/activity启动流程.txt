@@ -46,6 +46,8 @@
 		在ApplicationThreadNative的内部，还有一个
 		ApplicationThreadProxy,这个类的实现如下，相信大家都有一种似曾相识的感觉，其实这个内部类也是系统为AIDL文件自
 		动生成的地理类，种种迹象表明，ApplicationThreadNative就是IApplicationThread的是实现者
+		
+		applicationThread 是ams的接受者，接收到信息调用activityThread的setMessage方法，流转到ActivityThread
 
 	Activity的启动过程最终还是回到了ActivityThread中，ActivityThread通过scheduleLauncherActivity来启动Activity,并发送消息
 		
