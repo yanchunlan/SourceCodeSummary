@@ -39,6 +39,7 @@
 		es.shutdown();
 		...
 		future.get()	----- > （获取结果）
+	callable与future区别：在于一个是返回值一个是传入的参数
 
 6.	CompletionService
 	CompletionService的一个实现是ExecutorCompletionService，它是Executor和BlockingQueue功能的融合体，Executor完成计算任务，

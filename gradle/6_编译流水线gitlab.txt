@@ -1,0 +1,107 @@
+一.	流水线流程
+	自测完成 -> sonar_android（diff文件没有引入增量代码缺陷）	-> 自动化单元测试（代码覆盖率）  ->  CR走查 -> ui自动化测试	-> 合入 -> END
+				包大小检测											测试检测
+				灰度包（灰度+覆盖率插桩，用于后面UI自动化测试）
+				编译检测
+				自动化测试打包（Debug+覆盖率插桩配置，用于后面自动化单元测试）
+				x速版编译检测
+				静态检测（diff文件没有引入增量代码缺陷）
+
+二.	检测流程
+	1. sonar_android
+	针对每种语言都配置指定的检测项
+	java:
+		findBugs
+		findBugs + FB-contrib
+		findBugs security Audit
+		findBugs security minimal
+		sonar way
+		full_rules
+		gudong
+		java_npe
+		merchant-android
+		merchar_shop_rules
+		sonar_java
+	kotlin
+		sonar way
+		full_rules
+		kotlin_no_rules
+		diff_kotlin
+		null_rule
+		gudong
+	
+	2. 包大小检测
+		命中策略：变更文件是否匹配到包大小检测文件
+		命中规则：
+			后缀.gradle
+			白名单：xxx.kt , xxx.gradle
+			.java/.kt文件新增修改大于1000行
+			png/webp/xml/jar/json资源自身size总和超过包体阀值
+			特殊目录文件移动
+			特殊文件x.cfg改变
+		检查策略：
+			xxx一堆
+			依赖变化，新增变更等
+			资源变化，资源分析
+	3.	灰度包
+		编译检测
+		自动化测试打包
+		x速版编译打包
+		静态检测
+
+		----->>> 	jenkins打包
+
+三.	CI平台
+	gitlab
+		action配置xxx.yaml,配置编译环境，命令等
+	github
+
+四. 工具汇总
+	1. lint
+		方法复杂度 
+		mvp子类不能有public(类/方法/属性判断)
+		npe(Disposable是否未调用dispose/方法/属性/参数判断)
+		日志回捞Tag和module不能为空，不能过短或者超长
+		module之间错误依赖
+		PreDrawListener 必须在回调的第一行 remove 自己，尽量不 return false
+		Presenter 仅允许一层继承，且所有 override 方法必须是 package 权限的
+		inject注入默认非空，不需要判空
+		不允许使用系统intent
+		固定类必须添加@xx等
+		不允许使用系统Preferences
+		rxjava onError应该使用Error consumer
+	2. CI
+		apktool
+		unusedRes(根据lint读取result文件，解析issue，根据issue做删除等)
+		mrchecker(相同xml/pic删除，)
+	3. gradle
+		依赖分析
+		apt增强
+		r替换
+		资源统计
+		webkit替换
+		native库检查（ndk,c++,lib c++,so_mapping生成）
+		华为push
+		rn
+		privacyPlugin
+		handlerPlugin(线上消息循环卡顿检测)
+		asset_index（解决6.0anr问题）
+		speed_monitor(页面提速)
+		kjacoco代码覆盖率
+		shrink(reduce dex remove r)
+		huawei agcp
+		speedy
+		gradle-dsl
+		route_collision 路由冲突检测
+		dynamic_aar 动态aar
+		编译数据上报
+	4. tools
+		code-style
+		sample-res/file
+		build-tools
+		abtest
+		dep-analytics
+		eventbus-checker
+		mr-analyze
+		remote-build
+		

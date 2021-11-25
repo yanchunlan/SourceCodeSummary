@@ -1,0 +1,36 @@
+一.	线程池原理
+	重要参数：
+	HashSet<Works> worker集合：保存所有核心线程和非核心线程
+	BlockingQueue<Runnable> 等待队列：当核心线程数达到corePoolSize时，新提交的任务就添加在等待队列
+	AtomicInteger ctl：高三位表示线程池状态，低29位记录线程池数量
+
+	参数说明：
+		核心线程数量
+		最大线程数量
+		线程空闲时间，到空闲时间线程会被销毁到核心线程数量的线程
+		时间单位
+		等待队列，请求任务数大于核心线程数添加到此队列
+		线程工厂，线程池使用它来创建线程
+		执行拒绝策略的对象
+
+	优先级：
+	核心线程数量 -> 等待队列 -> 最大线程数量 -> 拒绝
+
+	拒绝策略：
+	ThreadPoolExecutor.AbortPolicy ：丢弃任务抛出异常，默认策略
+	DiscardPolicy ：丢弃任务，不抛出异常
+	DiscardOldestPolicy ：丢弃队列最前面的任务，重新提交被拒绝的任务
+	CallerRunsPolicy ：由调用线程（提交任务的线程）处理该任务
+
+	拓展：
+	阿里巴巴为什么禁用2种线程，newFixedThreadPool/newCacheedThreadPool
+	newFixedThreadPool：添加的队列是无界的队列，容易导致一直添加，oom
+	newCacheedThreadPool：无限数量的线程数，也会导致一直添加，oom
+
+二.	源码
+	手写线程池要点：
+	1. < 线程数量，创建线程
+	2. > 线程数量 ， < 最大线程数量，添加到等待队列
+	3. > 等待队列数量， < 最大线程数量， 创建线程
+	4. > 最大线程数量，拒绝策略
+	

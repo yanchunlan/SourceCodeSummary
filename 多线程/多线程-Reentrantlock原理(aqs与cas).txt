@@ -1,0 +1,40 @@
+一.	RentrantLock和aqs的关系
+	内部主要是根据sync去控制，而sync有2类型，NonfairSync非公平锁和FairSync公平锁2种类型
+	下面以非公平锁为列：
+	sync.lock：
+		compareAndSetState 获取锁状态
+		1. 获取成功，直接设置锁状态为执有状态
+		2. 获取失败
+			acquire -> 
+			tryAcquire -> 
+					nonfairTryAcquire
+					获取锁状态，成功直接返回
+					属于重入状态，增加重入次数
+					失败返回false
+				失败 -> 
+					addWriter 添加到等待队列末端
+						添加到等待队列末端
+						入队失败，循环判断是否未初始化，初始化添加
+					acquireQueued
+						先遍历获取锁，
+						判断是否需要阻塞，
+						执行柱塞
+					selfInterrupt
+						LockSupport.park 阻塞线程
+	sync.release
+		unparkSuccessor
+		LockSupport.unpark
+
+二.	AQS
+		Node双端队列
+		state锁状态
+		模式：
+			独占，一个线程单独拥有
+			共享，多个线程持有同步锁
+	自定义AQS
+		lock{
+			Sync.acquire
+		}
+		unLock{
+			Sync.release
+		}

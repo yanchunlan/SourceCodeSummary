@@ -265,7 +265,7 @@
 			
 		https://blog.csdn.net/yxz329130952/article/details/50288145
 	2> native heap
-		malloc debug 方案
+		malloc debug 方案，使用官方的malloc_debug库运行测试，大概能够分析出来主要native占用在哪个模块，但是没法具体指明是哪个位置
 
 	3> kernel
 

@@ -36,7 +36,7 @@
      	>=Android Q ，系统加载so库会检测是否是系统so，仅加载系统so,多一个判断逻辑
      	kwai-linker的目的就是加载每个so都能够获取到一个回调，dl_iterate_phdr函数可以从回调找到某一个so对应的函数指针并返回
 
-     3.	内存泄露检测实现
+     3.	内存泄露检测实现（intentServices执行）
      SuspicionLeaksFinder.find:
 		buildIndex:	
 			将Hrpof文件按照扫描的格式解析为结构化的索引关系图,索引化后的内容封装为HprofHeapGraph,由它去通过对应的起始索引去定位每类数据,(copy from squere HAHA)
@@ -45,7 +45,7 @@
 		findLeaks:
 			检测泄露类及其子类有无满足泄露条件，把泄露的类添加进json
 
-三.	分析hprof文件
+三.	分析hprof文件(kwai-shark)
 	KOOMInternal.onHeapDumped
 	HeapAnalysisTrigger.startTrack
 	HeapAnalysisTrigger.trigger
