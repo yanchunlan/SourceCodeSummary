@@ -1,5 +1,5 @@
 # SourceCodeSummary
-### 学习笔记
+### 个人笔记
 
  1. JVM
  2.	framework
@@ -29,7 +29,7 @@ c/c++/jni/makeFile/shell/mediaCodec/openGLES/openSlES/ffmpeg
  - [jni-socket双进程守护：SocketProcess](https://github.com/yanchunlan/SocketProcess)
  - [mediacodec/opensles：AudioAndVideoLearn_DemoMaster](https://github.com/yanchunlan/AudioAndVideoLearn_DemoMaster)
  - [opengles/rtmp推流：OpenGlES_Demo](https://github.com/yanchunlan/OpenGlES_Demo)
- - [ffmpeg编解码同步：Ffmpeg_demo](https://github.com/yanchunlan/Ffmpeg_demo)
+ - [shell/makefile/ffmpeg编解码同步：Ffmpeg_demo](https://github.com/yanchunlan/Ffmpeg_demo)
  - [ffmpeg推流：ffmpeg_Pusher](https://github.com/yanchunlan/ffmpeg_Pusher)
  - [音频播放器/视频播放器：MyMusic](https://github.com/yanchunlan/MyMusic)
 
