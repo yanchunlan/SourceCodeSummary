@@ -9,7 +9,7 @@
 
 二.	检测流程
 	1. sonar_android
-	针对每种语言都配置指定的检测项
+	针对每种语言都配置指定的检测项（阿里的sonarqube或其他大厂的）
 	java:
 		findBugs
 		findBugs + FB-contrib

@@ -1,3 +1,4 @@
+memory-leak-detector：https://github.com/bytedance/memory-leak-detector
 一.	tailor
 	tailor: 获取内存快照工具，并进行裁剪压缩操作
 		对内存hprof文件的裁剪库，根据hprof文件格式，去除了一些无用的格式，仅保留byte[]、char[] 和 hprof 格式裁剪

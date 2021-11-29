@@ -46,6 +46,26 @@
 			1>	R文件解释
 				格式 ：0xpptteeee；  pp：表示 package id ，tt：表示 type id ，eeee：表示 entry id
 				资源混淆，实质上就是改短资源名字，然后同步修改resources.arsc里面的引用
+			
+				热更新到这的一个异常记录：热更新因为classLoader，不同版本的手机，加载的资源目录不同，导致动态赋资源id会不同，通过下面代码判断资源id
+				​public static void dumpPackageIds(@NonNull AssetManager assetManager) {
+				  if (assetManager == null) {
+				    return;
+				  }
+
+				  try {
+				    Method getPackageIdMethod = AssetManager.class.getDeclaredMethod("getAssignedPackageIdentifiers");
+				    SparseArray<String> packageIds = (SparseArray<String>) getPackageIdMethod.invoke(assetManager);
+				    for (int i = 0; i < packageIds.size(); i++) {
+				      Log.i(TAG, packageIds.keyAt(i) + " " + packageIds.valueAt(i));
+				      if (packageIds.valueAt(i).contains("webview")) {
+				        webViewPackage = packageIds.valueAt(i);
+				      }
+				    }
+				  } catch (Exception e) {
+				    e.printStackTrace();
+				  }
+				}
 
 	3.	代码优化
 		1>	debugItem复用

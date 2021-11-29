@@ -17,7 +17,7 @@
 		总结：同步屏障消息开关必须成对出现
 
 
-	2. onPause之后执行requestLayout，layout会之心吗？
+	2. onPause之后执行requestLayout，layout会执行吗？
 	答：会发送消息到handler，但是后面performTraversals执行layou的时候，会判断执行条件，是后台情况就不会执行
 
 	performTraversals ->

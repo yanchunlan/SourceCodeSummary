@@ -65,7 +65,7 @@
 	1.	xml优化
 		x2c：https://github.com/iReaderAndroid/X2C/blob/master/README_CN.md
 			原理：
-			1> @xml修复layout，使用时调用X2C.setContentView/X2C.inflate会反射初始化编译文件，成功返回，失败调用原生方法
+			1> @xml修饰layout，使用时调用X2C.setContentView/X2C.inflate会反射初始化编译文件，成功返回，失败调用原生方法
 			2> 编译XmlProcessor的init:
 				filer.createSourceFile找到xxx/app作为rootFiles,根据rootFiles找到Manifest,解析获取packageName
 				filer.createSourceFile找到xxx/app/build/generated/source/apt/debug,替换apt为r,结合packageName找到R.java，读取public static final class layout并map缓存(key为其decode)

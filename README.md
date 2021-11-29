@@ -31,7 +31,9 @@ c/c++/jni/makeFile/shell/mediaCodec/openGLES/openSlES/ffmpeg
  - [opengles/rtmp推流：OpenGlES_Demo](https://github.com/yanchunlan/OpenGlES_Demo)
  - [shell/makefile/ffmpeg编解码同步：Ffmpeg_demo](https://github.com/yanchunlan/Ffmpeg_demo)
  - [ffmpeg推流：ffmpeg_Pusher](https://github.com/yanchunlan/ffmpeg_Pusher)
- - [音频播放器/视频播放器：MyMusic](https://github.com/yanchunlan/MyMusic)
+ - [软硬编解码实践-音频播放器/视频播放器：MyMusic](https://github.com/yanchunlan/MyMusic)
+ - [视频处理-硬解硬编添加水印：AAVT](https://github.com/yanchunlan/AAVT)
+ - [视频处理-硬解硬编音视频裁剪：VideoEdit](https://github.com/yanchunlan/VideoEdit)
 
 ### 手写第三方框架
 
