@@ -1,3 +1,57 @@
+一.线下监控
+	1.	设置-耗电排行
+		缺点：只能知道app大概耗电，不够具体
+	2.	电量广播监控 - ACTION_BATTERY_CHANGED
+		缺点：只能获取到一个总耗电量，不够详细
+	3.	Battery Historian（>=5.0手机）
+		1.	配置环境
+			https://github.com/google/battery-historian
+			安装Docker
+			执行命令docker -- run -p <port>:9999 gcr.io/android-battery-historian/stable:3.0 --port 9999
+		2.	导出电量
+			重置电量信息：adb shell dumpsys batterystats --reset
+			开始记录电量：adb shell dumpsys batterystats --enable full-wake-history
+			导出电量信息：adb bugreport bugreport.zip
+		3.	上传分析
+			http://localhost:9999，上传文件分析
+			分析top app耗电量，Userspace Wakelocks可以观测WakeLock的情况
+二.	线上监控
+	1.	获取运行时耗电
+		Android系统中每个组件，如CPU、GPS、显示屏、WIFI、蓝牙，他们运行时的能耗都在power_profile.xml里面
+		1>	adb pull /system/framework/framework-res.apk
+		2>	反编译，xml中获取power_profile.xml文件
+	2.	获取使用时长
+		aop的方式统计wakelock/wifi/gps的开始/结束时间，堆栈等
+	3.	获取线程使用时长
+		aop的方式，在java.lang.Runnable的run方法后面植入统计耗时代码，统计线程执行时间是否过长
+三.	电量优化分析
+	1.	cpu
+		通过traceView/cpu profiler获取cpu信息去分析cpu情况，避免后台的主动运行
+	2.	网络
+		减少网络请求次数或者延迟空闲执行
+		数据压缩，减少传输时间
+		禁止轮训功能
+	3.	定位
+		高精度定位少用
+		网络定位替代gps定位
+		gps定位使用后合理关闭，或减少使用频率【可以在监控中，控制在后台情况下超过阀值关闭定位】
+	4.	界面
+		离开界面停止耗电活动【切换到后台，关闭动画】
+		耗电操作判断前后台，后台不执行
+	5.	WakeLock
+		acquire与release成对出现，及时释放
+		使用带参数的acquire，设置超时关闭
+		finally确保一定释放
+		常亮使用KeepScreenOn，不使用WakeLock
+	6.	JobScheduler
+		后台/不紧急的任务使用JobScheduler执行
+		控制在连接电源/wifi的情况下才执行
+		如下：
+			scheduler.builder.setRequiresCharging(true) //任务执行时需要连接电源
+               				.setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED); //WIFI状态下
+
+
+------------------------------------------------------
 一.	捕获
 	Battery Historian 
 

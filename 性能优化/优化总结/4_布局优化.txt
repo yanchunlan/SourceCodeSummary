@@ -92,6 +92,8 @@
 		去除重叠绘制
 		measure/layout/draw优化
 		view缓存复用
+		textView优化->异步创建StaticLayout
+		webView监控（监控屏幕是否白屏，（通过绘制得到图片，判断bitmap的rgb）白屏则WebView有问题）
 
 	2.	硬件加速
 
