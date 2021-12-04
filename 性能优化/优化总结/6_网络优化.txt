@@ -1,4 +1,94 @@
-一.	优化
+一.	分析工具
+	线下工具
+		1.  as的network profiler
+			run -> Edit Configurations -> Android App -> app -> profiling，开启Enable advanced profiling
+		2.	抓包工具
+			Charles/Fiddler/Wireshark/TcpDump等，其中breakpoint断点，map local模拟本地数据，Throttle弱网模拟重点关注
+		3.	Stetho
+			添加依赖：implementation 'com.facebook.stetho:stetho-okhttp3:1.6.0'
+			初始化：Stetho.initializeWithDefaults(this);
+			添加拦截器：addNetworkInterceptor
+			Chrome浏览器：chrome://inspect
+	线上工具
+		1. TrafficStats
+			版本>=8
+			getUidRxBytes(int uid)指定Uid的接收流量
+			getTotalTxBytes()总共发送的流量
+			缺点：无法获取某个时间段内的流量消耗，只能获取一个大的具体值
+		2.	NetworkStatsManager
+			版本>=23
+			可以获取指定时间间隔内的流量信息
+			可以获取不同网络类型下的流量消耗
+		3.	前后台流量获取方式
+			开启定时器任务，分别统计前台后台定时获取流量信息上报
+二.	优化探索
+	优化场景
+		数据：api请求，资源包（app升级包，h5的zip包，rn的bundle包），配置信息（ab/Test）
+		图片：下载，上传
+		监控：apm相关等
+	优化手段
+		1.	数据缓存
+			类似okHttp，无网络开启缓存，builder.cacheControl(CacheControl.FORCE_CACHE);且添加缓存
+		2.	增量数据更新
+			类似城市，不怎么变化的数据，一般更新尽量使用增量数据
+		3.	数据压缩
+			请求头压缩：请求头一致的话，下次请求头可以传递上一次请求的的md5值，服务器使用缓存的请求头
+			body压缩：gzip压缩，请求头回带上gzip压缩标示，服务器返回值带上gzip
+			图片上传前压缩：可使用luban压缩等
+		4.	发送频率和时机
+			合并网络请求，性能日志上报（wifi时上传）
+		5.	图片
+			有策略的使用图片，webP图片
+	质量的评估与优化
+		评估手段：
+			网络请求成功率
+			网络请求速度
+		优化方式：
+		1. 	Httpdns
+			阿里云，腾讯云等
+		2. 	Http协议版本升级
+			http1.0：链接不复用，每次请求都是一次链接
+			http1.1：引入keepalie,请求按序执行
+			http2.0：多工，链接复用，二进制协议
+		3.	请求质量监控
+			请求耗时，成功率，错误码
+				okHttp的EventListener可以统计，dns开始结束时间，网络请求返回值大小，是否成功，失败原因等
+			图片每一步耗时
+				glide：https://www.jianshu.com/p/17d9de68bab3
+				fresco：https://www.jianshu.com/p/da5d7f0fd772
+		4.	网络容灾机制
+			资本层面：cdn加速，提高带宽，动静资源分离（更新后清理缓存）
+			减少传输量，请求时机与频率等
+			okHttp的请求池：网络请求最大值默认64，单个host可以同时执行5个网络请求
+三.	网络监控建设
+	线下测试
+		方案：只抓单独App，将其余App的联网权限全部关闭
+		侧重点：请求有误、多余，网络切换、弱网、无网测试
+		线上监控分为两个部分：服务端监控和客户端监控
+	服务端监控
+		请求耗时（区分地域、时间段、版本、机型）
+		失败率（业务失败与请求失败）
+		排名靠前的失败接口、异常接口
+	客户端监控
+		接口的每一步详细信息（DNS、连接、请求等）
+		请求次数、网络包大小、失败原因
+		图片监控
+	异常监控体系
+		服务器防刷：超限拒绝访问
+		客户端：大文件预警、异常兜底策略（连续多次请求失败暂停访问并加大重试时长）
+		单点问题追查
+
+
+四.	网络监控划分
+	长链接
+		socket等底层库的hook监控上报
+	短链接
+		插桩添加监控代码，针对每个网络请求库均植入监控代码
+		图片请求类似
+
+		
+------------------------------------------------------------------
+一.	笼统性的优化
 	短连接：
 	1.	域名合并
 		缺点：增加并发数，dns解析

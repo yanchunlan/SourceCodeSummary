@@ -5,7 +5,9 @@
 	runblocking：线程柱塞，适合单元测试
 	GlobalScope.launcher: 全局单列，容易内存泄漏
 	CoroutineScope.launcher: 推荐使用，可以控制生命周期
-三.	安卓中的协程
+	withContext:在指定协程上运行挂起代码块
+	CoroutineScope.async:创建新协程
+三.	协程挂起恢复
 	1.	suspend
 		被suspend修饰的函数，编译后，会新增1个参数：continuation: Continuation<T>
 		interface Continuation<in T> {
@@ -14,7 +16,41 @@
 		}
 		Kotlin使用堆栈帧来管理要运行哪个函数以及所有的局部变量。暂停协程时会复制并保存当前的堆栈帧以供
 		稍后使用；恢复协程时会将堆栈帧从其保存位置复制回来，然后函数再次开始运行
-四.	协程调度
+
+	2.	协程的挂起，恢复与调度
+		launch/suspend修饰的代码后面会新增接口参数，参数方法有：
+				invokeSuspend{
+				  switch(this.label) {
+              			  	case 0:
+						// 调用代码
+					case1: // 异常处理
+						ResultKt.throwOnFailure($result)
+				}
+		
+		协程的创建：launch -> coroutine.start -> createCoroutineUnintercepted -> resume(Unit) -> resumeWith() -> invokeSuspend()
+			挂起：通过suspend挂起函数实现
+			恢复：通过Continuation.resumeWith
+		协程的线程调度：startCoroutineCancellable -> createCoroutineUnintercepted.intercepted -> CoroutineDispatcher.interceptContinuation -> 
+				DispatchedContinuation拦截了协程的启动和恢复，分别重写了resumeCancellable/resumeWith
+				其中内部判断了线程是否分发，如果分发就执行dispatcher.dispatch -> Executor.execute(Runnable)
+		协程的挂起于恢复：将 launch 协程封装为 ResumeAwaitOnCompletion 作为 handler 节点添加到 aynsc 协程的 state.list，然后在 async 协程完成时会通知
+				 handler 节点调用 launch 协程的 resume(result) 方法将结果传给 launch 协程，并恢复 launch 协程继续执行 await 挂起点之后的逻辑
+		
+		总结：
+			协程的挂起，实质上就是把协程内的代码拆分为几个不同的片段，每次运行执行程序的不同片段，所以即使挂起也不会影响程序返回值等
+	3.	协程的包装与取消
+		包装:
+		suspendCoroutine/suspendCancellableCoroutine{ conn->
+			cont.resume
+			cont.resumeWithException
+			cont.resumeWithException
+		}
+		取消：
+		cancel()只是将协程的状态修改为已取消状态，并不能取消协程的运算逻辑，协程库中很多挂起函数都会检测协程状态，如果想及时取消协程的运算，最好使用isActive判断协程状态
+			
+			
+		
+四.	协程的线程调度
 	Dispatchers.Main：主线程
 		内部的消息发送在handler,依赖于Android的消息机制
 	Dispatchers.Default：io线程
@@ -28,6 +64,12 @@
 	生命周期感知型指定coroutineScope如下：
 			ViewModelScope
 				viewModelScope.launch{}
+			
+				为什么能够做到协程的自动释放：
+				ComponentActivity.lifecycle.ON_DESTROY -> getViewModelStore.claar -> ViewModel.clear -> 
+					遍历map<String, CloseableCoroutineScope>执行CloseableCoroutineScope.close -> coroutineContext.cancel
+				其中map<String, CloseableCoroutineScope>是在ViewModel.viewModelScope创建的时候就会缓存
+			
 			LifecycleScope
 				lifecycle.coroutineScope.launch{}
 				lifecycleOwner.lifecycleScope.launch{}
