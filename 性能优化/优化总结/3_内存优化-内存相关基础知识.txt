@@ -8,8 +8,12 @@
 		其中dumpsys源码位置在：/frameworks/native/cmds/dumpsys/dumpsys.cpp
 		dumpsys传进来的参数通过函数，checkService来找到具体的service,并执行该service的dump方法
 		dumpsys meminfo对应的服务是AMS,memBinder类的dump,
-		是一系列数据的汇总，
+
+		是一系列数据的汇总，包括：mallinfo,getRuntime,proc/pid/smaps,/d/kgsl/proc/pid/mem
+		上下分别是:pid的内存信息，app Summary, Objects，fd，thread
+		
 	Debug.getMemoryInfo: 数据等效于/proc/$<pid>/smaps
+		数据组成：mallInfo,getRuntime,proc/pid/smaps,/d/kgsl/proc/pid/mem
 
 	总结：
 	1. RSS , VSS 对于监控有一定用途
@@ -31,6 +35,10 @@
     		free = Runtime.getRuntime().freeMemory()
     		used = total - free
     		rate = 1.0f * used / max
+		
+	总结：
+		getRuntime可以获取运行时内存
+		Debug.getMemoryInfo/dump meminfo是获取的几个文件指标的内存数据（mallInfo,getRuntime,proc/pid/smaps,/d/kgsl/proc/pid/mem）
 
 二.	内存知识
 	1.	内存管理框架

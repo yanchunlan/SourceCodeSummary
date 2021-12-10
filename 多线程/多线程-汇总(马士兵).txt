@@ -219,7 +219,7 @@
 		http://openjdk.java.net/groups/hotspot/docs/HotSpotGlossary.html
 		
 二.	第二篇
-1.	volatile 用途
+1.	volatile 用途【没有原子性，原子性需要锁保证】
 	1.	线程可见性
 	2.	防止指令重排序
 		列如:	DCL单例为何需要加volatile

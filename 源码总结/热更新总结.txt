@@ -90,6 +90,23 @@
 					umber根据匿名内部类在外部类出现的先后次序依次累加。如果将匿名内部类的次序调整，我们无法区分修改前后的差异的。
 				3 静态field 静态代码块
 					这2块是被编译器翻译在clinit方法中，clinit方法是在类加载阶段调用，导致热部署方案失效
+		流程说明：
+			修复好的类添加注解备注修复类与方法，编译生成dex文件之后，下次DexFile.loadDex加载dex，获取到class的注解，再根据反射获取到修改前后的方法，传入native层
+			通过env->FromReflectedMethod获取到ArtMethod，在分别替换新旧方法索引，如下：
+
+			//ArtMethod  Android 系统源码中
+		    art::mirror::ArtMethod *wrong=  (art::mirror::ArtMethod *)env->FromReflectedMethod(wrongMethod);
+		    art::mirror::ArtMethod *right=  (art::mirror::ArtMethod *)env->FromReflectedMethod(rightMethod);
+			//    method   --->class  --->ClassLoader
+			wrong->declaring_class_ = right->declaring_class_;
+		    wrong->dex_cache_resolved_methods_ = right->dex_cache_resolved_methods_;
+		 
+		    wrong->access_flags_ = right->access_flags_;
+		    wrong->dex_cache_resolved_types_ = right->dex_cache_resolved_types_;
+		    wrong->dex_code_item_offset_ = right->dex_code_item_offset_;
+			//    这里   方法索引的替换
+		    wrong->method_index_ = right->method_index_;
+		    wrong->dex_method_index_ = right->dex_method_index_;
 
 
 	二.	AndFix（底层方法替换）
@@ -155,6 +172,10 @@
 			->makeDexElements创建新的数组
 			-> 合并数组，并把加载的dex放到数组的前面
 			->再重置dexElement数组到pathList
+
+		so记载流程：
+			
+
 	四.	robust
 		针对所有方法前插入代码，添加一个判断，是否需要补丁，补丁就调用补丁的方法代码
 		优点：

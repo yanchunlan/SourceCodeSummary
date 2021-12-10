@@ -1,0 +1,23 @@
+一.	object.wait
+	wait 
+		-> native wait
+		-> JVM_MonitorWait 
+		-> ObjectSynchronizer::wait
+		-> ObjectSynchronizer::inflate
+		-> ObjectMonitor::wait
+		1. 将线程封装为ObjectWaiter类的对象node,
+		2. ObjectWaiter.AddWaiter 将node添加到_WaitSet【双向循环链表】列表 
+		3. ObjectMonitor::exit释放ObjectMonitor对象，
+		4. 通过底层的park挂起线程
+
+二.	object.notify
+	notify
+	-> ObjectMonitor::notify
+	1. ObjectMonitor::DequeueWaiter去获取_WaitSet列表的第一个ObjectWaiter
+	2. 取出的ObjectWaiter，加入_EntryList或通过Atomic::cmpxchg_ptr进行自旋操作cxq
+
+总结：
+	wait()释放所占有的ObjectMonitor对象
+	notify不释放所占有的ObjectMonitor对象，主要是将相应的线程从_WaitSet转移到_EntryList中，然后等待竞争获取锁
+
+	真正的释放是在monitorexit指令，释放ObjectMonitor对象后，

@@ -1,0 +1,41 @@
+一.	几个View的区分
+	1. surfaceView
+		双缓冲机制，保证不影响到UI流畅性【app有自带的surface -> wms有WindowState -> SF有layer】
+		1> 重新创建了一个线程去执行绘制流程，不影响UI线程
+		2> 它继承View，与View有3个区别：
+			1. 它的底层有双缓冲
+			2. 它一般是被动的刷新，view一般是主动刷新
+			3. 它在子线程中刷新UI，view是主动更新
+		3> 内容不在窗口上，所以不能使用变换（平移、缩放、旋转），获取View相关的一些函数,或者放在ViewGroup中等
+
+	2. textureView
+		硬件绘制，必须使用硬件加速
+		1> 没有创建surface
+		2> 支持View的变换属性
+		3> 在主线程绘制【因为是一个控件，添加在View hierachy中】
+
+	3. glSurfaceView
+	在SurfaceView的基础上添加了egl的管理，并自带渲染线程
+
+	4. surfaceTexture
+		用于图像流数据的二次处理，一般是把图像流转为外部纹理数据。
+		显示流程1:
+			显示 -> glSurfaceView -> 纹理创建id -> surfaceTexture -> surface -> 绑定在相机
+			显示 -> TextureView ...类似上面
+
+		surfaceTexture内部有BufferQueue。
+			1. 其中Surface是生产者端的实现类，提供dequeueBuffer/queueBuffer，lockCanvas/unlockCanvasAndPost接口
+			2. 采集的数据存储在BufferQueue，填充graphic buffer
+			3. GLConsumer是消费者端的实现类，将graphic buffer转为GL纹理
+
+
+	5. surface
+		纯粹的一个
+
+
+二.	关系
+	1. view -> surfaceView -> glSurfaceView 逐渐拓展
+
+	2. SurfaceTexture与SurfaceView相比，因为其有BufferQueue所以有若干帧的延迟，内存消耗大一些
+
+	3. textureView可以把内容流作为外部纹理输出在上面的View上，因为自身就是硬件加速层（有自己的egl环境，包含SurfaceTexture）

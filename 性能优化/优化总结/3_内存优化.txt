@@ -110,6 +110,8 @@
 			获取线程堆栈：
 			32位 libunwind_stack
 			64位 fp_unwind
+		3. 获取栈内存大小
+		getMeminfo的方式【读取smap】可以获取栈区内存，
 			
 	5.	Native内存
 		主要是java堆内存，Debug.getMemoryInfo()以及/proc/pid/smap文件分析

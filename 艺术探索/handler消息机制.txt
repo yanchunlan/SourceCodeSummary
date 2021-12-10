@@ -1,4 +1,4 @@
-﻿一.	handler流程：	
+一.	handler流程：	
 	Handler向外暴露两种类型的接□:第一种是sendMessage 接口，即开发者构造一个Message对象，
 	然后调用sendMessage或者 sendMessageDelayed利用Handler将消息发送出去.第二种是postRunnable接口.
 	即 开发者构造一个Runnable类型的对象•然后调用post方法或者postDelayed方法•在 Handler内部.无论是对于哪一种接口
@@ -80,3 +80,42 @@
 		1.	每个线程内部有一个threadLocal, 当外部调用threadLocal的set的时候，是把值设置在了当前线程的threadLocal中去了，所以每个线程自己存储了这些变量副本
 		2.	threadLocalMap 是继承的weakreference，当内存不足，gc的时候就回收key, 但是value不会回收,所以为了避免这种情况，使用完成之后最好remove
 		
+三.	handler底层消息机制
+	Looper.loop -> MessageQueue.next -> nativePollOnce 阻塞获取消息
+	MessageQueue.enqueueMessage -> nativeWake 通知唤醒
+
+	Looper.prepare -> 创建管道 -> 创建一个epoll实例去监听管道的读文件描述符
+	Looper.loop -> epoll_wait去监听epoll实例中所监听的文件描述符有没有对应的事件，没有就阻塞【handler发送数据，管道写数据，epoll_wait方法的阻塞就会被唤醒】
+
+	1. 管道
+		把两个进程之间的标准输入和标准输出连接起来的机制称为管道【一个进程像管道写数据，另一个进程读数据】
+
+		无名管道创建：
+			int pipefd[2];
+			pipe(pipefd); // pipefd[0]读文件描述符，写文件描述符
+
+	2.	epoil机制
+		同时监听多个文件描述符的IO读写事件
+
+		epoll创建：
+			epoll_create
+
+		epoll监听文件描述符上的事件：
+			int epoll_ctl(int epfd, intop, int fd, struct epoll_event* event); 
+
+		epoll_wait监听注册在epoll实例中的文件描述符的IO读写事件
+			int epoll_wait(int epfd, struct epoll_event * events, int maxevents, int timeout);
+
+		总结：【读文件+等待文件】
+			epoll_ctl注册管道的读文件描述符，这里我们设置epoll_wait对epoll实例进行监听等待，当管道的读文件描述符没有数据时，这里会被阻塞。
+
+			当有向管道写文件描述符写入数据时，epoll_wait获取到数据，通过对其epoll_event遍历就可以拿到事件。
+
+四.	管道
+	1. 无名管道
+		亲缘关系的进程间通信
+
+
+	2. 有名管道
+		
+

@@ -15,7 +15,7 @@
  12. 源码总结
  13. 艺术探索
  14. 设计模式
- 15. 面试专题
+ 15. review
 
 ### 音视频
 c/c++/jni/makeFile/shell/mediaCodec/openGLES/openSlES/ffmpeg

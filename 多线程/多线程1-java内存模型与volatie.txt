@@ -64,3 +64,6 @@
 	6.	volatile 
 		可见性，写一个volatile变量时，JMM会把该线程对应的工作内存中的共享变量值刷新到主内存中，当读取一个volatile变量时，JMM会把该线程对应的工作内存置为无效，那么该线程将只能从主内存中重新读取共享变量
 		禁止指令重排优化，（synchronized 具备volatile效果，使用它禁止重排，就会在instance = new Instance()的时候，执行多个执行，禁止其乱序）
+		总结：
+			volatile保证可见性，有序性
+			syncrized保证原子性
