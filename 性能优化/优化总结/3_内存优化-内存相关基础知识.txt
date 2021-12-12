@@ -40,7 +40,46 @@
 		getRuntime可以获取运行时内存
 		Debug.getMemoryInfo/dump meminfo是获取的几个文件指标的内存数据（mallInfo,getRuntime,proc/pid/smaps,/d/kgsl/proc/pid/mem）
 
-二.	内存知识
+二.	内存获取方式
+	1.	ams
+		mi=ams.getMemoryInfo
+		mi.totalMem // 系统总内存
+		mi.availMem // 可使用内存
+		
+		源码流程：ams -> getMemoryInfo -> Process.getFreeMemory/getTotalMemory -> open（“/proc/meminfo”）
+		总结：
+			mi.totalMem = MemTotal 【/proc/meminfo】
+			mi.availMem = Cached+MemFree 【/proc/meminfo】
+	2.	runtime
+		rt=Runtime.getRuntime
+		rt.maxMemory
+		rt.totalMemory
+		rt.freeMemory
+
+		源码流程：Runtime -> xxxMemory -> gc::heap.GetHeap.getxxxMemory -> heap.GetBytesAllocated -> num_bytes_allocated_.LoadSequentiallyConsistent // 像系统申请的内存大小
+		总结：
+			rt.maxMemory // 获取虚拟机最大分配内存
+			rt.totalMemory // 获取虚拟机当前申请到的内存
+			rt.freeMemory // 获取虚拟机当前申请内存的剩余内存大小
+			剩余可分配内存空间：maxMemory-（totalMemory-freeMemory）
+	3.	debug
+		mi=Debug.getMemoryInfo
+		mi.getTotalPss
+		mi.getMemoryStat("summary.java-heap")
+		mi.dalvikPss
+		mi.nativePss
+		Debug.getNativeHeapSize
+		Debug.getNativeHeapFreeSize
+
+		源码流程：android_os_Debug.load_maps -> read_mapinfo -> 打开/proc/PID/smaps，读取每一块内存信息累加得到
+				getNativeHeapSize/getNativeHeapAllocatedSize/getNativeHeapFreeSize -> mallinfo.usmblks[分配的最大总空间]/uordblks[当前分配的总空间]/fordblks[总空闲空间]
+		总结：
+			debug主要获取3块内容：
+				1. mallinfo获取（类似Debug.getNativeHeapSize）
+				2. /proc/PID/smaps （类似mi.getTotalPss）
+				3. 数据整合（类似mi.getMemoryStat("summary.java-heap")）
+				
+三.	内存知识
 	1.	内存管理框架
 		1>	物理地址与虚拟地址
 			虚拟地址与物理地址之间通过页表建立映射关系，CPU通过MMU访问页表查询虚拟地址对应的物理地址

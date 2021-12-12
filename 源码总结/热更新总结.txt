@@ -174,7 +174,20 @@
 			->再重置dexElement数组到pathList
 
 		so记载流程：
-			
+			1. 实时修复策略
+				System.loadLibrary -> System.load
+				1. 动态方法，直接通过JNI_OnLoad的时候，把方法注册即可
+				2. 静态方法，有个方法hashTab，需要注册在前面，才能实时修复，注册在后面就没法修复
+				总结：实时修复，不能考虑到所有情况，所以废弃
+			2. 冷启动修复策略
+				1. 提供加载soPatchManager.loadLibrary,让所有加载so都通过其加载
+				2. 反射注入
+					so库加载通过遍历DexPathList.nativeLibraryDirectories/nativeLibraryPathElements，把补丁so库的路径插入到nativeLibraryDirectories数组的最前面即可
+
+					pathClassLoader去加载，目录分别在/system/lib或/verdor/lib
+			3.	so的abi选择
+				<21，Build.CPU_ABI, Build.CPU_ABI2来判断abi
+				>=21，反射拿ApplicationInfo的primaryCpuAbi
 
 	四.	robust
 		针对所有方法前插入代码，添加一个判断，是否需要补丁，补丁就调用补丁的方法代码

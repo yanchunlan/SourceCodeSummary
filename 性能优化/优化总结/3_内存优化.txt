@@ -111,7 +111,13 @@
 			32位 libunwind_stack
 			64位 fp_unwind
 		3. 获取栈内存大小
-		getMeminfo的方式【读取smap】可以获取栈区内存，
+			线程默认创建大小是1M,底层通过pthread_create创建在native的栈区，所以其限制主要在native栈决定，由物理内存决定。（32/64位手机虚拟内存不一样）
+			getMeminfo的方式【读取smap】可以获取栈区内存
+			系统对线程的限制：
+				系统范围的最大线程数量，/proc/sys/kernel/threads-max（thread-max厂商决定）
+				Linux resource limits 的 RLIMIT_NPROC 参数对应了当前用户 uid 的最大线程数量（resource limits厂商决定）
+				虚拟地址空间不足或者内核分配 vma 失败等内存原因，导致创建线程时分配栈内存时 mmap 或 mprotect 调用失败
+			
 			
 	5.	Native内存
 		主要是java堆内存，Debug.getMemoryInfo()以及/proc/pid/smap文件分析

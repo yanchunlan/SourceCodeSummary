@@ -226,10 +226,13 @@
 
 	5>	卡顿捕获第三方：
 		BlockCanary：
+			handlerThread开启了循环,每300ms执行一次
 			主线程looper的loop方法在寻找msg.target.dispatchMessage(msg)，前后打印log,时间差，满足阀值(1000*0.8=800ms)就定义是卡顿，并dump堆栈（thread.getStackTrace，只dump了主线程的StackTrace）
 
 		fpsViewer:
+			开启了循环，采样周期50ms统计一次堆栈
 			Choreographer.doFrame两个绘制之间（正常<16ms）大于200ms就定义是卡顿
+			
 
 		dokit:
 			Choreographer.doFrame两个绘制之间（正常<16ms）大于200ms就定义是卡顿

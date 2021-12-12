@@ -1,4 +1,4 @@
-一.	阻塞队列概要
+一.	阻塞队列概要/Users/yanchunlan/AndroidStudio/projects/SourceCodeSummary/多线程/多线程6-linkedBlockingQueue_arrayBlockingQueue理解.txt
 	阻塞队列与我们平常接触的普通队列(LinkedList或ArrayList等)的最大不同点，在于阻塞队列支出阻塞添加和阻塞删除方法。
 
 	阻塞添加:
@@ -21,3 +21,9 @@
 	3.ArrayBlockingQueue采用数组，插入或删除不会产生或销毁实例，LinkedBlockingQueue会生成额外的对象
 	4.添加移除的锁不同，ArrayBlockingQueue添加移除使用同一个锁，LinkedBlockingQueue使用2个锁，提高队列的吞吐量
 	可以并行处理，提高了队列的并发性能
+
+五.	区别
+	ConcurrentLinkedQueue与LinkedBlockingQueue区别？
+		ConcurrentLinkedQueue 是线程安全的非阻塞队列，使用CAS机制保证线程安全
+		LinkedBlockingQueue 使用两个lock保证线程安全
+	
