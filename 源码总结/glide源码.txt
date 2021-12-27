@@ -16,3 +16,10 @@
 六.	列表滑动错乱，队列任务多
 	设置tag
 
+
+-----------------------------------
+
+缓存
+	获取流程：
+		activeResources -> MemoryCache -> disklrucache -> 网络
+	active弱引用被回收会转到MemoryCache(具体方法onResourceReleased)

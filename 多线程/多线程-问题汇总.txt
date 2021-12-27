@@ -1,0 +1,30 @@
+﻿1. 单列解释
+public class A {
+    /*
+     * volatile 作用：
+     * 可见性，每次从主内存读取
+     * 禁止指令重排，解决sInstance分配内存，sInstance构造，并将sInstance对象指向分配的内存空间
+     */
+    public static volatile A sInstance;
+
+    public static A getInstance() {
+        // 第一个判空作用：减少synchronized的执行次数，提高效率
+        if (sInstance == null) {
+            synchronized (A.class) {
+                // 解决多线程第一个线程初始化完成，第二个线程获取锁不再初始化
+                if (sInstance == null) {
+                    sInstance = new A();
+                }
+            }
+        }
+        return sInstance;
+    }
+}
+2. 死锁的条件
+	死锁的形成有4个条件：
+	1> 互斥，某个资源一定时间只能一个线程占用，不能同时被2个或2个以上线程占有
+	2> 不可抢占，线程资源未使用完毕之前，资源申请者不能强行从资源占有着手中夺取资源，而只能由该资源占有着线程自行释放
+	3> 占有且申请，线程已占有一个资源，又申请新资源，由于新资源被其他线程占有，此时该线程阻塞，在等待新资源时，它仍旧占有已经占据的资源
+	4> 循环等待，存在一个线程等待序列（p1->pn）,其中p1等待p2所占有的某一资源，p2等待p3...,pn等待p1资源，形成一个线程循环等待环
+3. 死锁的解决
+		加锁顺序，死锁检测

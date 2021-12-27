@@ -1,4 +1,11 @@
-一.	object.wait
+﻿一.	Thread.sleep
+	
+
+
+二.	Thread.join
+	
+
+三.	object.wait
 	wait 
 		-> native wait
 		-> JVM_MonitorWait 
@@ -10,14 +17,23 @@
 		3. ObjectMonitor::exit释放ObjectMonitor对象，
 		4. 通过底层的park挂起线程
 
-二.	object.notify
+四.	object.notify
 	notify
 	-> ObjectMonitor::notify
 	1. ObjectMonitor::DequeueWaiter去获取_WaitSet列表的第一个ObjectWaiter
 	2. 取出的ObjectWaiter，加入_EntryList或通过Atomic::cmpxchg_ptr进行自旋操作cxq
 
 总结：
-	wait()释放所占有的ObjectMonitor对象
+	wait()释放所占有的ObjectMonitor对象，将其添加在等待队列
 	notify不释放所占有的ObjectMonitor对象，主要是将相应的线程从_WaitSet转移到_EntryList中，然后等待竞争获取锁
+	notifyAll 将所有等待池的对象都转移。	
 
 	真正的释放是在monitorexit指令，释放ObjectMonitor对象后，
+	------------------------
+	sleep与wait区别？
+	sleep不会释放对象锁，wait会放弃对象锁，让其进入等待池，调用notify后本线程才进入对象锁准备池，他们均可以被interrupted打断   
+
+
+      
+
+	

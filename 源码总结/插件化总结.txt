@@ -101,3 +101,37 @@
 	插件之间代码复用，资源复用，若过于独立，又会导致包太大，如果复用太多又会导致依赖关系复杂
 	插件机制与安全软件hook冲突带来的兼容性问题
 	
+------------------------------------------------------------------------------------------------------
+shadow 框架
+	插件的Application被替换为ShadowApplication，Activity被替换为ShadowActivity
+	
+	宿主启动插件Activity原理：【调用宿主的ProxyActivity构造intent】
+		startActivity 
+		-> 父类PluginLoadActivity.startPlugin 
+		-> HostApplication.getApp().getPluginManager.enter 
+		-> DynamicPluginManager.enter
+		-> SamplePluginManager.enter
+		构造intent, LayoutInflater.from加载view,线程池执行（installPlugin，startPluginActivity）
+		SamplePluginManager.startPluginActivity
+		-> 构造intent(convertActivityIntent), FastPluginManager.startPluginActivity
+		-> mPluginLoader.convertActivityIntent
+		-> bind调用plugin进程的方法DynamicPluginLoader.convertActivityIntent
+			【piugin进程提供2个binder调用：
+				mPpsController -> bind通信 -> PluginProcessService的PpsBinder.onTransact -> pluginProcessService
+				mPluginLoader -> PluginLoaderbinder.onTransact -> DynamicPluginLoader】
+		-> ComponentManager.convertPluginActivityIntent
+		-> toContainerIntent 对应到宿主代理的PluginDefaultProxyActivity去执行构造intent
+	插件启动插件Activity原理：
+		ShadowActivity.startActivity
+		-> ShadowContext.startActivity
+		-> mPluginComponentLauncher.startActivity
+		-> ComponentManager.startActivity
+		-> ShadowContext.superStartActivity
+		-> ... 跟上面宿主启动流程一致
+	
+	其余service/broadCast/contentProvider也是类似
+	
+	自身的动态化
+		1. 抽象接口类
+		2. 在插件中实现工厂类
+		3. 通过工厂类动态创建接口的实现

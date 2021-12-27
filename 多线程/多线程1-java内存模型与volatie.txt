@@ -1,4 +1,4 @@
-一.	理解java内存区域与内存模型
+﻿一.	理解java内存区域与内存模型
 	1.	java内存区域
 		1）方法区，堆区，程序计数器，虚拟机栈，本地方法栈
 		
@@ -41,8 +41,7 @@
 		
 		用法：
 			可以使用synchronized，reentrantLock保证方法，代码块原子性，
-			工作内存与主内存同步延迟，使用synchronized，volatile解决，
-			指令重排导致的可见性和有序性，使用volatile解决，
+			volatile有序性（禁止指令重排），可见性（每次从主内存读取）
 			JMM内部还定义一套happens-before 原则来保证多线程环境下两个操作间的原子性、可见性以及有序性
 	5.	happens-before 原则内容如下
 

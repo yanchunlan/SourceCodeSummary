@@ -1,4 +1,4 @@
-版本 tinker 1.9.14.7 
+﻿版本 tinker 1.9.14.7 
 一.	tinker流程划分
 	根据源码流程，可划分为3部分。
 	1.	校验加载补丁
@@ -47,10 +47,13 @@
 
 二.	几个原理
 	1.	dexDiff算法怎么制作patch dex
+		新旧dex分别读取内容根据类格式封装为section对象，经过排序二路归并及内容比对compareTo后，打出del、add、replace标签的diff内容，然后重新生成index和offset,
+		创建新的文件patch dex文件按照dex格式写入内容，然后将dex 、assets和META-INF/ 打成apk（既patch包）
+		难点：差分算法，Android N混合编译、厂商OTA因为补丁包过大造成编译卡顿问题等
 
 	2.	加载dex,so,res原理
 		dex:	hook classLoader对应的dexpathList的makeDexElements,将修复dex插入dexElements最前面
-		so:		hook classLoader对应的dexpathList的makeDexElements，将so注入nativeLibraryPathElements数组中
+		so:	hook classLoader对应的dexpathList的makeDexElements，将so注入nativeLibraryPathElements数组中
 		res:	替换loadApk对应的mResDir指向补丁包，resourcesImpl mAssets替换为新的assetManager,将assetManager调用其addAssetPath加载补丁包
 
 	3.	现实中服务器交互
