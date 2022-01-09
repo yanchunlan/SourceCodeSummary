@@ -1,4 +1,4 @@
-1.	简单优化
+﻿1.	简单优化
 	1.	闪屏优化
 		做成闪屏，合并闪屏和主activity，减少一个activity带来的100ms开销
 	2.	业务懒加载
@@ -16,3 +16,26 @@
 	4.	监控
 		本地打点
 		线上监控vitals
+
+3.	启动器
+	接口定义：
+		dependencies：List<> // 依赖的父module列表
+		runOnUIThread  //是否主线程
+		needUIThreadWait // ui线程是否需要等待此线程
+		onStartPre
+		onStart
+		onStartCom
+	排序
+		有向无环图、
+		DFS深度优先算法/栈解决
+		BFS广度优先算法/队列解决
+	依赖检测
+		是否有环
+		是否缺失
+		耗时统计
+	接口aop自动注册
+		通过注解的方式，auto-service自动检测并生成代码
+		解决问题：组件分布在不同仓库，不想在初始化的时候去统一添加这些组件
+	后续优化
+		打印图的最长路径，优化耗时
+	

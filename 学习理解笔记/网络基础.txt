@@ -22,6 +22,21 @@
 		负责最后将信息编码成电流脉冲或其他信号用于网上传输
 		将数据变为0和1
 	
+	OSI七层网络模型 - 网络协议：
+		应用层（Application）：HTTP、TFTP, FTP, NFS, WAIS、SMTP
+		表示层（Presentation）：Telnet, Rlogin, SNMP, Gopher
+		会话层（Session）：SMTP, DNS	
+		传输层（Transport）：TCP, UDP
+		网络层（Network）：IP, ICMP, ARP, RARP, AKP, UUCP
+		数据链路层（Data Link）：FDDI, Ethernet, Arpanet, PDN, SLIP, PPP
+		物理层（Physical）：IEEE 802.1A, IEEE 802.2到IEEE 802.11
+	
+	TCP/IP四层概念模型 ：
+		应用层：应用层/表示层/会话层
+		传输层
+		网络层
+		数据链路层：数据链路层/物理层
+
 二.	数据的3种通信方式
 	单工：
 		只支持信号在一个方向上传输，列如打印机等
@@ -43,8 +58,9 @@
 	4. 非对称加密
 		RSA,DSA
 	5. 签名加密算法
-		MD5
-		SHA1
+		MD5：hash函数
+		SHA1：与md5类似，但是安全性更强，用于检查 文件完整性 以及 数字签名 等场景
+		HMAC： 哈希运算消息认证码，利用 哈希算法 (MD5、SHA1 等)，以 一个密钥 和 一个消息 为输入，生成一个 消息摘要 作为 输出
 		
 		
 	散列算法 SHA-1,MD5

@@ -1,0 +1,203 @@
+﻿一.	概述
+	1. 桌面结构
+		DragLayer -> Workspace
+			SearchDropTargetView:搜索控件
+			CellLayout：内容区域，装载快捷方式或者小部件
+			pageIndicator：指示器
+			HotSeat:底部区域
+	2. 数据加载流程
+		主要是图标，widget，文件夹
+		1> 基础知识
+			Launcher继承activity，所以它是一个activity
+			LauncherModel继承BroadcastReceiver，用于接收数据，加载数据
+			LauncherProvider继承ContentProvider,处理数据库
+			LauncherAppState全局管理类，初始化对象，广播
+			Compat兼容包，处理兼容类
+		2>	默认图标配置
+			res -> xml -> 4x4/5x5/6x6
+			screen表示第几屏,
+			x表示横向的位置,
+			y表示纵向的位置,
+			container = -101就是hotseat
+		3>	launcher启动流程
+			startHomeActivityLocked ->
+			ams.attachApplication ->
+			bindApplication ->
+			handleBindApplication ->
+				installContentProviders ->
+					localProvider.attachInfo ->
+					contentProvider.this.onCreate ->
+				callApplicationOnCreate ->
+			
+			因为是launcher，所以没有applicaion,直接
+				contentProvider.onCreate -> 
+				Launcher.onCreate ->
+					启动严苛模式
+					LauncherAppState
+						invariantDeviceProfile 设备配置
+						IconCache 图标管理
+						widgetCache widget加载混淆工具
+						launcherModel 初始化广播
+					deviceProfile手机固件对象初始化
+					dragController 拖拽管理器
+					小部件管理器
+					加载布局
+					初始化桌面各控件
+					设置各控件位置
+				
+			
+		4>	launcher数据加载
+			LauncherModel.startLoader ->
+			LauncherModel.startLoaderForResults ->
+			launcher.stopLoaderLocked ->
+			loaderTask.loadTask ->
+			LauncherAppState.getContext ->
+			loaderTask.runbindSynchronousPage ->
+				loaderTask.run
+				loaderTask.loadAndBindWorkSpace
+					loadWorkspace
+						// 数据库解析应用信息
+						loadDefaultFavoritesIfNecessary 解析默认的桌面图标的xml文件
+							初始化AutoInstallsLayout
+							LauncherProvider.loadFavorites
+								AutoInstallsLayout.loadLayout 对小部件。图标/文件夹分类解析，并解析的信息存储数据库
+								读取数据库信息，根据图标，小部件，文件夹，判断是否存在，可用，则生成对应对象存储在特定的map，不存在删除数据库数据
+								加载配置应用图标
+						bindWorkSpace 绑定应用图标到桌面
+							过滤 // 判断在workspace中还是在Hotseat
+							排序，
+							bindWorkspaceScreens //绑定手机有几个屏幕
+							bindWorkspaceItems //绑定当前屏幕的图标、文件夹和小插件信息
+							// 继续绑定其他屏幕的应用图标、文件夹和小插件
+				loaderTask.waitForldle //等待加载数据结束
+				loaderTask.loadAndBindAllApps //加载第二层的图标信息
+					loadAllApps 已经加载则绑定即可，没有加载则加载
+						mLauncherApps.getActivityList 
+						根据LauncherActivityInfoCompat初始化app对象,bindAllApplications
+						loadAndBindWidgetsAndShortcuts 加载绑定小部件和快捷方式到小部件界面
+							updateWidgetsModel
+								getWidgetProviders获取所有小部件
+								通过构建shortcutsIntent=new intent（Intent.ACTION_CREATE_SHORTCUT）
+								mBgWidgetsModel.setWidgetsAndShortcuts 把小部件和快捷方式放到WidgetsModel对象
+		3.	绑定屏幕、图标、文件夹和Widget
+			1>
+			loadAndBindWorkspace ->
+			bindWorkspace(准备数据，开始绑定) ->
+				bindWorkspaceScreens
+					Launcher.bindScreens
+					for 循环，create CellLayout，addView
+				bindWorkspaceItems
+					Launcher.bindItem
+					for 循环，create 不同的View，addView
+					addInScreenFromBind
+						Workspace.addInScreen
+							判断container类型CellLayout还是Hotseat
+							判断文件夹还是图标
+							调用layout.addViewToCellLayout
+			2>	所有应用绑定
+				LauncherModel.loadAllApps
+				callbacks.bindAllApplications 将所有应用绑定到二级页面AllAppsContainerView中
+					onAppsUpdated
+					updateAdapterItems
+				
+			3>	所有Widget绑定
+				LauncherModel.loadAllApps
+				loadAndBindWidgetsAndShortcuts 绑定快捷方式和widget到小部件界面
+			
+		4.	应用安装、更新、卸载时的数据加载
+			LauncherAppsCompat.OnAppsChangedCallbackCompat{
+				void onPackageRemoved(String packageName, UserHandleCompat user);
+				void onPackageAdded(String packageName, UserHandleCompat user);
+				void onPackageChanged(String packageName, UserHandleCompat user);
+				void onPackagesAvailable(String[] packageNames, UserHandleCompat user, boolean replacing);
+				void onPackagesUnavailable(String[] packageNames, UserHandleCompat user, boolean replacing);
+			}
+			LauncherAppsCompat子类有LauncherAppsCompatV16（16-21），LauncherAppsCompatVL（>21）
+			
+			LauncherModel中onPackageChanged/onPackageRemoved/onPackageAdded构建PackageUpdatedTask ->
+				-> addAppsToAllApps 
+				-> 接收到广播 
+				-> callbacks.bindAppsAdded 
+				-> callbacks.bindAppsUpdated
+			
+			卸载流程：
+				拖拽完成后就卸载
+				completeDrop ->
+					startUninstallActivity判断是否启动卸载（Intent.ACTION_DELETE）
+					sendUninstallResult
+					onUninstallActivityReturned 在Folder/workspace中实现
+				onDropCompleted
+					移除成功 -> removeWorkspaceItem(CellLayout移除图标)
+					失败 -> 刷新UI,把图标放回原处
+					
+		5.	Workspace滑动
+			继承关系：ViewGroup - PagedView - Workspace
+			onMeasure
+			onLayout（for 循环摆放多个CellLayout）
+			滑动在onTouchEvent中分发：
+				1>	类型
+				protected final static int TOUCH_STATE_REST = 0;
+				protected final static int TOUCH_STATE_SCROLLING = 1;
+				protected final static int TOUCH_STATE_PREV_PAGE = 2;
+				protected final static int TOUCH_STATE_NEXT_PAGE = 3;
+				protected final static int TOUCH_STATE_REORDERING = 4; // 长按桌面的情况下，workspace缩小
+				2>	ACTION_DOWN
+						记录起始位置
+				3>	ACTION_MOVE
+					TOUCH_STATE_SCROLLING
+						计算滑动距离，scrollBy滑动workspace
+					TOUCH_STATE_REORDERING 排序
+						shiftDelta 确定当前index变大，
+						lowerIndex, upperIndex 计算拖动CellLayout的跨度
+				4>	ACTION_UP
+					TOUCH_STATE_SCROLLING 
+						左右滑动是否到达有效值，决定是否滑到下一个屏幕
+					TOUCH_STATE_PREV_PAGE
+						不是第一屏，滑动到前一屏
+					TOUCH_STATE_NEXT_PAGE
+						不是最后一屏，滑动到下一屏
+					TOUCH_STATE_REORDERING
+						排序，调用updateDragViewTranslationDuringDrag
+			滑动方法总结：
+				scrollBy:调用了scrollTo
+				snapToPage：mScroller.startScroll
+				
+		6.	拖拽
+			1>	桌面图标拖拽
+				Launcher.onLongClick ->
+			
+			从小部件或者所有应用图标界面开始拖拽
+			2>	桌面上CellLayout的拖拽
+			3>	小部件的拖拽
+			4>	跨不同部件的拖拽
+		
+			
+		
+		7.	小部件加载添加大小调节
+			1>	Widget加载
+			LauncherModel.updateWidgetsModel
+				getWidgetProviders 获取所有Widget
+					AppWidgetManagerCompat.getInstance
+						AppWidgetManagerCompatV16/AppWidgetManagerCompatVL
+						wm.getAllProviders
+			2>	Widget添加
+			
+			3>	Widget大小调节
+		
+		8.	加载icon,设置壁纸
+			1>	加载icon（启动Launcher、安装应用时）
+			2>	更新Icon（更新应用时更新Icon时）
+			3>	删除Icon（卸载应用时会删除Icon）
+		
+			4>	设置壁纸
+				WallpaperPickerActivity 继承WallpaperCropActivity
+				setWallpaper 设置壁纸
+					构建BitmapCropTask
+					执行异步任务
+						onPreExecute -->
+						doInBackground --> 
+							cropBitmap
+								获取图片，压缩，旋转，返回数据流
+						onPostExecute
+							根据数据流设置图片
+					onEndCrop结束改界面，返回桌面
