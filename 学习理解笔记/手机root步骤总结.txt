@@ -1,4 +1,4 @@
-https://source.android.com/setup/build/running
+﻿https://source.android.com/setup/build/running
 
 1. 下载platform-tools.zip
 	主要是使用其中的一个工具fastboot，
@@ -49,6 +49,25 @@ https://source.android.com/setup/build/running
 8. root授权
 	
 
+root命令汇总：
+adb reboot bootloader
+fastboot flashing unlock
+fastboot reboot
+adb wait-for-device
+adb root
+adb disable-verity
+adb reboot
+adb wait-for-device
+adb root
+adb remount
+pause...
+
+推送apk到launcher：
+adb root
+adb remount
+adb push E:\as\wp\ZsLauncher\build\outputs\apk\aospWithQuickstep\debug\ZsLauncher-aosp-withQuickstep-debug.apk /system/priv-app/PaiLauncher/PaiLauncher.apk
+adb reboot
+pause
 
 
 
