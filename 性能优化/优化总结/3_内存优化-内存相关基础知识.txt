@@ -1,4 +1,4 @@
-﻿一.	内存分析命令
+一.	内存分析命令
 	USS: 物理内存		进程独占的内存
 	PSS: 物理内存		PSS= USS+ 按比例包含共享库
 	RSS: 物理内存		RSS= USS+ 包含共享库
@@ -69,6 +69,7 @@
 		mi.dalvikPss
 		mi.nativePss
 		Debug.getNativeHeapSize
+		Debug.getNativeHeapAllocatedSize
 		Debug.getNativeHeapFreeSize
 
 		源码流程：android_os_Debug.load_maps -> read_mapinfo -> 打开/proc/PID/smaps，读取每一块内存信息累加得到

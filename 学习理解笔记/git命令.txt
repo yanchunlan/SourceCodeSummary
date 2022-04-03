@@ -141,3 +141,42 @@ git squash (多个提交合并为一个)总结：
 	1.	git rebase -i HEAD~3 ，执行需要合并之前的是哪一个
 	2.	第一个是pick,第二个及其之后为s/squash,wq保存
 	3.	输入一个message信息，wq保存
+
+git clone --recursive --depth 1 xxx.git 克隆大项目，使用该命令
+	--recursive 包含子项目
+	--depth 1 克隆深度，仅最近的一次提交
+		git fetch --unshallow 取消最近的1次提交
+		
+		// 克隆远程一次分支
+		git remote set-branches origin 'remote_branch_name'
+		git fetch --depth 1 origin remote_branch_name
+		git checkout remote_branch_name
+
+git submodule 【分为多个git仓库，提交代码分别在不同的仓库】
+	add:
+	git submodule add -b master git@git.xxx:xxx/xxx.git src/xxx
+	
+	remove:
+	1、删除子仓库文件 （rm -rf [子模块path]）
+	2、删除.gitmodules里面相关部分 (vim .gitmodule 或者 rm .gitmodule）
+	3、删除.git/modules/子模块 （rm -rf .git/modules/子模块）
+	4、删除.git/config记录到子模块的部分（vim .git/config）
+	5、把自动commit的部分返回来 （git reset head~0）
+	
+	update:
+	git submodule init
+	git submodule update
+
+	update:
+	git submodule update --remote
+
+	修改分支：
+	.gitmodules文件修改绑定的分支
+	git submodule update --remote
+
+git subtree 【分为1个git仓库，提交代码在本地，但是也支持远程拉取，提交代码】
+	git subtree add --prefix=src/xxx git@git.xxx:xxx/xxx.git master
+
+	git subtree pull --prefix=src/xxx git@git.xxx:xxx/xxx.git master
+
+	git subtree push --prefix=src/xxx git@git.xxx:xxx/xxx.git master

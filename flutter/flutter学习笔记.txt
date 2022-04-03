@@ -89,7 +89,7 @@
 				textdirection 排版方向
 				maxlines 最大行
 				overflow 文本截断
-			样式	: 
+			样式: 
 				fontFamily 字体名称
 				fontSize 字体大小
 				color 字体颜色
@@ -98,12 +98,23 @@
 			textSpan 分片
 		2. 图片
 			Image
-			FadeInImage 支持占位，动画
+			FadeInImage 支持占位，动画(需要添加transparent_image依赖)
 			cachedNetworkImage 支持磁盘缓存
+				
+				fit 对其规则
+				BoxFit.contain/scaleDown/contain/none
 		3. 按钮
 			floatingActionButton  圆形按钮
 			FlatButton  扁平按钮
 			RaisedButton  凸起按钮
+				shape 	
+					BeveledRectangleBorder 带斜角的长方形边框
+					RoundedRectangleBorder 圆角矩形
+					StadiumBorder 两端是半圆的边框
+					CircleBorder 圆形
+						side 用来设置边线（颜色，宽度等）
+						borderRadius 用来设置圆角 
+				enable/disable 通过onPressed是否为null决定
 		4. 列表
 			ListView
 				listTitle 小组件单元
@@ -136,6 +147,9 @@
 				margin
 			padding 单独设置一个内边距
 			center 居中
+			transform 旋转规则
+			decoration 边框
+			constraints 基本属性，设置宽高颜色等
 		2. 多子weight布局
 			Row 水平，行排列
 			Column 垂直，列排列
@@ -144,7 +158,7 @@
 
 			对齐规则：
 				mainAxisAlignment 横向 
-					start/center/end/spaceEvenly（固定间距对齐）
+					start/center/end/spaceEvenly（固定间距对齐）/spaceBetween（前后到底）/spaceAround（均分）
 				crossAxisAlignment 纵向
 			对齐负责：
 				mainAxisSize 对齐规则
@@ -208,13 +222,75 @@
 		原生平台的资源，直接去修改原生代码目录即可
 
 	9. 事件
-
+		1. 原始指针事件
+			Listener（
+			onPointerDown：
+			onPointerMove：
+			onPointerUp
+			）
+		2. 手势事件
+			GestureDetector（
+			onTap：
+			onDoubleTap：
+			onLongPress：
+			onPanUpdate： // 拖动回调
+			）
+		3. 父子手势拦截 RawGestureDetector
+		eg:【让父控件也能获取到手势】
+			MultipleTapGestureRecognizer extends TapGestureRecognizer{
+				rejectGesture()
+			}
+			RawGestureDetector(//自己构造父Widget的手势识别映射关系
+ 		 	gestures: {
+  		  	//建立多手势识别器与手势识别工厂类的映射关系，从而返回可以响应该手势的recognizer
+    			MultipleTapGestureRecognizer: GestureRecognizerFactoryWithHandlers<
+    		   	 MultipleTapGestureRecognizer>(
+    		     	 () => MultipleTapGestureRecognizer(),
+    		     	 (MultipleTapGestureRecognizer instance) {
+   		   	  instance.onTap = () => print('parent tapped ');//点击回调
+  		   	 },
+  		 	 )
+ 			 },
+  			child：xxx(
+			GestureDetector:xxx
+			)
+ 			 ),
+			);
 	10. 数据交互
+		InheritedWidget【父控件到子控件】
+			子类继承InheritedWidget，实现updateShouldNotify，并提供of方法，
+			可以达到类似Theme.of，通过主题子控件获取到父控件属性
 
+		Notification
+			父控件NotificationListener包裹，子控件使用 继承Notification的子类方法.dispatch分发
+	
+		EventBus
+			eventBus.on().listen((event) { setState(() {
+			xxx
+			});
+			
+			eventBus.fire(xxx)
 	11. 路由跳转
-
+		主要由Route和navigator管理，其中路由的管理分为2种方式：
+		1. 基本路由
+			Navigator.push(xxx, MaterialPageRoute(builder: (context) => xxx()); // 跳转
+			Navigator.pop(context) // 回退
+			
+		2. 命名路由
+			MaterialApp(
+				routes:{ "aaa":(context)=>xx(), },
+				onUnknownRoute： //错误路由处理
+			); // MaterialApp注册路由
+			Navigator.pushNamed(context,"aaa"); // 跳转
+			
+			Navigator.of(context).pushNamed("aaa", arguments: "xx"); // 跳转传参
+			String xx = ModalRoute.of(context).settings.arguments as String; // 获取参数
+			
+			Navigator.pushNamed(context, "aaa",arguments: "xx").then((msg)=>setState(()=>_msg=msg)) // 跳转监听返回
+			Navigator.pop(context,"xx") // 返回传参 
 五.	flutter进阶
 	1. 动画
+		
 	2. 单线程模型
 		event Loop机制
 			dart是单线程的，与异步并不冲突，通过event Loop交互
@@ -357,11 +433,48 @@
 			配置使用，setContentView(Flutter.createView(this,getLifecycle,"defaultRoute"))
 
 	7. 导航栈管理
+		原生页面与flutter页面互相切换
 
 	8. 状态管理
-
+		Provider【共享数据】
+		添加依赖：provider: 3.0.0+1 #provider依赖
+		1. ChangeNotifier【单资源】
+		xxxModel with ChangeNotifier{
+			get
+			set(){
+				notifyListeners()
+			}
+		}
+		使用：
+			在控件的父控件套一层 ChangeNotifierProvider.value(）
+		读：
+			final xxx = Provider.of<xxxModel>(context);	
+		写：
+			final xxx = Provider.of<xxxModel>(context);
+			xxx.set()
+		
+		缺点：
+			调用get/set会所有地方的控件都刷新，为了解决此问题，引入Consumer，在每个get/set位置使用Consumer包裹
+			Consumer(
+				builder: (context, xxxModel xx, child) =>xxx) // 其中仅更新model,child不重建
+				);
+		2. MultiProvider【多资源】
+		设置
+			MultiProvider(providers: [
+				Provider.value()
+				ChangeNotifierProvider.value(value: CounterModel()) //注入计数器实例
+			]
+		读
+			Provider.of<xxModel>(context)
+			Consumer2<xxxModel,double>(
+				builder: (context, xxxModel counter, double textSize, _) => 
+			)
 	9. 推送
-
+		极光推送插件
+		1. 初始化极光sdk
+		2. 获取地址id
+		3. 注册消息通知
+	
 	10. 多语言适配
 
 	11. 分辨率适配
@@ -378,11 +491,50 @@
 
 六.	flutter综合
 	1. 异常捕获
-
+		1> app层异常捕获
+		同步异常：try{}catch(e){print(e)}
+		异步异常：Future.xxx.catchError((e)=>print(e))
+			同步无法捕获异常异常，如果想捕获，等待异步结果，捕获同步代码
+			try{
+				await Future.xxx.catchError()
+			}catch ...
+		2> framework异常的捕获方式
+		//框架异常
+   		 FlutterError.onError = (FlutterErrorDetails details) async {
+    		  //线上环境，走上报逻辑
+     		 if (isRelease) { // 将框架异常转发到当前的 Zone 中
+     		   Zone.current.handleUncaughtError(details.exception, details.stack);
+     		 } else {
+     		   //开发期间，走Console抛出
+    		    FlutterError.dumpErrorToConsole(details);
+    		  }
+   		 };
+   		 runZoned>(() async { // 全局捕获异常
+		 	runApp(MyApp());
+		 }, onError: (error, stackTrace) async { 
+		 //Do sth for error
+		 });
+		3> 第三方
+		bugly ,仅使用其上报功能
+		注意：
+			配置权限
+			解决Android P 默认限制 http 明文传输数据，配置network_security_config
+		4> Engine层异常
+		可使用bugly去捕获
+		
 	2. 线上质量指标
+		页面异常率
+			页面异常率 = 异常发生次数 / 整体页面 PV 数
+			异常发生次数：在全局异常上报位统计
+			整体页面 PV 数：页面显示次数，NavigatorObserver观察者监听页面关闭次数，统计
+		页面帧率
+			
 
+		页面加载时长
+		
 	3. 组件化
 
 	4. 打包环境优化
 
 	5. 构建混合开发框架
+		

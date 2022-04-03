@@ -24,7 +24,8 @@
 4.	setting -> editor -> general ->	Auto import
 	add unambig......
 	optimize import ......
-	
+	Settings > Language & Frameworks > Flutter 中选上 "Format Code on Save" 自动格式化代码
+
 5.	setting -> editor -> code style -> java -> code generation:
 		field  				m
 		static field        s

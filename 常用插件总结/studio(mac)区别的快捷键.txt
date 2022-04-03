@@ -23,3 +23,36 @@
 	opt + cmd + P		抽离为方法参数
 	opt + cmd + V		抽离为局部变量
 	opt + cmd + F		抽离为成员变量
+
+
+
+
+flutter快捷键
+	
+	快速创建Widget：在dart文件中输入stf或stl出现提示后按回车即可  
+	快速修复：command + .  
+	自动生成构造函数：选中 final 参数，快捷键：command + .  
+	添加父组件、变为子组件、删除子组件：command + .  
+	重新打开 关闭的编辑页面：command + shift + T  
+	通过匹配文本打开文件：command + T  
+	代码格式化：shift + option + F  
+	打开console ：command + J  
+	查看源码：将光标放到要查看源码的类名或方法名上，长按command 然后的点击  
+	查看类的子类：选中要查看的类，然后：command + F12  
+	后退：当跟踪代码的时候，经常跳转到其他类，后退快捷键：ctrl + -  
+	导入类的快捷键：将光标放在要导入类的上面，然后按 command + .  
+	全局搜索：command + shift + F  
+	把当前行代码和上一行/下一行代码互换位置：option + 上↑/下↓  
+	快速复制当前行：option + shift + 下↓  
+
+
+flutter运行命令
+	flutter run: 运行当前连接设备  
+	flutter run -d 设备id：运行指定设备  
+  
+	运行项目后：  
+	q：终止运行  
+	r：热重载  
+	command + k ：清除终端输出的信息  
+	flutter clean ：清理缓存，可用于更改代码后运行有些异常，的一种处理方式。  
+	flutter --version ： 查看 Flutter 版本  

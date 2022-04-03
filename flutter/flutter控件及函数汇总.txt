@@ -1,0 +1,327 @@
+控件
+	1. Scaffold 
+	提供了比较常见的页面属性，appBar,body,button,侧边栏等
+		floatingActionButtonLocation 按钮位置，可以控制位置
+		persistentFooterButtons 底部按钮组
+		drawer / endDrawer 左右侧边栏
+		bottomNavigationBar 底部导航栏tab
+		bottomSheet 底部统一的控件
+		backgroundColor 底部背景颜色
+	2. appBar
+	导航条
+		title 标题
+		centerTitle 是否剧中
+		actions 右侧功能键
+		flexibleSpace 折叠的控件，底层
+		leading 左侧按钮
+		bottom 底部空间
+		backgroundColor 背景色
+		brightness 沉浸状态栏主题
+		toolbarHeight 高度
+		toolbarOpacity 透明度
+		iconTheme 主题
+		actionsIconTheme 右侧按钮主题
+		titleSpacing 文字距左偏移量
+	3. BottomNavigationBar
+	底部导航条
+		items 底部按钮，一般使用 BottomNavigationBarItem
+		onTap 点击事件
+		currentIndex 设置当前显示哪个index
+		type 更改下方按钮样式
+		fixedColor/unselectedItemColor 填充色
+		iconSize 图标大小
+		selectedFontSize/unselectedFontSize  title 字体大小
+		selectedLabelStyle, unselectedLabelStyle title 字体样式
+		showSelectedLabels, showUnselectedLabels 是否显示 title
+		selectedIconTheme, unselectedIconTheme  icon 主题
+		shape NotchedShape不接触效果
+		notchMargin 不接触效果的边距
+		elevation 阴影
+	4. TabBar
+	导航条，必须指定DefaultTabController/TabController才能使用
+		indicator 设置indicator样式 
+			UnderlineTabIndicator
+		indicatorColor 颜色
+		indicatorWeight 宽度
+		indicatorSize 大小
+		indicatorPadding padding
+		labelColor/labelStyle 选中颜色样式
+		unselectedLabelColor/unselectedLabelStyle 未选中颜色样式
+		labelPadding label位置
+		onTap 点击事件
+	5. TabBarView
+	导航条，与TabBar，TabController一起使用
+		controller 联动控制器
+		physics 滑动效果。
+			ClampingScrollPhysics 微光效果
+			BouncingScrollPhysics 弹性效果
+		dragStartBehavior 启动时阻尼效果
+	6. Route
+	MaterialApp 里面可以使用route
+		Navigator.pushNamed 跳转
+		Navigator.push（xx, MaterialPageRoute(
+			builder: BB()
+			settings: RouteSettings(
+			name:'xx',
+			arguments:datas
+			)
+		)）
+		Navigator.of(context).pushNamed
+		Navigator.of(context).push
+		Navigator.of(context).pushNamedAndRemoveUntil 跳转并销毁中间页
+		Navigator.pushReplacementNamed 跳转斌替换指定页
+		Navigator.pushReplacement 与push类似
+		Navigator.of(context).pushReplacement
+		Navigator.popAndPushNamed 弹出并跳转
+		Navigator.pop
+		Navigator.of(context).pop
+		Navigator.canPop 是否可以弹出
+		Navigator.maybePop 是否可以弹出，跟上面等效
+		
+		Navigator.popUntil(context, (route) => route.isFirst); 回到栈顶
+		Navigator.popUntil(context, (route) => route.settings.name == '/xxx'); 回到制定页面
+		
+		initialRoute 初始化路由，MaterialApp里面可以定义，必须使用已经定义的
+		onUnknownRoute 定义跳转错误时候的页面
+		onGenerateRoute 路由拦截，拦截代码添加在onGenerateRoute中
+		
+		// 正向传值，反向取值
+		var backValueFromDDD = Navigator.pushNamed(）		            
+		backValueFromDDD.then((value){
+		}
+		
+		// 拿到值，并传回值
+		var value = ModalRoute.of(context).settings.arguments;
+		Navigator.of(context).pop({"value":"我是CCC页面带回来的值"});
+	7. FloatingActionButton
+		默认圆形
+		FloatingActionButton.extended 自适应样式
+		onPressed 当onPressed == null 时，没有效果
+	8. IconButton
+		disabledColor	icon 不可点击颜色，onPressed == null 时生效
+		splashColor	点击时闪过的颜色
+		highlightColor	按下去高亮的颜色
+	9. PopupMenuButton 菜单
+		itemBuilder: PopupMenuItem()
+	10. ButtonBar
+		buttonHeight
+		buttonMinWidth 设置子控件宽度
+		alignment 对其规则
+	11. TextField 输入框
+		controller 监听输入框变化
+		textInputAction 输入框键盘样式
+	 	keyboardType 键盘样式，数字，文字
+		obscureText 加密
+		obscuringCharacter 加密显示样式
+		onTap 点击
+		onChanged 文字监听
+		onSubmitted提交按钮
+		onEditingComplete 输入完成按钮
+		focusNode 监听焦点
+			focusNode.unfocus() // 关闭焦点
+			FocusManager.instance.primaryFocus.unfocus() // 取消焦点
+			FocusNode（skipTraversal） // 跳过FocusScopeNode true的控件
+			
+		InputDecoration 输入框样式
+			suffixText 尾部文本
+			prefixText 头部文本
+			errorText 错误文本
+			hintText 占位文本
+			helperText 辅助文本
+			labelText 提示语
+	12. CheckBox 复选框
+		activeColor 选中时填充颜色
+		checkColor 选中时中间✔️颜色
+	13. Radio 单选框
+		groupValue 选中值
+		activeColor	选中时填充颜色
+		focusColor	聚焦颜色
+		hoverColor	悬停颜色
+	14. Switch 切换按钮
+		activeColor 打开时滑块颜色
+		activeTrackColor 打开时轨道颜色
+		inactiveThumbColor 关闭时滑块颜色
+		inactiveTrackColor 关闭时轨道颜色
+		activeThumbImage 打开图片
+		inactiveThumbImage 关闭图片
+		onActiveThumbImageError 
+		onInactiveThumbImageError
+	15. slide
+		activeTrackColor 滑块左侧轨道颜色
+		inactiveTrackColor 滑块右侧侧轨道颜色
+		activeTickMarkColor 滑块左侧刻度颜色
+		inactiveTickMarkColor 滑块右侧刻度颜色
+		onChanged 正在滑动或者点击，未松手
+		onChangeStart 刚开始点击
+		onChangeEnd 滑动或者点击结束，已松手
+		min 
+		max
+		label 气泡文本
+		divisions 刻度数量，没有刻度时，label 不展示
+		
+		SliderTheme（SliderThemeData） 自定义样式
+			rangeTrackShape
+	16. 时间日期选择器
+		showDatePicker
+		showTimePicker
+		CalendarDatePicker
+		CupertinoTimerPicker
+		CupertinoDatePicker
+	14. 弹窗
+		SimpleDialog	
+			title
+			titlePadding
+			titleTextStyle
+			contentPadding 内容边距
+			elevation
+			semanticLabel语义标签
+			shape 形状
+		AlertDialog
+			actions 事件子控件组
+			actionsPadding 事件子控件间距，默认为 EdgeInsets.zero,
+			actionsOverflowDirection 事件过多时，竖向展示顺序
+			actionsOverflowButtonSpacing 事件过多时，竖向展示时，子控件间距
+			clipBehavior 超出部分剪切方式
+			scrollable 是否可以滚动
+		CupertinoAlertDialog【iOS 风格弹框】
+			actions 事件子控件组【可以设置多个】
+			scrollController 滚动控制器，内容超出高度，content 可以滑动
+			actionScrollController actions 滚动控制器，actions超出高度，actions 可以滑动
+			insetAnimationDuration 动画时间，默认为 const Duration(milliseconds: 100)
+			insetAnimationCurve 动画效果，渐进渐出等等，默认为 Curves.decelerate	
+		Dialog
+			insetPadding 对话框距离屏幕边缘间距
+
+		显示弹窗：
+			showDialog
+				barrierDismissible 点击背后蒙层是否关闭弹框
+				barrierColor 背后蒙层颜色
+				routeSettings 路由设置 
+			showCupertinoDialog 显示弹窗
+				useRootNavigator 是否使用根导航
+				useSafeArea 是否使用安全区域
+		关闭弹窗：
+			Navigator.pop(context,xxx)
+	15. BottomSheet【上拉框】
+		animationController	动画控制器
+		enableDrag	是否可以拖动，默认为 true
+		onDragStart	开始拖拽回调，没有找到具体使用场景，后续更新
+		onDragEnd	结束拖拽回调，没有找到具体使用场景，后续更新
+		onClosing	关闭回调函数
+	showModalBottomSheet 直接调起 BottomSheet 的 api，类似BottomSheet
+	showBottomSheet 需要单独用一个class套一层，才能使用
+	16. 折叠框
+		ExpansionPanel
+			headerBuilder
+			isExpanded 是否展开
+			canTapOnHeader 点击header是否展开收起
+		ExpansionPanelRadio
+			...
+		ExpansionPanelList
+			expansionCallback 点击折叠收起回调函数
+			animationDuration 动画时间
+			expandedHeaderPadding 展开后Header的padding
+			dividerColor 分割线颜色
+	17. SnackBar
+		duration 弹框展示时长
+		action 右侧事件按钮
+		animation 动画效果
+		onVisible SnackBar 展示在屏幕上时的回调函数
+		使用：
+			Scaffold.of(context).showSnackBar(SnackBar(xxx));
+
+	18. 标签控件【Chip、ActionChip、ChoiceChip、FilterChip】
+		ActionChip
+			onPressed 
+		ChoiceChip
+		FilterChip
+	19. Tooltip【提示控件】
+	20. 表格控件【表格控件】
+	21. card【卡片控件】
+		shadowColor 阴影颜色
+		color 卡片背景色
+		elevation 阴影高度
+		clipBehavior 裁剪方式
+		semanticContainer 
+	22. LinearProgressIndicator，CircularProgressIndicator【进度条】
+		LinearProgressIndicator 线性进度条
+			valueColor 进度条当前进度颜色
+			minHeight 最小宽度
+			semanticsLabel 语义标签
+			semanticsValue 语义Value
+		CircularProgressIndicator 圆形进度条
+	23. ListTile【行前、行尾图，文本】
+		leading 左侧组件
+		trailing 右侧组件
+		isThreeLine 是否三行
+		dense 是否使用缩小布局
+		visualDensity 紧凑程度
+		mouseCursor 鼠标光标
+		focusColor 聚焦颜色
+		hoverColor 悬停颜色
+		focusNode 焦点控制
+		autofocus 自动聚焦
+	24. Stepper【步骤选择器】
+	25. Divider【分割线】
+		thickness 分割线线宽
+		indent 分割线左侧间距
+		endIndent 分割线右侧间距
+	25. CupertinoActivityIndicator【iOS风格加载条菊花】
+		animating 是否有动画
+		radius 大小
+		CupertinoActivityIndicator.partiallyRevealed
+			radius 大小
+			progress 当前进度
+	26. CupertinoButton【iOS风格button】
+	27. CupertinoAlertDialog【iOS风格Alert 控件】
+		CupertinoDialogAction
+	28. CupertinoSwitch【iOS 风格的 switch 开关】
+	29. CupertinoNavigationBar【iOS 风格的 NavigationBar】
+	30. Offstage 隐藏/可见，能保存组件的状态
+	31. NestedScrollView
+		headerSliverBuilder：
+			SliverToBoxAdapter
+			SliverPersistentHeader
+				delegate: SliverPersistentHeaderDelegate 限制高度
+		body：LoadingMoreList
+		innerScrollPositionKeyBuilder：
+		pinnedHeaderSliverHeightBuilder：
+	32. GestureDetector
+		HitTestBehavior.opaque 自己处理事件 
+ 		HitTestBehavior.deferToChild child处理事件
+		HitTestBehavior.translucent 自己和child都可以接收事件
+	33. AnimatedOpacity
+		opacity 动画渐变效果
+-----------------------------------------------------------------
+接口总结
+	1. AutomaticKeepAliveClientMixin
+	wantKeepAlive，解决tabar切换initState每次调用问题
+	2. SingleTickerProviderStateMixin
+	异步动画控制器
+	3. AnnotatedRegion 修改状态栏字体颜色
+	4. resizeToAvoidBottomInset 调整底部键盘高度
+	5. CachingAssetBundle 缓存类
+	6. WidgetsBindingObserver 检测页面生命周期
+	7. Transform.scal
+	8. 
+
+关键字
+	mixin 混合，把前类替换
+	extension xxx on xx{} 静态utils替换方法
+	
+	库导入：
+	import 'xx' as lib2; 命名库是lib2,后续可通过此调用，目的是解决冲突
+	import 'xx' show lib2;  // Import only foo.
+	import 'xx' hide lib2;  // Import all names EXCEPT foo.
+	import 'xx' deferred as lib2;  延迟加载库，后续通过lib2.loadLibrary，加载库
+	import导入；
+	export重新导出库；
+	library声明库；
+	part和part of关联文件与库；优先级高于import
+
+	常规依赖：dependencies:此标签下依赖在调试和发版后都会生效
+	Dev依赖：dev_dependencies:此标签下的依赖均在调试时生效。
+	重写依赖：dependency_overrides:强制下载依赖包，不管是否兼容，不推荐使用
+	
+	
+	

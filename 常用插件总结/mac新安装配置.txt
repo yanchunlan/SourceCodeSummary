@@ -1,5 +1,5 @@
 1.	google浏览器下载安装，并同步账户信息 （同步下载其他软件，含androidStudio）
-
+/Users/ycl/AndroidStudioProjects/SourceCodeSummary-master/常用插件总结/mac新安装配置.txt
 2.	jdk下载及安装，并配置环境变量
 	下载地址：https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html
 	默认目录：/Library/Java/JavaVirtualMachines/jdk1.8.0_211.jdk/Contents/Home
@@ -31,6 +31,7 @@
 
 5.	flutter 下载与环境配置
 	下载地址：https://flutter.dev/docs/development/tools/sdk/releases?tab=macos#macos
+		https://flutter.cn/docs/development/tools/sdk/releases?tab=macos
 	配置环境变量：
 		export PATH=`pwd`/flutter/bin:$PATH
 

@@ -96,7 +96,9 @@ CodeMetrics java 代码查看复杂度
 
 MetricsReloaded Java代码查看复杂度（在Actions选择Caculate Metrics - 选择范围与Complexity metrics（圈复杂度））
 
+Flutter Snippets flutter自动补全插件
 
+FlutterJsonBeanFactory flutter自动生成json bean
 
 
 
