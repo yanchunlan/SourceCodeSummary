@@ -476,11 +476,26 @@
 		3. 注册消息通知
 	
 	10. 多语言适配
-
+			Flutter i18n插件
+			
 	11. 分辨率适配
 
 	12. 编译模式
-
+		flutter的编译模式
+			Debug:
+				JIT 模式,支持真机/模拟器运行，打开所有的断言assert，调试信息、服务扩展和调试辅助Observatory,热重载，无优化代码执行速度、二进制包大小和部署，flutter run --debug
+			Release:
+				AOT 模式,只能真机运行,优化了应用快速启动、代码快速执行，以及二级制包大小,flutter run --release
+			Profile:
+				与 Release 模式一致,多了对 Profile 模式的服务扩展的支持，包括支持跟踪，以及一些为了最低限度支持所需要的依赖（连接 Observatory 到进程）,flutter run --profile
+		编译模式的识别
+			assert
+			通过在不同编译环境添加的变量
+		分离配置环境
+			flutter run apk/ios -t lib/main_dev.dart 
+			flutter run apk/ios -t lib/main.dart
+			或者在Edit Configurations里面配置不同的编译选项，+，flutter，dartEntryPoint
+			
 	13. hot reload原理
 
 	14. 优化调试效率
