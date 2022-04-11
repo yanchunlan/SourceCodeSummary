@@ -477,9 +477,21 @@
 	
 	10. 多语言适配
 			Flutter i18n插件
+			添加依赖
+				 flutter_localizations:
+    			sdk: flutter
 			
 	11. 分辨率适配
-
+		适配屏幕旋转
+			OrientationBuilder // OrientationBuilder的builder模式感知屏幕旋转
+			MediaQuery.of(context).orientation
+			SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]); //固定屏幕
+		适配平板电脑【屏幕空间划分为多个窗格，类似Fragment/ChildViewController来抽象独立区块】
+			if(MediaQuery.of(context).size.width > 480) { 【假设平板宽度大于 480】
+ 			 	//tablet
+			} else {
+  				//phone
+			}
 	12. 编译模式
 		flutter的编译模式
 			Debug:
@@ -499,9 +511,20 @@
 	13. hot reload原理
 
 	14. 优化调试效率
-
+		输出日志
+			debugPrint = (String message, {int wrapWidth}) {}; // debug环境
+			debugPrint = (String message, {int wrapWidth}) => debugPrintSynchronously(message, wrapWidth: wrapWidth);// release环境
+		断点调试
+		布局调试
+			1> 界面调试工具
+			void main() {
+				...
+				debugPaintSizeEnabled = true; // 开启布局调试
+				runApp(...)
+			}
+			2> Flutter Inspector
 	15. 检测优化flutter性能
-
+		
 	16. 自动化测试
 
 六.	flutter综合
