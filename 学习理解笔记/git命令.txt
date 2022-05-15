@@ -151,6 +151,9 @@ git clone --recursive --depth 1 xxx.git 克隆大项目，使用该命令
 		git remote set-branches origin 'remote_branch_name'
 		git fetch --depth 1 origin remote_branch_name
 		git checkout remote_branch_name
+	git 并行执行多个命令
+		A && B 需要a执行成功后，执行B
+		A ; B a执行后，执行B，不管结果
 
 git submodule 【分为多个git仓库，提交代码分别在不同的仓库】
 	add:

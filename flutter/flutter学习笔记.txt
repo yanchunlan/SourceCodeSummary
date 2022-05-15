@@ -36,8 +36,8 @@
  		复用 with
 	6. 运算符
 		?. 防止为null
-		??= null就赋值，不为null不赋值
-		？？ 等于三元运算符？：
+		??= 等于null就赋值，不为null不赋值
+		？？ 不等于null就赋值，就返回原值，等于三元运算符？：
 三.	Flutter 原理
 	1. 分层
 		embedder: 操作系统适配层，surface设置，线程设置，平台插件等平台相关特性的适配
@@ -167,6 +167,7 @@
 		3. 层叠weight布局
 			stack 层叠布局
 				positioned 设置子weight位置的
+				PositionedDirectional 是Positioned.directional封装的，所以方向是系统默认方向
 	6. 组合和自绘
 		组合 拆解布局然后定义为一个组件
 		自绘 
@@ -290,7 +291,49 @@
 			Navigator.pop(context,"xx") // 返回传参 
 五.	flutter进阶
 	1. 动画
+		1> 单页面动画
+		动画的创建：
+			Animation： 提供动画数据/状态（比如，动画是否开始、停止、前进或者后退，以及动画的当前值），而不负责动画的渲染
+			AnimationController： 管理 Animation，可以用来设置动画的时长、启动动画、暂停动画、反转动画等
+				vsync: 绑定动画到指定控件，跟随控件一起显示隐藏
+			Listener： 是 Animation 的回调函数，用来监听动画的进度变化，根据这个回调函数，根据动画的当前值重新渲染组件，实现动画的渲染
+				EG:
+				controller = AnimationController( vsync: this, duration: const Duration(milliseconds: 1000)); 		
+				animation = Tween(begin: 50.0, end: 200.0).animate(controller) 
+				..addListener(() { 
+					setState(() {}); //刷新界面 
+				});
+			
+		动画的开始：
+			controller.forward()
+		动画的销毁：
+			controller.dispose();
+		动画的值获取：
+			animation.value 
+		动画的曲线效果：
+			CurvedAnimation：提供了很多常用的曲线，比如震荡曲线，Curves.elasticOut
+				EG:
+				final CurvedAnimation curve = CurvedAnimation(parent: controller, curve: Curves.elasticOut);
+				Tween(begin: 50.0, end: 200.0).animate(curve)
+		动画的重复执行：
+			方式一
+			controller.repeat(reverse: true);
+			方式二
+			animation.addStatusListener((status) { 
+				if (status == AnimationStatus.completed) { 
+					controller.reverse();//动画结束时反向执行 
+				} else if (status == AnimationStatus.dismissed) { 
+					controller.forward();//动画反向执行完毕时，重新执行 
+				}});
+			controller.forward();
 		
+		AnimatedWidget：包含setState刷新，关闭等逻辑
+		AnimatedBuilder：仅管理动画变化，渲染由外部传入的child
+		2> 过渡动画 Hero
+			Hero( 
+				tag: 'hero', //设置共享tag
+				child: 
+			）
 	2. 单线程模型
 		event Loop机制
 			dart是单线程的，与异步并不冲突，通过event Loop交互
@@ -360,10 +403,26 @@
 					}catch(e)
 				}
 		2. Json解析
+			添加插件：FlutterJsonBeanFactory
+			添加依赖：
+			dependencies:
+  				dio: ^3.0.10
+  				json_annotation: ^3.1.0
+			dev_dependencies:
+				json_serializable: ^3.5.0
+ 			 	build_runner: ^1.0.0
+			使用命令： flutter packages pub run build_runner build
+			使用代码：
 			json.decode("json") // 返回Map<String,dynamic>类型
-
+		
+		3. 异步加载
 			在数据量计算很大的情况下，可使用isolate优化，如下：
+			单线程使用：
 				compute（funx(),"json"）.then(print(xx))
+			compute加载的方法需要是静态的，否则报错isolate message，
+			多线程使用：
+				receivePort 自行传递消息
+			
 	4. 本地存储与数据库
 		1. 文件
 			目录有2个：
