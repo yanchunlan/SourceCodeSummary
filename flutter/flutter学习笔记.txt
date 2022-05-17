@@ -398,19 +398,20 @@
 		const platform = MethodChannel('');
 		fun() async{
 			try{
-				result= await platform.invorkMethod('')
-			}catch(e)
+				result= await platform.invorkMethod('') 
+				或者 result= await platform.invorkMethod('').then((dynamic? value){});
+			}catch(e){}
 		}
 		原生侧：
-		new MethodChannel(getFlutterView(),'').setMethodCallHandler{
+		new MethodChannel(flutterEngine?.dartExecutor,'').setMethodCallHandler{
 			onMethodCall(){
 				call.method.equals(''){
-					result.success/error
+					result.success/error/notImplemented
 				}
 			}
 		}
 		2. 安卓的view显示在flutter中
-		flutter:
+		原生侧:
 		viewFactory extends platformViewFactory{
 			platformView create 
 		}
@@ -418,12 +419,28 @@
 			getview
 			dispose
 		}
-		Register register =registarFor('')
+		Register register =ShimPluginRegistry(flutterEngine!!).registarFor('')
 		viewFactory factory=new ViewFactory(register.messenger())
-		register.platformViewRegistry()
-
+		register.platformViewRegistry().registerViewFactory('', factory)
+		
 		如果想动态的调整，就需要参数传递  [flutter控制原生响应]
 		通过method channel的方式传递数据
+		flutter:
+			build{
+			child:
+				if (defaultTargetPlatform == TargetPlatform.android) {
+      			  	return AndroidView(viewType: '',
+        					onPlatformViewCreated: _channel = MethodChannel(),);
+    				} else {
+    			 	 return UiKitView(viewType: '',
+    				   	 onPlatformViewCreated: _channel = MethodChannel(),);
+  				}
+			}
+			
+			onPress(){
+				_channel.invokeMethod('changeBackgroundColor')
+			}
+		
 	6. 混编flutter工程
 		flutter作为原生的aar工程
 

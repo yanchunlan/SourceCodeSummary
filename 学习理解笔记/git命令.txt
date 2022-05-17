@@ -180,3 +180,16 @@ git subtree 【分为1个git仓库，提交代码在本地，但是也支持远程拉取，提交代码】
 	git subtree pull --prefix=src/xxx git@git.xxx:xxx/xxx.git master
 
 	git subtree push --prefix=src/xxx git@git.xxx:xxx/xxx.git master
+
+git 关联多个仓库
+	git remote -v
+	git remote add coding.net git@git.coding.net:ycl/ycl.github.io.git
+	
+	git push origin master
+	git push coding.net master
+
+	git pull origin master
+	git pull coding.net master
+	
+	或者直接设置url,后续正常使用即可
+	git remote set-url --add origin git@git.coding.net:KeithNull/keithnull.github.io.git
