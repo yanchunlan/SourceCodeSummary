@@ -36,4 +36,38 @@
 		export PATH=`pwd`/flutter/bin:$PATH
 
 	setting -> plugin -> dart/flutter 下载
-	
+6.	python 下载与环境配置
+	安装HomeBrew:	
+		https://brew.sh/index_zh-cn
+	安装python3:	
+		brew install python3
+	安装pip3:	
+		curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+		python3 get-pip.py
+		#检查版本
+		python3 -V
+	配置环境变量：
+		#查看自己的python3地址
+		which python3（pip类似）
+		open .bash_profile
+		#添加（一般MacOS路径如下）：
+		export PATH="/usr/local/opt/python/libexec/bin:$PATH"
+		alias python="/usr/local/bin/python3"
+		alias pip="/usr/local/bin/pip3"
+		#保存文件 
+		source .bash_profile
+7.	protobuf flutter中下载与环境配置
+	安装protoc:
+		brew install protobuf
+	安装dart:
+		brew tap dart-lang/dart
+		brew install dart
+	安装protoc_pluginL：
+		dart pub global activate protoc_plugin
+	添加环境变量：
+		#protobuf
+		HOME=/Users/ycl
+		export PATH="$PATH":"$HOME/.pub-cache/bin"
+	将.proto文件编译成dart文件
+	protoc --dart_out=. test.proto
+	或 ：protoc --dart_out=. test.proto --plugin ~/.pub-cache/bin/protoc-gen-dart【如果没有添加path】

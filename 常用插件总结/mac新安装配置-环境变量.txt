@@ -35,3 +35,10 @@ fi
 #PATH="/usr/local/bin:${PATH}"
 #export PATH
 alias python="/usr/local/bin/python3"
+
+#pip
+alias pip="/usr/local/bin/pip3"
+
+#protobuf
+HOME=/Users/banban
+export PATH="$PATH":"$HOME/.pub-cache/bin"

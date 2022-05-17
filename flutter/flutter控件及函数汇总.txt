@@ -292,6 +292,11 @@
 		HitTestBehavior.translucent 自己和child都可以接收事件
 	33. AnimatedOpacity
 		opacity 动画渐变效果
+	34. Opacity 透明度控件
+		opacity
+	35. Flexible 类似row/column控件
+		flex 
+		direction 通过Axis.horizontal/Axis.vertical 来控制方向
 -----------------------------------------------------------------
 接口总结
 	1. AutomaticKeepAliveClientMixin
@@ -303,14 +308,8 @@
 	5. CachingAssetBundle 缓存类
 	6. WidgetsBindingObserver 检测页面生命周期
 	7. Transform.scal
-	8. Key 控件的唯一标示
-		LocalKey 局部
-			ValueKey 值比较
-			ObjectKey 地址类型比较
-			UniqueKey 每次生成不同的值
-		GlobalKey 全局,跨组建使用
-			GlobalKey.currentState 获取key
-			GlobalKey.currentState.setState 刷新key
+	8. 
+
 关键字
 	mixin 混合，把前类替换
 	extension xxx on xx{} 静态utils替换方法
@@ -328,8 +327,6 @@
 	常规依赖：dependencies:此标签下依赖在调试和发版后都会生效
 	Dev依赖：dev_dependencies:此标签下的依赖均在调试时生效。
 	重写依赖：dependency_overrides:强制下载依赖包，不管是否兼容，不推荐使用
-
-
 	
 	
 	
