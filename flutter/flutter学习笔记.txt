@@ -36,8 +36,8 @@
  		复用 with
 	6. 运算符
 		?. 防止为null
-		??= null就赋值，不为null不赋值
-		？？ 等于三元运算符？：
+		??= 等于null就赋值，不为null不赋值
+		？？ 不等于null就赋值，就返回原值，等于三元运算符？：
 三.	Flutter 原理
 	1. 分层
 		embedder: 操作系统适配层，surface设置，线程设置，平台插件等平台相关特性的适配
@@ -73,8 +73,8 @@
 		stateFulWeight:	 响应变化，重新build， Image源码
 	3. 生命周期
 		state生命周期：
-			创建：start -> 构造方法 -> initState -> didchangeDependencies -> build 
-			更新：setState / didchangeDependencies（state变化） / didUpdateWidget（weight变化调用） -> 
+			创建：start -> 构造方法 -> initState -> didchangeDependencies -> build
+			更新：setState / didchangeDependencies（state变化） / didUpdateWidget（weight变化调用） ->
 			销毁：tree -> deactivate -> dispose -> end
 		app生命周期：
 			widgetBIndingObserver类具备很多接口回调
@@ -84,12 +84,12 @@
 			widgetsBinding.addPersistentFrameCallback: 回调多次
 	4. 基础控件
 		1. 文字
-			布局： 
+			布局：
 				textalign 布局对齐
 				textdirection 排版方向
 				maxlines 最大行
 				overflow 文本截断
-			样式: 
+			样式:
 				fontFamily 字体名称
 				fontSize 字体大小
 				color 字体颜色
@@ -100,20 +100,20 @@
 			Image
 			FadeInImage 支持占位，动画(需要添加transparent_image依赖)
 			cachedNetworkImage 支持磁盘缓存
-				
+
 				fit 对其规则
 				BoxFit.contain/scaleDown/contain/none
 		3. 按钮
 			floatingActionButton  圆形按钮
 			FlatButton  扁平按钮
 			RaisedButton  凸起按钮
-				shape 	
+				shape
 					BeveledRectangleBorder 带斜角的长方形边框
 					RoundedRectangleBorder 圆角矩形
 					StadiumBorder 两端是半圆的边框
 					CircleBorder 圆形
 						side 用来设置边线（颜色，宽度等）
-						borderRadius 用来设置圆角 
+						borderRadius 用来设置圆角
 				enable/disable 通过onPressed是否为null决定
 		4. 列表
 			ListView
@@ -131,7 +131,7 @@
 							delegate -> SliverChildBuilderDelegate 列表项
 			ScrollController
 				具体添加位置在：ListView.builder(
-					controller: -> 
+					controller: ->
 				)
 				addListener
 				dispose
@@ -157,7 +157,7 @@
 				flex 分配比例
 
 			对齐规则：
-				mainAxisAlignment 横向 
+				mainAxisAlignment 横向
 					start/center/end/spaceEvenly（固定间距对齐）/spaceBetween（前后到底）/spaceAround（均分）
 				crossAxisAlignment 纵向
 			对齐负责：
@@ -167,9 +167,10 @@
 		3. 层叠weight布局
 			stack 层叠布局
 				positioned 设置子weight位置的
+				PositionedDirectional 是Positioned.directional封装的，所以方向是系统默认方向
 	6. 组合和自绘
 		组合 拆解布局然后定义为一个组件
-		自绘 
+		自绘
 			xx extend customPaint{
 				paint(canvas){
 					drawLine
@@ -263,34 +264,76 @@
 
 		Notification
 			父控件NotificationListener包裹，子控件使用 继承Notification的子类方法.dispatch分发
-	
+
 		EventBus
 			eventBus.on().listen((event) { setState(() {
 			xxx
 			});
-			
+
 			eventBus.fire(xxx)
 	11. 路由跳转
 		主要由Route和navigator管理，其中路由的管理分为2种方式：
 		1. 基本路由
 			Navigator.push(xxx, MaterialPageRoute(builder: (context) => xxx()); // 跳转
 			Navigator.pop(context) // 回退
-			
+
 		2. 命名路由
 			MaterialApp(
 				routes:{ "aaa":(context)=>xx(), },
 				onUnknownRoute： //错误路由处理
 			); // MaterialApp注册路由
 			Navigator.pushNamed(context,"aaa"); // 跳转
-			
+
 			Navigator.of(context).pushNamed("aaa", arguments: "xx"); // 跳转传参
 			String xx = ModalRoute.of(context).settings.arguments as String; // 获取参数
-			
+
 			Navigator.pushNamed(context, "aaa",arguments: "xx").then((msg)=>setState(()=>_msg=msg)) // 跳转监听返回
-			Navigator.pop(context,"xx") // 返回传参 
+			Navigator.pop(context,"xx") // 返回传参
 五.	flutter进阶
 	1. 动画
-		
+		1> 单页面动画
+		动画的创建：
+			Animation： 提供动画数据/状态（比如，动画是否开始、停止、前进或者后退，以及动画的当前值），而不负责动画的渲染
+			AnimationController： 管理 Animation，可以用来设置动画的时长、启动动画、暂停动画、反转动画等
+				vsync: 绑定动画到指定控件，跟随控件一起显示隐藏
+			Listener： 是 Animation 的回调函数，用来监听动画的进度变化，根据这个回调函数，根据动画的当前值重新渲染组件，实现动画的渲染
+				EG:
+				controller = AnimationController( vsync: this, duration: const Duration(milliseconds: 1000));
+				animation = Tween(begin: 50.0, end: 200.0).animate(controller)
+				..addListener(() {
+					setState(() {}); //刷新界面
+				});
+
+		动画的开始：
+			controller.forward()
+		动画的销毁：
+			controller.dispose();
+		动画的值获取：
+			animation.value
+		动画的曲线效果：
+			CurvedAnimation：提供了很多常用的曲线，比如震荡曲线，Curves.elasticOut
+				EG:
+				final CurvedAnimation curve = CurvedAnimation(parent: controller, curve: Curves.elasticOut);
+				Tween(begin: 50.0, end: 200.0).animate(curve)
+		动画的重复执行：
+			方式一
+			controller.repeat(reverse: true);
+			方式二
+			animation.addStatusListener((status) {
+				if (status == AnimationStatus.completed) {
+					controller.reverse();//动画结束时反向执行
+				} else if (status == AnimationStatus.dismissed) {
+					controller.forward();//动画反向执行完毕时，重新执行
+				}});
+			controller.forward();
+
+		AnimatedWidget：包含setState刷新，关闭等逻辑
+		AnimatedBuilder：仅管理动画变化，渲染由外部传入的child
+		2> 过渡动画 Hero
+			Hero(
+				tag: 'hero', //设置共享tag
+				child:
+			）
 	2. 单线程模型
 		event Loop机制
 			dart是单线程的，与异步并不冲突，通过event Loop交互
@@ -334,7 +377,7 @@
 						response.body
 					}
 				}
-			dio(三方库) 
+			dio(三方库)
 				dependencies{
 					dio : '>2.1.3'
 				}
@@ -345,7 +388,7 @@
 					{
 						response.date.toString
 					}
-					// 上传文件  
+					// 上传文件
 					formData=FormData.from()
 					response=swait dio.post(url,formData)
 					// 下载文件
@@ -360,10 +403,26 @@
 					}catch(e)
 				}
 		2. Json解析
+			添加插件：FlutterJsonBeanFactory
+			添加依赖：
+			dependencies:
+  				dio: ^3.0.10
+  				json_annotation: ^3.1.0
+			dev_dependencies:
+				json_serializable: ^3.5.0
+ 			 	build_runner: ^1.0.0
+			使用命令： flutter packages pub run build_runner build
+			使用代码：
 			json.decode("json") // 返回Map<String,dynamic>类型
 
+		3. 异步加载
 			在数据量计算很大的情况下，可使用isolate优化，如下：
+			单线程使用：
 				compute（funx(),"json"）.then(print(xx))
+			compute加载的方法需要是静态的，否则报错isolate message，
+			多线程使用：
+				receivePort 自行传递消息
+
 	4. 本地存储与数据库
 		1. 文件
 			目录有2个：
@@ -384,7 +443,7 @@
 			async{
 				db=await openDatabase(join(await getDataBasePath,"x.db"),
 					onCreate: => db.execute
-					onUpdate => 
+					onUpdate =>
 					version:1
 				)
 				await db.insert('x',"xx",conflictAlgorithm:ConflictAlgorithm.replace) // 插入
@@ -493,15 +552,53 @@
 		3. 注册消息通知
 	
 	10. 多语言适配
+			Flutter i18n插件
+			添加依赖
+				 flutter_localizations:
+    			sdk: flutter
 
 	11. 分辨率适配
-
+		适配屏幕旋转
+			OrientationBuilder // OrientationBuilder的builder模式感知屏幕旋转
+			MediaQuery.of(context).orientation
+			SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]); //固定屏幕
+		适配平板电脑【屏幕空间划分为多个窗格，类似Fragment/ChildViewController来抽象独立区块】
+			if(MediaQuery.of(context).size.width > 480) { 【假设平板宽度大于 480】
+ 			 	//tablet
+			} else {
+  				//phone
+			}
 	12. 编译模式
+		flutter的编译模式
+			Debug:
+				JIT 模式,支持真机/模拟器运行，打开所有的断言assert，调试信息、服务扩展和调试辅助Observatory,热重载，无优化代码执行速度、二进制包大小和部署，flutter run --debug
+			Release:
+				AOT 模式,只能真机运行,优化了应用快速启动、代码快速执行，以及二级制包大小,flutter run --release
+			Profile:
+				与 Release 模式一致,多了对 Profile 模式的服务扩展的支持，包括支持跟踪，以及一些为了最低限度支持所需要的依赖（连接 Observatory 到进程）,flutter run --profile
+		编译模式的识别
+			assert
+			通过在不同编译环境添加的变量
+		分离配置环境
+			flutter run apk/ios -t lib/main_dev.dart
+			flutter run apk/ios -t lib/main.dart
+			或者在Edit Configurations里面配置不同的编译选项，+，flutter，dartEntryPoint
 
 	13. hot reload原理
 
 	14. 优化调试效率
-
+		输出日志
+			debugPrint = (String message, {int wrapWidth}) {}; // debug环境
+			debugPrint = (String message, {int wrapWidth}) => debugPrintSynchronously(message, wrapWidth: wrapWidth);// release环境
+		断点调试
+		布局调试
+			1> 界面调试工具
+			void main() {
+				...
+				debugPaintSizeEnabled = true; // 开启布局调试
+				runApp(...)
+			}
+			2> Flutter Inspector
 	15. 检测优化flutter性能
 
 	16. 自动化测试
@@ -528,30 +625,57 @@
    		 };
    		 runZoned>(() async { // 全局捕获异常
 		 	runApp(MyApp());
-		 }, onError: (error, stackTrace) async { 
+		 }, onError: (error, stackTrace) async {
 		 //Do sth for error
 		 });
 		3> 第三方
-		bugly ,仅使用其上报功能
+		bugly/firebase ,仅使用其上报功能
 		注意：
 			配置权限
 			解决Android P 默认限制 http 明文传输数据，配置network_security_config
 		4> Engine层异常
 		可使用bugly去捕获
-		
+
 	2. 线上质量指标
 		页面异常率
 			页面异常率 = 异常发生次数 / 整体页面 PV 数
 			异常发生次数：在全局异常上报位统计
 			整体页面 PV 数：页面显示次数，NavigatorObserver观察者监听页面关闭次数，统计
 		页面帧率
-			
+
 
 		页面加载时长
-		
+
 	3. 组件化
+		组件化
+			原则：单一性原则，抽象化原则，稳定性原则，自完备性
+		平台化
+			按照业务和 UI 分解为 4 个维度，从上到下
+			业务模块（首页，设置，我的，详情）
+			基础业务（账号，支付，升级）
+			UI模块（公用控件，导航栏，轮播控件，富文本，标签）
+			基础模块（网络，存储，工具）
+		单向依赖原则：
+			相比组件化，多了一个分层的概念，独立性及组建之间关系的合理性，且尽可能少单向依赖，从上到下顺序依赖，跨层/同层依赖都需要规避掉
+		下层组件依赖上层组建：
+			增加中间层解决，Event Bus、Provider 或 Router
+		拓展：flutter的平台化
+			Embedder（操作系统适配层）
+			Engine（渲染引擎及 Dart VM 层）
+			Framework（UI SDK 层）
+		优点：明确的边界，向上提供的功能，向下依赖的能力也非常明确
 
 	4. 打包环境优化
+		CI持续集成，自动化打包
+		Travis CI[ https://travis-ci.com/ ] + github
+		1. 为项目引入 Travis
+			#.travis.yml
+			language: dart
+			script:
+			  - dart dart_sample.dart
+		2. 搭建flutter环境
+		3. 针对不同平台android/iOS，使用matrix分拆构建任务
+		4. 发布构建产物
 
 	5. 构建混合开发框架
 		
