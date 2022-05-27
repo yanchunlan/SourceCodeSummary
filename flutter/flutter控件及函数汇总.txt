@@ -297,6 +297,13 @@
 	35. Flexible 类似row/column控件
 		flex 
 		direction 通过Axis.horizontal/Axis.vertical 来控制方向
+	36. RepaintBoundary
+		
+	37. AbsorbPointer 事件拦截控件，事件允许传递到下一层
+		absorbing true不响应事件 false响应事件
+	    IgnorePointer 事件拦截控件，事件不会被传递到下一层
+		ignoring true不响应事件 false响应事件
+		
 -----------------------------------------------------------------
 接口总结
 	1. AutomaticKeepAliveClientMixin
@@ -327,6 +334,17 @@
 	常规依赖：dependencies:此标签下依赖在调试和发版后都会生效
 	Dev依赖：dev_dependencies:此标签下的依赖均在调试时生效。
 	重写依赖：dependency_overrides:强制下载依赖包，不管是否兼容，不推荐使用
-	
-	
-	
+
+-----------------------------------------------------------------
+创建Dart包:
+	flutter create --template=package hello
+
+创建plugin包:
+	flutter create --org com.example --template=plugin --platforms=android,ios -a kotlin -i swift pluginPackageName
+
+插件检查:
+	flutter packages pub publish --dry-run
+
+插件发布：
+	flutter packages pub publish --server=https://pub.dartlang.org
+
