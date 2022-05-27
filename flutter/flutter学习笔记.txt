@@ -501,10 +501,21 @@
 			}
 		
 	6. 混编flutter工程
-		flutter作为原生的aar工程
+		1>	集成flutter【flutter作为原生的aar工程】
+			flutter库结构:
+				Framework 库和引擎库(icudtl.dat，libFlutter.so，class等主要封装在Flutter.jar中)
+				lib 目录下的 Dart 代码（Flutter 工程产物）
+					应用程序数据段 isolate_snapshot_data、
+					应用程序指令段 isolate_snapshot_instr、
+					虚拟机数据段 vm_snapshot_data、
+					虚拟机指令段 vm_snapshot_instr、
+					资源文件 Flutter_assets
+			创建 Flutter module模块:
+				new flutter project -> module -> finish
+				Flutter create -t module flutter_library
 
-		添加flutter library
-			打包aar, flutter build apk --debug
+		2>	添加flutter library
+				到module模块，打包aar, flutter build aar --debug
 			添加依赖
 			配置使用，setContentView(Flutter.createView(this,getLifecycle,"defaultRoute"))
 
@@ -666,16 +677,24 @@
 		优点：明确的边界，向上提供的功能，向下依赖的能力也非常明确
 
 	4. 打包环境优化
+	Flutter App 工程：【安卓apk，ios是ipa】
 		CI持续集成，自动化打包
-		Travis CI[ https://travis-ci.com/ ] + github
+		Travis CI[ https://travis-ci.com/ 需要收费，打扰了 ] + github
 		1. 为项目引入 Travis
 			#.travis.yml
 			language: dart
 			script:
 			  - dart dart_sample.dart
 		2. 搭建flutter环境
+			...
 		3. 针对不同平台android/iOS，使用matrix分拆构建任务
 		4. 发布构建产物
-
+			配置api_key为项目token【GitHub 项目就是github的token，配置在Travis->More options-Settings-Environment Variable】
+		5. 通过before_deploy修改构建产物，达到ios也能正常输出ipa文件的包
+	Module 工程：【安卓aar，iOS是Framework】
+		安卓修改输出文件为aar，ios需要加工为pod文件
+		
+		
+	
 	5. 构建混合开发框架
 		
