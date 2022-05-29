@@ -244,10 +244,10 @@
 			RawGestureDetector(//自己构造父Widget的手势识别映射关系
  		 	gestures: {
   		  	//建立多手势识别器与手势识别工厂类的映射关系，从而返回可以响应该手势的recognizer
-    			MultipleTapGestureRecognizer: GestureRecognizerFactoryWithHandlers<
-    		   	 MultipleTapGestureRecognizer>(
-    		     	 () => MultipleTapGestureRecognizer(),
-    		     	 (MultipleTapGestureRecognizer instance) {
+				MultipleTapGestureRecognizer: GestureRecognizerFactoryWithHandlers<
+			   	 MultipleTapGestureRecognizer>(
+			     	 () => MultipleTapGestureRecognizer(),
+			     	 (MultipleTapGestureRecognizer instance) {
    		   	  instance.onTap = () => print('parent tapped ');//点击回调
   		   	 },
   		 	 )
@@ -488,11 +488,11 @@
 			build{
 			child:
 				if (defaultTargetPlatform == TargetPlatform.android) {
-      			  	return AndroidView(viewType: '',
-        					onPlatformViewCreated: _channel = MethodChannel(),);
-    				} else {
-    			 	 return UiKitView(viewType: '',
-    				   	 onPlatformViewCreated: _channel = MethodChannel(),);
+	  			  	return AndroidView(viewType: '',
+							onPlatformViewCreated: _channel = MethodChannel(),);
+					} else {
+				 	 return UiKitView(viewType: '',
+					   	 onPlatformViewCreated: _channel = MethodChannel(),);
   				}
 			}
 			
@@ -514,14 +514,33 @@
 				new flutter project -> module -> finish
 				Flutter create -t module flutter_library
 
-		2>	添加flutter library
+		2>	添加flutter library【flutter的view显示在原生中】
 				到module模块，打包aar, flutter build aar --debug
 			添加依赖
 			配置使用，setContentView(Flutter.createView(this,getLifecycle,"defaultRoute"))
-
-	7. 导航栈管理
-		原生页面与flutter页面互相切换
-
+			
+	7. 导航栈管理【原生页面与flutter页面互相切换】
+		混合导航栈
+			原生：单容器单页面（一个activity对应一个原生页面）
+			flutter：单容器多页面（一个activity对应多个flutter页面）
+		1>	原生跳转到flutter：
+			View FlutterView = Flutter.createView(this,getLifecycle,"defaultRoute");
+			setContentView(FlutterView);
+		2>	从 Flutter 页面跳转至原生页面：
+			Flutter 页面打开新的原生页面/Flutter 页面回退到旧的原生页面
+				通过MethodChannel来完成跳转
+			futter内部跳转：
+				通过Navigator完成跳转
+		
+		备注：尽量使用flutter去完成闭环的业务模块，减少flutter页面与原生页面之前循环切换的情况
+		防止出现多个flutter 实列情况，每启动一个 Flutter 实例，就会创建一套新的渲染机制，即 Flutter Engine，以及底层的 Isolate。而这些实例之间的内存是不互相共享的，会带来较大的系统资源消耗
+		
+		解决混编中多实列问题，业界有2种解决方案：
+		1. 今日头条为代表的修改 Flutter Engine 源码，使FlutterView对应的Flutter Engine能够底层共享Isolate
+			修改 Flutter 源码，维护成本高，增加线程模型和内存回收异常概率，稳定性不可控
+		2. 闲鱼为代表的共享 FlutterView，由原生层驱动 Flutter 层渲染内容的方案
+			涉及到跨渲染引擎的 hack，Flutter 页面的新建、缓存和内存回收，低端机切换动画容易出现bug
+	
 	8. 状态管理
 		Provider【共享数据】
 		添加依赖：provider: 3.0.0+1 #provider依赖
@@ -566,7 +585,7 @@
 			Flutter i18n插件
 			添加依赖
 				 flutter_localizations:
-    			sdk: flutter
+				sdk: flutter
 
 	11. 分辨率适配
 		适配屏幕旋转
@@ -626,13 +645,13 @@
 		2> framework异常的捕获方式
 		//框架异常
    		 FlutterError.onError = (FlutterErrorDetails details) async {
-    		  //线上环境，走上报逻辑
-     		 if (isRelease) { // 将框架异常转发到当前的 Zone 中
-     		   Zone.current.handleUncaughtError(details.exception, details.stack);
-     		 } else {
-     		   //开发期间，走Console抛出
-    		    FlutterError.dumpErrorToConsole(details);
-    		  }
+			  //线上环境，走上报逻辑
+	 		 if (isRelease) { // 将框架异常转发到当前的 Zone 中
+	 		   Zone.current.handleUncaughtError(details.exception, details.stack);
+	 		 } else {
+	 		   //开发期间，走Console抛出
+			    FlutterError.dumpErrorToConsole(details);
+			  }
    		 };
    		 runZoned>(() async { // 全局捕获异常
 		 	runApp(MyApp());
@@ -693,8 +712,6 @@
 		5. 通过before_deploy修改构建产物，达到ios也能正常输出ipa文件的包
 	Module 工程：【安卓aar，iOS是Framework】
 		安卓修改输出文件为aar，ios需要加工为pod文件
-		
-		
 	
 	5. 构建混合开发框架
 		
