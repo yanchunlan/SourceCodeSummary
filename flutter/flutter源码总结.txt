@@ -1,0 +1,47 @@
+版本1.8.0_292
+
+flutter.io【主要用于原生代码依赖】
+一.	模块分析
+	其主要由app，embedding，plugin，util，view 组成
+	1	app
+			
+	2	embedding
+	
+	
+	3	plugin
+	
+	
+	4	util
+	
+	
+	5	view
+		
+		
+		
+
+---------------------------------------
+FlutterActivity
+	是一个activity，内部处理flutter引擎创建，生命周期等
+	
+
+FlutterActivityAndFragmentDelegate
+	对通用方法的抽象，内部包括有Lifecycle、上下文、getInitialRoute、getAppBundlePath等，设置引擎、创建视图、给flutter
+分发生命周期事件、执行dart代码等功能.
+	1	 onCreateView
+		根据不同的渲染模式，创建不同的surfaceView，再执行attachToFlutterEngine引擎
+	3	OnStart
+		doInitialFlutterViewRun
+			...setInitialRoute 通过flutter/navigation方法通道往dart发送设置初始化路由的事件
+			...FlutterInjector.instance().flutterLoader().findAppBundlePath 获取bundle的资源路径
+			...new DartExecutor.DartEntrypoint  自定义manifest.xnl当中的io.flutter.Entrypoint属性设置dart代码的执行入口
+			...executeDartEntrypoint	调用C++层代码将main方法唤起,后面就是dart层的工作，后面就是flutter工作
+
+---------------------------------------
+flutter 模块分析
+一.	dart package
+
+二.	plugin
+
+
+	
+	

@@ -582,10 +582,28 @@
 		3. 注册消息通知
 	
 	10. 多语言适配
-			Flutter i18n插件
-			添加依赖
+			1. 添加flutter_intl插件
+				搜索 flutter_intl ，并添加
+			2. tools -> flutter_intl -> init project
+			2. 添加依赖
 				 flutter_localizations:
 				sdk: flutter
+			4. 配置MaterialApp
+				MaterialApp(
+    				  localizationsDelegates: const{
+    				    	S.delegate,
+    				   	 GlobalMaterialLocalizations.delegate,
+   				   	 GlobalCupertinoLocalizations.delegate,
+  				   	 GlobalWidgetsLocalizations.delegate,
+  				    },
+ 				    supportedLocales: S.delegate.supportedLocales,
+  				    onGenerateTitle: (context){
+      				  	return S.current.app_title;
+   				   },
+   				   localeResolutionCallback : // 系统语言改变回调
+   				   locale: // 设置语言的方法
+   			5. 使用
+   				S.current.title / S.of(context).title
 
 	11. 分辨率适配
 		适配屏幕旋转
