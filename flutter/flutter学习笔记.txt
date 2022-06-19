@@ -633,6 +633,24 @@
 			或者在Edit Configurations里面配置不同的编译选项，+，flutter，dartEntryPoint
 
 	13. hot reload原理
+		热重载
+			JIT：即时编译。AOT：运行前编译，可为平台生成稳定的二进制代码
+			原理：jit编译器将dart代码编译成可在dart VM上的dart Kernel，而dart kernel可以动态更新
+			流程：
+				扫描工程改动：扫描新增，删除，改动文件
+				增量编译：变化的dart代码，编译成增量的dart kernel文件
+				推送更新：将dart kernel增量文件通过http发送到移动设备dart VM
+				代码合并：dart kernel增量文件与原有文件合并，然后dart VM重新加载它
+				widget重建：确认dart VM加载成功，flutter重置UI线程，通知flutter framework 重建widget
+		不支持热重载的场景
+			代码编译错误
+			widget状态无法兼容
+			全局变量和静态属性的修改
+			main方法的修改
+			initState方法的修改
+			枚举和泛型的修改
+			
+			针对上面不支持场景的解决方式：修复问题或重启应用
 
 	14. 优化调试效率
 		输出日志
@@ -648,8 +666,100 @@
 			}
 			2> Flutter Inspector
 	15. 检测优化flutter性能
+		性能图层
+		1>	开启 flutter run --profile
+		2>	分析渲染问题 Performance Overlay
+			GPU线程：上面		
+			UI线程：下面
+
+			蓝色：已执行的正常帧
+			绿色：当前帧
+			红色：卡顿帧（小于16ms）
+
+		3>	定位问题
+			GPU线程定位：
+				检查多视图叠加的视图渲染开关 checkerboardOffscreenLayers
+					多视图叠加通常会用到 Canvas 里的 savaLayer，类似半透明效果
+					MaterialApp{
+						checkerboardOffscreenLayers: true, // 检测是否存在多视图叠加，频繁的刷新问题
+					}
+					优化方式：去除半透明效果，直接设置具体颜色
+					
+				检查缓存的图像开关 checkerboardRasterCacheImages
+					图像的渲染涉及 I/O、GPU 存储，以及不同通道的数据格式转换，所以渲染过程的构建需要消耗大量资源
+					MaterialApp{
+						checkerboardRasterCacheImages: true, // 检测静态图像是否没有缓存，导致构建耗费资源
+					}
+					优化方式：缓存图像等，避免频繁刷新
+					RepaintBoundary{ // flutter提供的多层次缓存快照，可以缓存静态图像，避免重复刷新
+						Container(color: Colors.black, height: 10.0, width: 10.0, ),
+					}
+			UI线程定位：
+				1. 检测：火焰图获取方式： Open DevTools -> Performance -> Record -> stop
+				2. 优化：使用Isolate（或 compute）修改耗时操作
+		4>	常用优化方式：
+			1>	widget拆小，使其更细粒度重建和复用
+			2>	不要设置半透明，使用图片代替，减少遮挡区域的绘制
+			3>	列表数据懒加载，避免一次性创建所有，减少视图的初始化耗时
 
 	16. 自动化测试
+		1>	单元测试
+			1>	单个测试
+				添加依赖：
+					dev_dependencies:
+ 					 test:
+ 				测试入口：
+ 					test/widget_test.dart
+ 				编写测试用例：
+ 					1> 	定义，执行，验证
+ 						编写测试代码，使用expect验证，前后数据是否正确
+ 						test包裹测试代码
+ 						EG:
+ 							test('test', (){
+ 								int i = 1;
+ 								expect(i,1); // 验证前后数据是否相等
+ 							});
+ 					2>	选择test/widget_test.dart，右键“Run ‘tests in widget_test’”，开始测试用例
+ 					3>	测试结果
+ 							测试不正确，则爆出异常
+ 							
+			2>	针对多种测试用例的情况，使用group
+					group('test group', (){
+						test('test', (){
+							...
+						});
+						test('test', (){
+							...
+						});
+					});
+ 			3>	外部依赖的情况（网络）
+ 				添加依赖：
+ 					dev_dependencies:
+ 					 	test:
+ 					 	mockito:
+ 				编写测试用例：
+ 					xxx
+		2>	UI测试
+			添加依赖：
+				dev_dependencies:
+ 					flutter_test:
+ 						sdk: flutter
+			编写测试用例：
+ 					void main(){
+ 						testWidget(WidgetTester tester){
+ 							await tester.pumpWidget(MyApp()); // 声明并触发渲染
+ 							expect(find.test('0'),findsOneWidget); // 查找‘0’的widget
+ 							
+ 							await tester.tap(find.byIcon(Icons.add)); // 查找+按钮
+ 							await tester.pump(); // 触发渲染
+
+ 							expect(find.test('0'),findsOneWidget); // 查找‘0’的widget
+ 						}
+ 					}
+ 				tester还支持的行为：
+ 					文字输入enterText，拖动drag，长按longPress
+ 					
+ 			tester学习官方文档地址：https://api.flutter.dev/flutter/flutter_test/WidgetTester-class.html。
 
 六.	flutter综合
 	1. 异常捕获
@@ -686,19 +796,57 @@
 
 	2. 线上质量指标
 		页面异常率
-			页面异常率 = 异常发生次数 / 整体页面 PV 数
-			异常发生次数：在全局异常上报位统计
-			整体页面 PV 数：页面显示次数，NavigatorObserver观察者监听页面关闭次数，统计
+			页面渲染过程中出现异常的概率，它统计的是页面维度下功能不可用的情况。
+			
+			公式如下：
+				页面异常率 = 异常发生次数 / 整体页面 PV 数
+				异常发生次数：在全局异常上报位统计
+				整体页面 PV 数：实现NavigatorObserver.didPush监听页面打开次数
+				
+				MaterialApp( 
+					navigatorObservers: [ MyObserver(), ], // 设置路由监听 
+					home: xxx, 
+				);
+				
 		页面帧率
-
-
+			即 FPS，画面每秒传输帧数，FPS 的计算口径为单位时间内渲染的帧总数。
+			
+			公式如下：
+				FPS=60* 实际渲染的帧数 / 本来应该在这个时间内渲染完成的帧数
+				
+				var orginalCallback;
+				void main(){
+					//设置帧回调函数并保存原始帧回调函数
+					orginalCallback = window.onReportTimings;// 帧回调函数
+					window.onReportTimings = onReportTimings;
+					// Flutter 1.12.x 之后，SchedulerBinding.instance.addTimingsCallback(_onReportTimings);
+				}
+				...
+				
 		页面加载时长
+			页面从创建到可见的时间，检测创建页面视图是否存在过度绘制，或者绘制不合理导致创建视图时间过长的情况。
+			
+			公式如下：
+				页面加载时长 = 页面可见的时间 - 页面创建的时间
+				页面可见的时间：WidgetsBinding.instance.addPostFrameCallback((_) {}
+				页面创建的时间：Page构造函数调用时间为启动时间
+			
+				拓展：有网络的情况下：页面加载时长=页面本地渲染时长+网络加载时长
+				针对不同业务场景，一般TP90超过2秒就不正常
 
 	3. 组件化
 		组件化
 			原则：单一性原则，抽象化原则，稳定性原则，自完备性
 		平台化
-			按照业务和 UI 分解为 4 个维度，从上到下
+			按照业务和 UI 分解为 4 个维度，如下图：
+			不具备UI属性						｜		具备UI属性
+			UI控件（标签，轮播卡片）	｜		业务模块（首页，我的，设置）
+			————————————————————————————
+			不具备业务属性					｜		具备业务属性
+			基础功能（网络，存储，		｜		基础业务功能（账号，支付）
+			工具）									｜
+					
+			从上到下：
 			业务模块（首页，设置，我的，详情）
 			基础业务（账号，支付，升级）
 			UI模块（公用控件，导航栏，轮播控件，富文本，标签）
@@ -732,4 +880,73 @@
 		安卓修改输出文件为aar，ios需要加工为pod文件
 	
 	5. 构建混合开发框架
+		1>	基本设计原则
+		混合开发架构
+			按照业务和 UI 分解为 4 个维度，如下图：
+			不具备UI属性								｜		具备UI属性
+			原生UI控件（视频，地图控件）	｜		业务模块（flutter模块，原生我的模块）
+			————————————————————————————
+			不具备业务属性							｜		具备业务属性
+			原生基础功能（网络，存储，		｜		原生基础业务功能（账号，支付）
+			工具）											｜
+			
+			从上到下：
+			独立业务模块（flutter模块，原生我的，原生详情）
+			原生基础业务（账号，支付，升级）
+			原生UI模块（公用控件，导航栏，轮播控件，富文本，标签）
+			原生基础模块（网络，存储，工具）
+			
+			flutter的基础业务/模块 ---> 通过插件形式访问，原生的基础业务/模块
+				列如：flutter基础业务模块的账号插件  -------> 依赖原生基础业务模块的账号功能
+				
+			原生依赖flutter模块，flutter模块又依赖原生工程。这种跨技术栈的依赖管理行为，主要是通过：
+				将双方抽象为彼此对应技术栈的依赖，从而实现分层管理。
+			即原生对flutter依赖抽象为依赖flultter模块的原生组件，flutter对原生的依赖抽象为依赖插件。
+			
+		flutter混合开发工作流
+			需求 -> 方案 -> 开发 -> 发布 -> 线上运维
+			
+			核心在于持续交付
+			测试阶段dart代码分析：flutter analyze
+			发布阶段发布前检查：flutter package pub publish --dry-run
+			
+			flutter标准工作流命令：
+			阶段 			子任务 							命令
+			工程初始化 	App工程 			flutter create —template=app hello
+								Dart包工程		flutter create —template=package hello
+								插件工程 			flutter create —template=plugin hello
+			开发/调试 	IDE Debugger 		N/A
+								Flutter Inspector 	N/A
+								性能调试 				N/A
+			构建 			Debug构建 			flutter build apk —debug 
+															flutter build ios —debug
+								Release 构建 		flutter build apk —release
+															flutter build ios —release
+								Profile 构建			flutter build apk —profile 
+															flutter build ios —profile
+			测试 			Dart分析 				flutter analyze
+								单元测试 				flutter test
+								UI测试 					flutter test
+			发布 			Package 发布		flutter packages pub publish
+			集成原生工程 独立App打包		flutter build apk —release
+															flutter build ios —release
+								Pod/AAR 打包		flutter build apk —release
+															flutter build ios —release
+		2>	实践
+		原生插件依赖管理原则
+			
+		网络插件依赖管理实践
+		
+		网络插件接口封装
+		
+		Flutter 模块工程依赖管理
+		
+		模块工程功能实现
+		
+		构建产物应该如何封装？
+		
+		Android 构建产物应该如何封装？
+			
+七.	思考题
+	
 		
