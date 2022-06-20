@@ -934,17 +934,26 @@
 															flutter build ios —release
 		2>	实践
 		原生插件依赖管理原则
-			
+			原生代码宿主提供的底层基础能力的原生插件给flutter
 		网络插件依赖管理实践
-		
+			类似iOS 的 AFNetworking 和 Alamofire、Android 的 OkHttp 和 Retrofit，提供插件给flutter
 		网络插件接口封装
-		
+			- android 				FlutterPluginNetworkPlugin 实现MethodCallHandler，并在其onMethodCall中提供原生调用函数，并返回值
+										注意：onMethodCall的返回值，必须在主线程返回
+				build.gradle 		implementation "com.squareup.okhttp3:okhttp:4.2.0"
+			- dart 					处理_channel调用原生代码			
 		Flutter 模块工程依赖管理
-		
+			1. FlutterPluginNetworkPlugin使用【模块工程功能实现】
+			2. 原生 Android 工程如何管理 Flutter 模块工程的依赖【构建产物应该如何封装】
 		模块工程功能实现
-		
+			添加依赖
+				flutter_plugin_network:
+   				 	git:
+   				  		 url: https://github.com/xxx/flutter_plugin_network.git
+   			编写代码使用
+   				FlutterPluginNetworkPlugin.doRequest(xxx);
 		构建产物应该如何封装？
-		
+			
 		Android 构建产物应该如何封装？
 			
 七.	思考题
