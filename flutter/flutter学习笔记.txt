@@ -955,6 +955,25 @@
 		构建产物应该如何封装？
 			
 		Android 构建产物应该如何封装？
+			1. 为插件工程生成 aar
+				cd android
+				./gradlew flutter_plugin_network:assRel
+			2. 原生添加插件/flutter依赖
+				implementation(name: 'flutter-debug', ext: 'aar') 
+				implementation(name: 'flutter_plugin_network-debug', ext: 'aar')
+			3. 代码使用
+				View FlutterView = Flutter.createView(this, getLifecycle(), "defaultRoute"); 
+				setContentView(FlutterView);
+			注意：如果插件中存在原生依赖（插件中依赖了OkHttp），是无法通过插件aar告知使用侧原生所需要的依赖，
+						针对这种情况，使用侧可自行添加（okhttp）依赖 
+		
+			拓展：手动封装模块工程及构件产物过程，抽象成命令行脚本，添加在travis上，当期检测到代码变更之后，就会自动将flutter模块构件产物封装成原生工程期望的组件格式
+				业界也有fat-aar(https://github.com/adwiv/android-fat-aar)，可将模块及其依赖打包成一个大aar
+					问题1:	依赖冲突，原生工程与插件工程依赖同一个原生依赖组件（okhttp）会冲突，需要手动去掉原生工程的组件依赖
+					问题2:	嵌套依赖，只处理 embedded 关键字指向的这层一级依赖，不处理下一层的依赖，对于依赖关系复杂的插件支持，需要手动处理
+					问题3:	Gradle 版本限制，Gradle 插件版本有限制，导致后面不好维护
+					问题4:	项目已经暂停维护，所以有未知问题
+				总结：fat-aar不好，最好还是自行去遍历插件依赖，以持续交付的方式自动化生成 aar
 			
 七.	思考题
 	
