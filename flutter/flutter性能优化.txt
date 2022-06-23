@@ -1,7 +1,127 @@
 一.	检测手段
+	flutter/packages/flutter_tools/gradle/flutter.gradle 的 buildModeFor 的debug 模式改为 profile ， 或者 flutter run --profile
+	1. Flutter Inspector
+		Select Widget Mode：快速查看陌生页面的布局实现方式
+		Repaint Rainbow：为所有 RenderBox 绘制一层外框，并在它们重绘时会改变颜色，
+										帮你找到 App 中频繁重绘导致性能消耗过大的部分【需要Select Widget Mode刷新一下】
+			解决方式：RepaintBoundary，将重绘范围缩小至本身所占用的区域减少绘制消耗，但是创建额外的绘制画布，增加了内存消耗
+			
+	2. 性能图层
+		问题场景：build 耗时或主 Isolate同步I/O操作
+		分析渲染问题 Performance Overlay
+			GPU线程：上面		
+			UI线程：下面
 
+			蓝色：已执行的正常帧
+			绿色：当前帧
+			红色：卡顿帧（小于16ms）
+			
+		其主要是展示了 GPU 与 UI 线程的执行图表，其定位问题方式如下：
+		1>	GPU线程定位：
+				检查多视图叠加的视图渲染开关 checkerboardOffscreenLayers
+					多视图叠加通常会用到 Canvas 里的 savaLayer，类似半透明效果
+					MaterialApp{
+						checkerboardOffscreenLayers: true, // 检测是否存在多视图叠加，频繁的刷新问题
+					}
+					优化方式：去除半透明效果，直接设置具体颜色
+					
+				检查缓存的图像开关 checkerboardRasterCacheImages
+					图像的渲染涉及 I/O、GPU 存储，以及不同通道的数据格式转换，所以渲染过程的构建需要消耗大量资源
+					MaterialApp{
+						checkerboardRasterCacheImages: true, // 检测静态图像是否没有缓存，导致构建耗费资源
+					}
+					优化方式：缓存图像等，避免频繁刷新
+					RepaintBoundary{ // flutter提供的多层次缓存快照，可以缓存静态图像，避免重复刷新
+						Container(color: Colors.black, height: 10.0, width: 10.0, ),
+					}
+		2>	UI线程定位：
+				1. 检测：火焰图获取方式： Open DevTools -> Performance -> Record -> stop 获取到火焰图
+					y轴：调用栈，一层一函数
+					x轴：单位时间
+				2. 优化：使用Isolate（或 compute）修改耗时操作
+	
 二.	指标定义
-	1、页面异常率
-	2、页面帧率
-	3、页面加载时长
-三.	
+	1.	页面异常率
+		页面渲染过程中出现异常的概率，它统计的是页面维度下功能不可用的情况。
+
+			页面异常率 = 异常发生次数 / 整体页面 PV 数
+			异常发生次数：利用Zone 与 FlutterError ，在全局异常上报位统计
+			整体页面 PV 数：实现NavigatorObserver.didPush监听页面打开次数
+			
+			MaterialApp( 
+					navigatorObservers: [ MyObserver(), ], // 设置路由监听 
+					home: xxx, 
+				);
+
+	2.	页面帧率
+		即 FPS，画面每秒传输帧数，FPS 的计算口径为单位时间内渲染的帧总数。
+
+			FPS=60* 实际渲染的帧数 / 本来应该在这个时间内渲染完成的帧数
+			
+			var orginalCallback;
+				void main(){
+					//设置帧回调函数并保存原始帧回调函数
+					orginalCallback = window.onReportTimings;// 帧回调函数
+					window.onReportTimings = onReportTimings;
+					// Flutter 1.12.x 之后，SchedulerBinding.instance.addTimingsCallback(_onReportTimings);
+				}
+				...
+			需要保留最近 25 个 FrameTiming 用于求和计算
+			
+	3.	页面加载时长
+		页面从创建到可见的时间，检测创建页面视图是否存在过度绘制，或者绘制不合理导致创建视图时间过长的情况。
+
+		页面加载时长 = 页面可见的时间 - 页面创建的时间（包括网络加载时长）
+		页面可见的时间：WidgetsBinding.instance.addPostFrameCallback((_) {}
+		页面创建的时间：Page构造函数调用时间为启动时间
+		
+		针对不同业务场景，一般TP90超过2秒就不正常
+		
+三.	布局优化
+	1.	常规优化
+		1>	build中的耗时操作
+			文件读取、数据库操作、网络请求，通过 Future异步方式调用
+			CPU 计算频繁的（图片压缩），使用isolate方式优化
+		
+			原理：Flutter 会运行一个事件循环，它会从事件队列中取得最旧的事件，处理它，然后再返回下一个事件进行处理
+			直到事件队列清空为止，每当动作中断时，线程就会等待下一个事件。
+				不仅仅isolate，所有高级API(Futures、Streams、async 和 await等)，都构建于这个事件循环上
+		2>	build中的大量widget
+		
+		3>	尽可能地使用 const
+		
+		4>	尽可能地使用 const 构造器
+		
+		5>	使用 nil 去替代 Container() 和 SizedBox()
+		
+		6>	列表优化
+		
+		7>	针对于长列表，记得在 ListView 中使用 itemExtent
+		
+		8>	减少可折叠 ListView 的构建时间
+		
+		9>	尽量不要为 Widget 设置半透明效果
+		
+		
+	2.	深入优化
+		1>	
+		2>	
+		3>	
+		4>	
+		5>	
+		6>	
+四.	启动速度优化	
+	1.	Flutter 引擎预加载
+	2.	Dart VM 预热
+五.	内存优化
+	1.	const 实例化
+	2.	识别出消耗多余内存的图片
+	3. 针对 ListView item 中有 image 的情况来优化内存
+	
+六.	包体积优化
+	1.	图片优化
+	2.	移除冗余的二三库
+	3. 启用代码缩减和资源缩减
+	4. 构建单 ABI 架构的包
+七.	总结
+	
