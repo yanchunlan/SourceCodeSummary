@@ -953,8 +953,13 @@
    			编写代码使用
    				FlutterPluginNetworkPlugin.doRequest(xxx);
 		构建产物应该如何封装？
-			
+			pub pub依赖管理算法
+			pubspec.yaml 设置包元数据，运行环境，外部依赖，内部配置
+			.package 建立下载缓存与包名的映射
+			pubspec.lock 记录当前状态下，实际安装的包具体来源和版本号
+			.flutter-plugins 插件名与文件缓存地址的映射
 		Android 构建产物应该如何封装？
+			flutter插件生成aar文件，提供给原生依赖
 			1. 为插件工程生成 aar
 				cd android
 				./gradlew flutter_plugin_network:assRel

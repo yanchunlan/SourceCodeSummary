@@ -297,12 +297,15 @@
 	35. Flexible 类似row/column控件
 		flex 
 		direction 通过Axis.horizontal/Axis.vertical 来控制方向
-	36. RepaintBoundary
+	36. RepaintBoundary 新增一个图层去执行绘制
+		RelayoutBoundary
 		
 	37. AbsorbPointer 事件拦截控件，事件允许传递到下一层
 		absorbing true不响应事件 false响应事件
 	    IgnorePointer 事件拦截控件，事件不会被传递到下一层
 		ignoring true不响应事件 false响应事件
+		
+	38. VisibilityDetector 可见性检测控件
 		
 -----------------------------------------------------------------
 接口总结
