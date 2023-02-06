@@ -39,6 +39,17 @@
 					y轴：调用栈，一层一函数
 					x轴：单位时间
 				2. 优化：使用Isolate（或 compute）修改耗时操作
+					
+				使用如下debug 调试工具可以辅助查看更多信息：
+					debugProfileBuildsEnabled：向 Timeline 事件中添加每个 widget 的 build 信息
+					debugProfilePaintsEnabled：向 timeline 事件中添加每个 renderObject 的 paint 信息
+					debugPaintLayerBordersEnabled：每个 layer 会出现一个边框，帮助区分 layer 层级
+					debugPrintRebuildDirtyWidgets：打印标记为 dirty 的 widgets
+					debugPrintLayouts：打印标记为 dirty 的 renderObjects
+					debugPrintBeginFrameBanner/debugPrintEndFrameBanner：打印每帧开始和结束
+				
+				通过debugProfileBuildsEnabled分析到，build耗时太多，通过将setState下发到更低层节点解决
+				通过debugProfilePaintsEnabled打开，可以查看print耗时减少，debugPaintLayerBordersEnabled可以看到变化的layer在同一层级，利用RepaintBoundary新增一个隔离layer解决
 	
 二.	指标定义
 	1.	页面异常率
