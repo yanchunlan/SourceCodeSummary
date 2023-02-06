@@ -12,7 +12,7 @@
 		num:int ,double
 		bool
 		String
-	2. 集合
+	2. 集合s
 		list
 		map
 	3. 常量
@@ -950,7 +950,6 @@
 				flutter_plugin_network:
    				 	git:
    				  		 url: https://github.com/xxx/flutter_plugin_network.git
-   				  		 path: packages/crash  [	再添加下面代码，可以定位到某目录]
    			编写代码使用
    				FlutterPluginNetworkPlugin.doRequest(xxx);
 		构建产物应该如何封装？
@@ -980,8 +979,6 @@
 					问题3:	Gradle 版本限制，Gradle 插件版本有限制，导致后面不好维护
 					问题4:	项目已经暂停维护，所以有未知问题
 				总结：fat-aar不好，最好还是自行去遍历插件依赖，以持续交付的方式自动化生成 aar
-		
-		总结：
 			
 七.	思考题
 	

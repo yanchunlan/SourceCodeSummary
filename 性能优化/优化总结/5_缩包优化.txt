@@ -1,4 +1,28 @@
-一.	缩包策略
+一.	分析工具
+	1.	zip包解压分析
+		反编译工具
+			APKTool
+			class-shark
+	2.	as 的Analyze APK
+	3.	nimbledroid 
+		nimbledroid.com/  直接上传安装包分析
+	4.	ApkChecker
+	5. 其他
+		自定义lint插件分析
+			(1)JavaScanner / JavaPsiScanner / UastScanner：扫描 Java 源文件
+			(2)XmlScanner：扫描 XML 文件
+			(3)ClassScanner：扫描 class 文件
+			(4)BinaryResourceScanner：扫描二进制资源文件
+			(5)ResourceFolderScanner：扫描资源文件夹
+			(6)GradleScanner：扫描 Gradle 脚本
+			(7)OtherFileScanner：扫描其他类型文件
+		自定义gradle插件分析
+	6. 三方插件
+		bytex - coverage ,无用代码检测    https://github.com/bytedance/ByteX/blob/master/coverage/README-zh.md
+		pmd 检测重复代码		https://pmd.sourceforge.io/pmd-5.4.1/usage/cpd-usage.html
+		Simian检测重复代码		
+		
+二.	缩包策略
 	1.	apk压缩
 		1>	ap_资源文件压缩（zip压缩选项）
 			booster- ap_
@@ -7,6 +31,7 @@
 			TinyPng压缩
 			使用.9代替大图
 			使用xml代替图片
+			png转webP 		 https://developers.google.com/speed/webp/docs/precompiled#what_next
 			其余图片使用webP(>20kb使用webP,小于20kb使用tinypng压缩)
 			1.	MCImage:	https://github.com/smallSohoSolo/McImage
 				原理就是在mergeTask执行之后添加个task,执行寻找到资源文件，然后对资源进行压缩或者转webP
@@ -19,6 +44,7 @@
 		3>	多dpi去重，保留最高dpi即可
 			booster-
 		4>	去除无用资源
+			as - Analyze -> Run Inspection by Name -> unused declaration
 			booster-removeUserRes
 		5>	bundle apk 上架google play
 			aab资源压缩：https://github.com/bytedance/AabResGuard
@@ -84,6 +110,7 @@
 				field-assign-opt-plugin（优化多余赋值指令）
 				getter-setter-inline-plugin （getter和setter方法内联）
 				method-call-opt-plugin（干净地删除某些方法调用，如Log.d）
+				coverage-plugin(无用代码删除)
 			3.	booster-transform-shrink  等效于 Android-ThinApk
 				1.	删除无用name
 				2.	合并重复字符串
@@ -92,7 +119,10 @@
 			D8编译器
 			AS3.1以上默认支持，D8编译器是dex编译的工具，编译出来的dex小，
 			gradle.properties 中配置 android.enableD8=true
-		4>	native 公共代码抽离so,共享C++库，so符号精简等
+		4>	dex优化
+			dex压缩（XZ Utils）			https://tukaani.org/xz/
+			多dex关联优化-ReDex		https://fbredex.com/docs/installation
+		5>	native 公共代码抽离so,共享C++库，so符号精简等
 			appChecker 可以检测so是否有c++静态共享库
 
 	4.	动态化
@@ -102,10 +132,3 @@
 	
 	5.	监控
 		appChecker：包大小监控，结合CI平台
-
-
-
-	
-
-	
-	

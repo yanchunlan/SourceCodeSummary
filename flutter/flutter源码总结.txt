@@ -1,40 +1,189 @@
-版本1.8.0_292
-
-flutter.io【主要用于原生代码依赖】
-一.	模块分析
-	其主要由app，embedding，plugin，util，view 组成
-	1	app
+flutter 源码阅读
+flutter主要分为2部分，Engine，framework
+	Engine，是可供Flutter宿主应用提供的一个可移植运行时。Engine实现了Flutter的核心库，包括动画、图形、文件、网络I/O、访问支持、插件架构和Dart的运行时、编译工具链。【https://github.com/flutter/engine】
+	Flutter Framework，大部分的Flutter开发者主要通过Flutter Framework交互。Framework提供了一个现代的、可交互的框架，以及一个丰富的平台、布局、基础部件的集合。【https://github.com/flutter/flutter】
+一. 引擎的初始化流程
+	1. 安卓平台适配层
+		1> FlutterActivity
+			职责：
+				显示一个Android的lauch screen；
+				显示Flutter的splash screen；
+				设置状态栏；
+				选择Dart执行应用包路径和入口点；
+				选择Flutter的初始化路由；
+				如果需要的话，渲染透明度；
+				提供子类钩子，提供和配置FlutterEngine
+			onCreate：
+				创建FlutterActivityAndFragmentDelegate，并setContentView(delegate.onCreateView)，其余函数均delegate代理调用
+		2> FlutterActivityAndFragmentDelegate
+			对通用方法的抽象，内部包括有Lifecycle、上下文、getInitialRoute、getAppBundlePath等，设置引擎、创建视图、给flutter
+		分发生命周期事件、执行dart代码等功能.
+			onAttach：
+				setupFlutterEngine 创建flutterEngine引擎(FlutterEngineCache缓存 -> new FlutterEngine)，并将其附在Activity上
+				host.providePlatformPlugin创建platformPlugin -> new PlatformPlugin
+			onCreateView：
+				根据flutterview_render_mode获取RenderMode类型来创建FlutterSurfaceView或者flutterTextureView
+				new FlutterView（this,FlutterSurfaceView/flutterTextureView）
+				new FlutterSplashView并flutterSplashView.displayFlutterViewWithSplash(flutterView)
+					remove(flutterView)
+					addView(flutterView)
+					addView(createSplashView) 添加开屏
+				返回 flutterSplashView
+			onStart:
+			doInitialFlutterViewRun
+				...setInitialRoute 通过flutter/navigation方法通道往dart发送设置初始化路由的事件
+				...FlutterInjector.instance().flutterLoader().findAppBundlePath 获取bundle的资源路径
+				...new DartExecutor.DartEntrypoint  自定义manifest.xnl当中的io.flutter.Entrypoint属性设置dart代码的执行入口
+				...executeDartEntrypoint	调用C++层代码将main方法唤起,后面就是dart层的工作，后面就是flutter工作
+		3> FlutterView
+			extends FrameLayout，实质上一个容器布局，根据surface和texture渲染模式，创建flutterSurfaceView/flutterTextureView/flutterImageView，addView添加到当前布局容器中，
+			attachToFlutterEngine:
+					renderSurface.attachToRenderer(flutterRenderer) , 将FlutterSurfaceView的surface绑定到FlutterRender，用于将ui绘制到FlutterSurfaceView上
+		4> FlutterEngine
+			维护独立的flutter运行环境，是Dart代码运行在Android应用的容器
+			1. 创建DartExecutor，用于配置、启动、执行Dart代码，并执行onAttachedToJNI将DartMessenger设置到FlutterJNI中
+			2. 创建各个消息通道，xxxChannel
+			3. attachToNative，加载flutter jni函数
+			其参数有FlutterJNI可传入
+		5> FlutterJNI
+			Flutter内嵌Java代码和引擎C++代码之间的接口
+			attachToNative:
+				会存储一个jni底层的id（nativeShellHolderId），这个ID会被传递到所有的具体platform view的本地方法
+				attachToNative -> nativeAttach -> 【c++层】attachJni -> AndroidShellHolder
+		6> AndroidShellHolder
+			保存有Flutter设置参数、FlutterJNI的Java引用、PlatformViewAndroid对象（该对象在后续创建）、Shell对象
+			构造函数：
+				创建PlatformViewAndroid，extends PlatformView（不同平台不一样）
+				创建shell对象
+	2. 通用Shell层
+		1> Shell(./shell/common/shell.cc)  主要是创建各个Delegate并将事件传递到Shell
+			shell::Create:
+				platform线程创建shell，栅格化线程创建Rasterizer，在platform线程创建PlatformView，IO线程创建ShellIOManager，
+				UI线程中创建Engine，将这四者设置到Shell
+				shell -> Setup()
+		2>  PlatformView(./shell/platform/android/platform_view_android.cc)  主要是沟通Surface和Shell
+			PlatformViewAndroid::NotifyCreated:
+				surface->SetnativeWindow  将native_window设置到surface中
+				PlatformView::NotifyCreated. 将surface通知到delegate（也即Shell）中
+					delegate_.OnPlatformViewCreated(::surface)
+		3> Rasterizer
+			GPU线程中存在Rasterizer，一个shell只有一个Rasterizer，Rasterizer持有屏上绘制surface，Rasterizer在这个surface上绘制从Engine提交过来的layer tree。
+			主要有合成器上下文和屏上绘制surface，合成器上下文包含绘制帧的所有必要的GPU状态
 			
-	2	embedding
-	
-	
-	3	plugin
-	
-	
-	4	util
-	
-	
-	5	view
+			// ./shell/platform/android/android_shell_holder.cc
+			on_create_rasterizer方法在AndroidShellHolder的构造方法中给出
+			
+			// ./shell/common/rasterizer.cc
+			Rasterizer构造函数，构造函数创建了一个CompositorContext
+		4> ShellIOManager
+			// ./shell/common/shell_io_manager.cc
+			ShellIOManager : IOManager{ // IOManager是管理获取GrContext资源和Skia队列的方法的接口类
+				void NotifyResourceContextAvailable(xxx);  通知GrContext创建和获取的方法
+  				void UpdateResourceContext(xxx);
+			}
+		5> Engine
+			Engine管理根Isolate和它的运行时，每个Shell只有一个Engine实例，Flutter应用的根Isolate会获取“窗口”绑定，通过绑定可以调度帧、推送layer tree用于渲染、请求解压图片并提交到GPU等
+			Engine管理根Isolate的全部生命周期，Engine被回收时，其持有者会认为根Isolate已经关闭且资源已经被回收
+			// ./shell/common/engine.cc
+			Engine（）{// 构造函数
+				std::make_unique<RuntimeController> // 创建RuntimeController，创建DartIsolate
+			}
+二. 启动流程
+	FLutterActivity.onStart 
+	-> FlutterActivityAndFragmentDelegate.onStart
+	-> FlutterActivityAndFragmentDelegate.doInitialFlutterViewRun
+		flutterEngine.getDartExecutor().isExecutingDart() 因为指定的FlutterView中不支持重载或者重启Dart，所以判断是否执行代码
+		DartExecutor.DartEntrypoint entrypoint = new DartExecutor.DartEntrypoint(host.getAppBundlePath(), host.getDartEntrypointFunctionName()); 获取应用包路径和Dart入口方法创建DartEntrypoint
+		flutterEngine.getDartExecutor().executeDartEntrypoint(xx)    DartEntrypoint执行Dart代码
 		
-		
-		
+		注意：DartExecutor创建位置：FlutterEngine构造函数创建并onAttachedToJNI
+	-> DartExecutor.executeDartEntrypoint
+	-> flutterJNI.runBundleAndSnapshotFromLibrary
+	...  c++层 ...
+	-> Shell::RunEngine		 // ./shell/common/shell.cc
+		-> weak_engine->Run(xxx)  Engine是创建、运行都在UI线程中的。所以此处Engine执行Dart代码需要在UI线程中执行
+			PrepareAndLaunchIsolate 准备和启动Isolate，在这里面进行Dart运行
+			HandlePlatformMssage 通过Flutter的消息机制，将DartIsolate的状态传递到Platform层进行处理
+			
+			其中 PrepareAndLaunchIsolate 
+			->  isolate->Run(xx).   经过对Isolate一系列状态判断后，执行了run方法
+			->  InvokeMainEntrypoint(xx)      调用主函数
+				->  回调执行  "_runMainZoned" 函数
+  				 phase_ = Phase::Running;     并更新当前Isolate状态为Running
 
----------------------------------------
-FlutterActivity
-	是一个activity，内部处理flutter引擎创建，生命周期等
-	
+三.	Framework层的启动
+	1. runApp
+		WidgetsFlutterBinding.ensureInitialized  返回构造函数 WidgetsBinding.instance
+		
+		scheduleAttachRootWidget
+			->	attachRootWidget	将一个Widget附着到renderViewElement
+				_renderViewElement = RenderObjectToWidgetAdapter<RenderBox>(xxx，rootWidget)
+			
+		scheduleWarmUpFrame
+			->	handleBeginFrame	让framework准备好，去创建一个新帧，它会调用scheduleFrameCallback注册回调函数
+			-> handleDrawFrame 	创建一个新帧，一般紧跟handleBeginFrame调用
+				SchedulerPhase.persistentCallbacks.foreach( 
+					_invokeFrameCallback
+				)
+				备注： 遍历注册进来的回调函数，在RendererBinding.initInstantces中有addPersistentFrameCallback注册函数。
+				./packages/flutter/lib/src/rendering/binding.dart
+				_handlePersistentFrameCallback{
+					drawFrame
+						-> {
+						pipelineOwner.flushLayout
+						pipelineOwner.flushCompositingBits
+						pipelineOwner.flushPaint
+						renderView.compositeFrame
+						pipelineOwner.flushSemantics
+						}
+					xx.schedulePostFrameCheck
+				}
+				
+				SchedulerPhase.postFrameCallbacks.foreach(
+					_invokeFrameCallback
+				)
+			->	scheduleFrame	
+				// ./packages/flutter/lib/src/scheduler/binding.dart
+				scheduleFrame{
+					window.scheduleFrame
+						->	UIDartState::Current()->window()->client()->ScheduleFrame();
+				}
+	2. 渲染管线
+		PipelineOwner		渲染树的持有者，维护布局、合成、绘制和可达性的状态
+		1>	flushLayout
+				更新所有“脏”RenderObject的布局信息
+		2>	flushCompositingBits
+				更新RenderObject的needsCompositing字位
+		3>	flushPaint
+				更新所有RenderObject的显示列表。布局操作之后，场景合成之前
+		4>	flushSemantics
+				更新RenderObject的语义
+	总结：
+		main.runApp ->
+			1. 将Widget树附着到WidgetsBinding上
+			2. 驱动渲染管线绘制首帧
+			3. 通过Window的scheduleFrame方法驱动引擎发起新一帧
 
-FlutterActivityAndFragmentDelegate
-	对通用方法的抽象，内部包括有Lifecycle、上下文、getInitialRoute、getAppBundlePath等，设置引擎、创建视图、给flutter
-分发生命周期事件、执行dart代码等功能.
-	1	 onCreateView
-		根据不同的渲染模式，创建不同的surfaceView，再执行attachToFlutterEngine引擎
-	3	OnStart
-		doInitialFlutterViewRun
-			...setInitialRoute 通过flutter/navigation方法通道往dart发送设置初始化路由的事件
-			...FlutterInjector.instance().flutterLoader().findAppBundlePath 获取bundle的资源路径
-			...new DartExecutor.DartEntrypoint  自定义manifest.xnl当中的io.flutter.Entrypoint属性设置dart代码的执行入口
-			...executeDartEntrypoint	调用C++层代码将main方法唤起,后面就是dart层的工作，后面就是flutter工作
+四.	Flutter渲染机制：Widget、Elment和RenderObject
+	1.	
+
+
+
+五.	更新子控件
+	更新ui：
+	Framework 
+	-> 通知Engine 
+	-> 等到下个Vsync
+	-> 通知Framework执行animate, build，layout，paint
+	-> 生成layer提交给Engine，进行组合，生成纹理
+	-> 通过Open Gl接口提交数据给GPU，数据处理后显示在显示器上面
+	
+具体函数调用：
+	widget.build 
+			-> 对上一帧的element树做遍历，调用updateChild
+			->  子节点类型是否一样，不一样就扔掉，创建新节点，一样做内容更新
+			->  renderObject.updateRenderObject 判断跟上一帧是否有改动，有改动标记dirty，重新 layout、paint，再生成新的 layer 交给 GPU
+	
 
 ---------------------------------------
 flutter 模块分析
@@ -43,5 +192,32 @@ flutter 模块分析
 二.	plugin
 
 
+---------------------------------------
+其他模块源码分析：
+一. GlobalKey
+	Element? get _currentElement => WidgetsBinding.instance!.buildOwner!._globalKeyRegistry[this];
+	1. 数据获取
+		其中_globalKeyRegistry是一个map类型，在三棵树挂载的时候mount就会存值（挂载流程：element通过inflateWidget->mount-> rebuild(ComponentElement) -> performRebuild (ComponentElement)-> updateChild->inflateWidget递归创建element树结构），同理获取到_currentElement后，可以获取到其他widget，state，context数据
+	2. 数据状态保存
+		setState流程：markNeedsBuild将当前element标记为dirty，调用owner的 scheduleBuildFor(this)将当前element添加到owner的_dirtyElements里面，调用onBuildScheduled通知drawFrame，WidgetsBinding.drawFrame -> owner.buildScope处理dirty element的rebuild，调用buildOwner!.finalizeTree来释放_inactiveElements，在element的rebuild中调用performRebuild（build -> updateChild -> deactivateChild -> inflateWidget），其中deactivateChild没有立即释放element，而是将element添加到owner的_inactiveElements，后续inflateWidget递归构建新element树时，判断是否是GlobalKey，是则_retakeInactiveElement复用取出GlobalKey对应的element。
 	
-	
+	二. Provider
+		Provider -> ChangeNotifierProvider -> ListenableProvider -> InheritedProvider -> SingleChildStatelessWidget -> 
+		1. ChangeNotifierProvider
+			继承ListenableProvider，有crete，value，dispose函数，其中create自动传递静态_dispose管理生命周期，value需要自己管理生命周期。
+		2. InheritedProvider
+			构造函数_CreateInheritedProvider/_ValueInheritedProvider，其中buildWithChild -> _InheritedProviderScope(xxx extends InheritedWidget)，
+			其中是否更新updateShouldNotify，子类_InheritedProviderScope重写了createElement，在_InheritedProviderScopeElement的performRebuild中创建了_delegateState并赋值element到_Delegate，待下一次build的时候notifyClients(widget)通知刷新
+			什么时候添加的监听：
+				_CreateInheritedProviderState在get value的时候添加监听delegate.startListening?.call，dispose的时候delegate.dispose?.call
+		总结：
+			Provider.of(context) -> _inheritedElementOf获取到element -> element.value获取到Counter状态类
+			当Counter.notifyListeners -> element.rebuild -> element.notifyClients通知dependOnInheritedWidgetOfExactType的context刷新
+			
+	三. ProxyProvider（ChangeNotifierProvider类似）
+		ProxyProvider -> ProxyProvider0 -> InheritedProvider -> 
+		1. 获取value的时候，调用update初始化value，若为ChangeNotifierProxyProvider则有create和监听，其中startListening无效时因为ProxyProvider没有startListening方法，实现自动更新通过Counter实现，Counter.notifyListeners -> _InheritedProviderScopeElement.build -> _delegateState.build -> delegate.update更新数据
+		
+	四. Selector 条件刷新
+		Selector -> Selector0( _Selector0State.buildWithChild) -> widget.selector(context) -> Provider.of(context) 创建监听
+		刷新判断：_Selector0State.buildWithChild中根据缓存旧Widget-cache、旧数据value，然后会判断widget是否相同、shouldRebuild条件、DeepCollectionEquality对比来判断是否需要更新组件

@@ -1,0 +1,173 @@
+
+Flutter 疑问？
+------------------------- 网络 ————————
+factroy 修饰,单列调用
+required 一定不为null
+late 懒加载 
+
+
+------------------------- 登陆注册 ———————
+
+Async{
+aWait
+ }
+
+FocusNode 焦点监听
+TextField 输入框
+inputDecoration 输入框样式
+TextStyle 文字样式
+Divider 线
+
+ListView -> InputWEight 
+
+VoidCallback callback回调接口
+Valuechange<T> 定义某种类型变化
+appBar 顶部控件
+InkWell 手势控件weight
+ThemeData 设置白色就是白色主题
+BoxDecoration 阴影，设置颜色，设置边框及位置
+定义图片目录image,AssetImage 图片加载方式
+
+FractionallySizeBox 
+materialButton 可以设置圆角，RoundRectangleBorder
+
+flutterToast 吐司 
+————————— 路由 ——————————
+Int get {}
+willPopScope(onWillPop)处理物理返回,双击返回坚听
+FutureBuilder 等待任务执行完成
+typeDef 定义函数
+pageView
+pageController physics:neverScrollableScrollphysics 不滚动
+bottomNavigationBar type ：bottomNatigationBarType.fixed 固定底部
+
+tabBar 顶部导航
+tabController
+TabBarView
+edgeInsets 方向填充
+fiexible等比例控件
+AutomatiocKeepAliveClientMixin 保持每个页面不在新建页面,常驻内存wantkeepAlive
+tickerProviderStateMixin 因为tabController需要vsync参数，所以实现它
+Underline)indicator 无下划线的圆角指示器
+…List
+————————— 首页——————————
+initstate 里面执行loadData
+setState判断页面是否装载，if(mounted)
+flutter_swiper banner实现,swiper轮播控件，swiperPagination指示器（DotswiperPaginationBuilder）
+cliprRect实现圆角控件
+image.netWork
+
+navigationBar 沉浸式状态栏的控件
+mediaQuery.of().padding.top , 获取屏幕尺寸
+flutter_statusbar_manager
+
+clipRRect
+BorderRadius.circular 圆角
+boxDecoation背景
+
+Flutter_staggered_grid_view 显示双列数据
+mediaQuery.removePadding 移除子控件panding
+card组件
+
+transparent_image 淡入淡出插件
+BoxDecoration 
+gradient Lineargradient 渐变
+
+图片优化
+内存缓存
+本地缓存
+cached_network_image
+
+RefreshIndicator 刷新组件
+ScrollController 监听高度（到底部的距离）来判断是否加载更多
+Physics:const AlwayscrollableScrollPhysics 允许滚动（）
+
+————————— 详情 ——————————
+Lottie 插件去制作动画
+animatedWidget 
+animatedBuilder创建动画
+curveTween(Curves.easeIn)
+sizeBox 定义间距替换padding
+ClipRRect 圆角图片控件
+————————— 个人中心 ——————————
+NestedScrollView
+HeaderSliverBilder 
+FlexiableSpaceBar
+Stack(Positioned.fill())
+backdropFilter 高斯模糊控件
+
+针对部分控件setState 局部刷新,即不在根节点刷新
+
+————————— 弹幕 ——————————
+web_socket_channel 1.2.0
+children:[]..addAll(xxxList)
+_random.nextInt（100）创建随机数
+setState 调用一次也代表刷新一次
+valueChange 
+SlideTransition 平移动画
+GlobalKey 通过此变量获取其父weight对象
+flutter_overlay 悬浮窗控件-输入框组件
+safeArea  可以指定padding 位置区域
+————————— 暗黑模式 ——————————
+provider 
+ Xxx extends changeNotifier{
+notifyListener
+}
+
+extension xxx on ThemeMode{ // 扩展枚举属性
+	String get value => <String>[‘’,’’][index]
+} 
+
+didchangePlatfromBrightness 监听系统dark mode变化
+Opacity 选择
+————————— 性能 ——————————
+1. 异常捕获
+	同步异常
+		try{}catch(e){print(e)}
+	异步异常
+		feature. xxx.catchError提供的
+		等待异步结果，捕获同步代码
+		try{
+			await xxx
+		}catch
+	全局异常：
+	Flutter.onError 框架异常
+	Zone.runZonedGuarded 套住代码 
+	kReleaseMode 环境判断
+	
+	【腾讯bugly】flutter_bugly 也可以捕获异常
+
+2. 测试
+	flutter_test： 
+	单元测试
+		test（）async{}
+	widget测试
+		UnKnownPage
+	集成测试
+	  integration_test:
+	1. 添加测试驱动
+       2. 编写测试用例
+       3. 运行测试用例
+       4. 查看结果
+3. 性能优化
+	主要是使用as工具分析
+	内存/帧率
+	build模块刷新，减少weight大小
+	网络异步耗时操作尽可能在initState使用feasure
+	listView/gradview尽量使用其builder创建，会创建显示的几个
+	flutter_nested 
+4. 包大小优化
+
+组件化
+	新建component目录，新建flutter package，迁移组件代码到模块
+	使用：yaml; 
+Dependencies:
+	hi_net:
+	path:./xxx/xxx
+
+
+集成与打包
+	android
+	iOS
+	
+	
