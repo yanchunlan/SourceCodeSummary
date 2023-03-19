@@ -92,7 +92,15 @@
 				    e.printStackTrace();
 				  }
 				}
-
+			8>	资源cdn化
+				大于100kb资源，上传到xx云上，使用通过url访问
+			9>	flutter代码混淆
+				Android :  ProjectRoot/android/gradle.properties 添加 extra-gen-snapshot-options=--obfuscate
+				打包命令：flutter build apk --obfuscate --split-debug-info=build/app/outputs/mapping ...
+						--obfuscate：开启混淆开关
+						--split-debug-info：混淆生成的map符号表缓存到此位置
+				读取混淆代码：
+				flutter symbolize -i <stack trace file> -d /build/app/outputs/mapping/app.android-arm64.symbols
 	3.	代码优化
 		1>	debugItem复用
 			修改dex文件，保留一个debugItem，所有方法都指向它，其余的debugItem都删除了，并且此指令集行号和源文件行号一致，这样不管查行号拿到的都是指令集行号

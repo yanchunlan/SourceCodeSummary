@@ -1,0 +1,379 @@
+1. flutter 模块形式
+	1>	flutter app
+		标准app，可依赖plugin与package
+	2>	flutter module
+		可被接入到app或fllutter模块，可依赖plugin与package
+	3>	flutter plugin
+		可被其他plugin或module依赖的模块
+	4>	flutter packages
+		纯dart模块，可供任意模块依赖
+2. Flutter 模块依赖及产物概览
+	1>	Dart Packages
+			flutter-3.3.2/.pub-cache/git/...
+			flutter-3.3.2/.pub-cache/hosted/pub.flutter-io.cn/...
+			flutter-3.3.2/.pub-cache/hosted/pub.flutter-io.cn/...
+	2>	Dart SDk
+			flutter-3.3.2/bin/cache/dart-sdk/lib/...
+	3>	Flutter Plugin
+			flutter-3.3.2/.pub-cache/hosted/pub.flutter-io.cn/...
+			
+	编译产物：
+		.dart_tool 新dart编译相关产物
+		build app flutter apk相关产物
+				 xxx 其他flutter task产物/plugin插件产物等
+3. 编译流程
+	1>	flutter app 安卓编译流程
+		settings.gradle: 
+			读取local.properties获取flutter.sdk path，并加载path/packages/flutter_tools/gradle/app_plugin_loader.gradle
+			app_plugin_loader.gradle:	获取当前项目跟目录的.flutter-plugins-dependencies，并
+																include ":${androidPlugin.name}"
+																project(":${androidPlugin.name}").projectDir = pluginDirectory
+		根目录build.gradle: 	
+			将../build构建产物挪到根目录的build里，并配置 运行配置之前先运行app
+		app目录的build.gradle: 	
+			读取local.properties获取flutter.sdk path，依赖packages/flutter_tools/gradle/flutter.gradle
+		packages/flutter_tools/gradle/flutter.gradle：
+			FlutterPlugin.apply：
+					1. 配置maven仓库地址FLUTTER_STORAGE_BASE_URL，没有就用DEFAULT_MAVEN_HOST
+					2. 创建flutter{}闭包extensions
+					3. 添加flutter构建相关的各种task，addFlutterTasks
+					4. 编译参数有split-per-abi则拆分多个abi包，配置android splits abi 
+					5. 编译参数有deferred-component-names，就配置android dynamicFeatures bundle特性
+					6. 编译参数有target-platform=xxxABI就使用，没有就用默认的，配置android splits abi include
+					7. 获取flutter.sdk或者环境变量FLUTTER_ROOT获取，否则抛出异常
+					8. 获取Flutter Engine版本号，local-engine-repo + 或者bin\internal\engine.version的值
+					9. 获取sdk/bin目录下，不同平台的flutter命令脚本
+					10. 获取packages\flutter_tools\gradle\flutter_proguard_rules.pro混淆文件，添加release.proguardFiles，且buildTypes新增profile构建类型
+					11. 编译参数有multidex-enabled参数且minSdk<20，buildTypes.release.multiDexKeepFile添加packages\flutter_tools\gradle\flutter_multidex_keepfile.txt文件
+					12. 编译参数有local-engine-repo，更新localEngine与localEngineSrcPath值
+					13. 给所有buildTypes添加依赖，addFlutterDependencies
+			addFlutterDependencies：
+					1. 获取build类型，值为debug、profile、release
+					2. 边界判断：本地Engine报错，官方Engine忽略
+					3. 插件不是applicationVariants即android library，或者.flutter-plugins中安卓插件个数=0，添加编译依赖
+						列如：io.flutter:flutter_embedding_debug:1.0.0，通过project.dependencies.add(...)
+					4. 添加编译依赖，列如：io.flutter:arm64_v8a_debug:1.0.0，通过project.dependencies.add(...)
+			addFlutterTasks:
+					1. 一堆属性获取与赋值操作
+						filesystem-roots，filesystem-scheme，track-widget-creation，extra-front-end-options，extra-gen-snapshot-options，split-debug-info，dart-obfuscation，tree-shake-icons，dart-defines，bundle-sksl-path，performance-measurement-file，code-size-directory，deferred-components，validate-deferred-components
+						
+					----------- addFlutterDeps start -----------
+					2. 定义 addFlutterDeps函数，参数variant的构建对象
+					3. 设置多个abi变体的versionCodeOverride，variant.outputs.versionCodeOverride
+					4. 获取编译类型，variantBuildMode值为debug、profile、release
+						生成compileFlutterBuildxxx，Debug/Profile/Release名称
+						创建上面名称的FlutterTask，并把一堆属性获取与赋值参数传递进去
+							targetPath getFlutterTarget 			默认dart入口 lib/main.dart 
+							intermediateDir project.file("${project.buildDir}/${AndroidProject.FD_INTERMEDIATES}/flutter/${variant.name}/")   安卓产物FD_INTERMEDIATES赋值到flutter产物
+							doLast{
+								project.exec{
+									commandLine xxx    // 赋权限
+								}
+							}
+					5. 生成构建中间产物的文件名称，build/intermediates/flutter/debug/libs.jar【这个jar里主要是abi的so】
+					6. 创建packLibsFlutterBuildxxx，Debug/Profile/Release名称
+						创建上面名称的xxTask，作用是把build/intermediates/flutter/debug/app.so通过jar命令转换为../libs.jar
+							赋值，并依赖dependsOn compileTask（上面步骤4的task）
+							targetPlatforms.each{ // 遍历armeabi-v7a、arm64-v8a、x86、x86_64
+								from (){
+									// 获取到步骤4产物build/intermediates/flutter/debug/abi/app.so 通过jar命令打包成jar，方便后面安卓依赖它
+									rename{
+										return xxx
+									}
+								}
+							}
+						// 把packFlutterAppAotTask添加到安卓依赖项参与编译，类似implementation(xx)，目的保证里面的so，执行mergeDebugNativeLibs打包到标准的lib目录
+						addApiDependencies{
+							packFlutterAppAotTask
+						}
+					7. 当是Flutter Module方式，即Flutter作为aar被安卓依赖，通过:flutter:packagexxx检测到
+					8. 创建copyFlutterAssetsDebug task，在mergeAssets时复制assets产物到中间产物目录
+						copyFlutterAssetsTask{
+							dependsOn mergeAssets
+							into mergeAssets.outputDir
+						}
+						processResources.dependsOn(copyFlutterAssetsTask)
+					----------- addFlutterDeps end -----------
+					
+					9. project是app module执行
+						获取copyFlutterAssetsTask的task，processResources之后依赖此任务
+						执行flutter run或者flutter build apk的产物apk的复制/命名处理
+							assembleTask.doLast{
+								project.copy {
+									from packageApplication.path/${output.outputFileName}
+									into  ${project.buildDir}/outputs/flutter-apk
+									rename  lib/${abi}/lib${filename}
+								}
+							}
+						configurePlugins // 配置插件依赖项
+					10. mergeAssets 依赖 copyFlutterAssetsTask
+					11. configurePlugins // 配置插件依赖项
+						  configurePlugins：运行flutter pub get会把pubspec.yaml工具生成.flutter-plugins文件，在每个module自动加上插件dependencies依赖模块
+						 		project.dependencies {
+            						api pluginProject // 插件项目
+        						}
+				BaseFlutterTask:
+						buildBundle:
+						1. 创建build/app/intermediates/flutter目录
+						2. 计算flutter assemble的规则名称列表 ruleNames
+						3. 执行命令project.exec
+							4. executable  windows是bin/flutter.bat或者unix是bin/flutter
+							5. workingDir  设置build.gradle的flutter { source '../../' }
+							6. 使用本地编译flutter engine的需要参数
+								args "--local-engine"，xxx
+								args "--local-engine-src-path"，xxx
+							7. gradle构建参数打印控制
+								args "--verbose" 或者"--quiet"
+							8. 增加一堆编译参数
+								args "assemble"
+            					args "--no-version-check"
+            					args "--depfile", "${intermediateDir}/flutter_build.d"
+            					args "--output", "${intermediateDir}"  // 编译输出产物位置
+            					args "--performance-measurement-file=${performanceMeasurementFile}"
+            					args "-dTargetFile=...“  // Flutter dart程序入口，默认是lib/main.dart
+            					args "-dTargetPlatform=android"
+            					args "-dBuildMode=${buildMode}"
+            					args "-dTrackWidgetCreation=${trackWidgetCreation}"
+            					args "-dSplitDebugInfo=${splitDebugInfo}"
+               					args "-dTreeShakeIcons=true"
+               					args "-dDartObfuscation=true"
+               					args "--DartDefines=${dartDefines}"
+               					args "-iBundleSkSLPath=${bundleSkSLPath}"
+               					args "-dCodeSizeDirectory=${codeSizeDirectory}"
+               					args "--ExtraGenSnapshotOptions=${extraGenSnapshotOptions}"
+               					args "--ExtraFrontEndOptions=${extraFrontEndOptions}"
+               					args ruleNames
+               		FlutterTask：
+               				getOutputDirectory：build/app/intermediates/flutter
+               				getAssetsDirectory：build/app/intermediates/flutter/flutter_assets
+               				getAssets：intermediateDir目录
+               				getSnapshots：dart编译的产物复制操作定义
+               					project.copySpec {
+               						from "${intermediateDir}"
+               						include "${PLATFORM_ARCH_MAP[targetArch]}/app.so"
+               					}
+							readDependencies：依赖格式解析生成文件路径集合
+							getSourceFiles：输入源，所有依赖模块的pubspec.yaml的集合
+							getOutputFiles：输出源，
+							build：buildBundle 执行编译命令
+							
+					总结：编译核心是通过执行flutter sdk的bin/flutter脚本完成，其余均是配置参数或者复制产物等等，其主要命令如下：
+							flutter assemble --no-version-check \
+							--depfile build/app/intermediates/flutter/release/flutter_build.d \
+							--output build/app/intermediates/flutter/release/ \
+							-dTargetFile=lib/main.dart \
+							-dTargetPlatform=android \
+							-dBuildMode=release \
+							-dDartObfuscation=true \
+							android_aot_bundle_release_android-arm \
+							android_aot_bundle_release_android-arm64 \
+							android_aot_bundle_release_android-x86 \
+							android_aot_bundle_release_android-x64
+							
+		Flutter SDK 下bin/flutter文件：
+				follow_links：判断文件是否存在，并返回
+				PROG_NAME，BIN_DIR，OS：赋值
+  				exec "${BIN_DIR}/flutter.bat" "$@"  ： 平台兼容处理
+  				shared::execute "$@" ：执行shared::execute方法
+		Flutter SDKbin/internal/shared.sh文件：
+  				shared::execute：
+  					1. FLUTTER_ROOT：FlutterSDK根路径
+  					2. BOOTSTRAP_PATH：执行bin/internal/bootstrap.sh脚本，没这个文件预测是自定义初始化挂载的
+  					3. 一堆FlutterSDK路径的位置定义
+  						FLUTTER_TOOLS_DIR="$FLUTTER_ROOT/packages/flutter_tools"
+    					SNAPSHOT_PATH="$FLUTTER_ROOT/bin/cache/flutter_tools.snapshot"
+    					STAMP_PATH="$FLUTTER_ROOT/bin/cache/flutter_tools.stamp"
+   						 SCRIPT_PATH="$FLUTTER_TOOLS_DIR/bin/flutter_tools.dart"
+   						 DART_SDK_PATH="$FLUTTER_ROOT/bin/cache/dart-sdk"
+   						 DART="$DART_SDK_PATH/bin/dart"
+   						 PUB="$DART_SDK_PATH/bin/pub"
+  					4. 路径文件平台兼容，$DART.exe，$PUB.bat
+  					5. 测试运行脚本的账号是否为超级账号，是的话警告提示，Docker和CI环境不警告
+  					6. 测试git命令行环境配置是否正常，不正常就抛出错误
+  					7. FlutterSDK是否来自clone等测试
+  					8. upgrade_flutter 7< "$PROG_NAME"：解决lock文件锁住问题，本质就是创建/bin/cache目录并维持锁状态
+  					9. 执行dart命令
+  						      "$DART" --disable-dart-dev --packages="$FLUTTER_TOOLS_DIR/.packages" $FLUTTER_TOOL_ARGS "$SNAPSHOT_PATH" "$@"
+							  "$DART" "$@"
+			总结： Flutter SDK 内部内置了 Dart，所以最终还是执行了dart命令，类似：flutter build apk、flutter upgrade、flutter pub xxx ，flutter pub get实质是执行了dart pub get，flutter build apk执行了：
+					FLUTTER_SDK_DIR/bin/cache/dart-sdk/bin/dart \     ： FLUTTER_SDK_DIR是 Flutter SDK 的根目录
+					--disable-dart-dev --packages=FLUTTER_SDK_DIR/packages/flutter_tools/.packages \     ： --packages是一堆sdk相关依赖
+					FLUTTER_SDK_DIR/bin/cache/flutter_tools.snapshot \				：FLUTTER_SDK_DIR/packages/flutter_tools的编译产物
+					build apk
+			所以上面命令等效于：通过 dart 命令执行flutter_tools.snapshot文件也就是flutter_tools.dart的main()方法，精简下实质就是：
+					dart --disable-dart-dev --packages=xxx packages/flutter_tools/bin/flutter_tools.dart build apk
+				
+	2>	flutter plugin 安卓编译流程
+			标准的安卓原生android library
+			
+	3>	flutter module 安卓编译流程
+			.android/settings.gradle：导入include_flutter.groovy
+			.android/include_flutter.groovy：
+					1. 以当前脚本为坐标找到当前项目根路径
+					2. 导入flutter module
+					3. 获取.android/local.properties文件，通过此文件拿到flutter路径
+					4. 加载/packages/flutter_tools/gradle/module_plugin_loader.gradle
+			packages/flutter_tools/gradle/module_plugin_loader.gradle：
+					把.flutter-plugins-dependencies的插件依赖到项目
+			.android/app/build.gradle：
+					仅implementation project(':flutter')
+			.android/Flutter/build.gradle：本质还是依赖flutter.gradle
+					apply plugin: 'com.android.library'
+					apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+					flutter { source '../..'	}
+					
+	4>	pubspec.yaml相关流程解释
+			# 项目名称和描述
+			name: f1
+			description: A new f1 project.
+			# 想要发布的位置，删除就是发布到pub.dev
+			publish_to: 'none'
+			# 版本号，修改这里后会自动修改安卓项目下local.properties文件中的versionName、versionCode
+			version: 1.0.1+10
+			# dart SDK 版本范围
+			environment:
+ 			 sdk: ">=2.13.0 <3.0.0"
+			# 编译依赖
+			dependencies:
+ 			 flutter:
+ 			   sdk: flutter
+			  dio: ^4.0.0 #来自pub.dev的纯dart依赖，即Flutter Package
+			  f_package: #来自本地的纯dart依赖，即Flutter Package
+ 			   path: ./../f_package
+			  f_plugin: #来自本地的插件依赖，即Flutter Plugin
+  			  path: ./../f_plugin
+			# 开发模式依赖
+			dev_dependencies:
+	
+4. 编译流程2
+		想源码编译flutter_tools：	dart bin/flutter_tools.dart xxxx
+		想重新生成 Flutter Tools snapshot：		rm ../../bin/cache/flutter_tools.stamp ../../bin/cache/flutter_tools.snapshot
+		packages/flutter_tools/bin/flutter_tools.dart：
+				main：
+					1. runner.run(args, () => generateCommands...
+						调用run方法的各种参数传递
+						1. FlutterCommandRunner：packages/flutter_tools/lib/src/runner/flutter_command_runner.dart
+						2. 创建run实列，并把下面FlutterCommand返回的列表追加在runner中
+						3. runner.run(args)
+						
+					2. generateCommands
+						把flutter执行的命令参数列表全部加入列表
+						FlutterCommand：packages/flutter_tools/lib/src/runner/flutter_command.dart
+		packages/flutter_tools/lib/src/runner/flutter_command_runner.dart：
+				run：				
+					super.run(args);
+				CommandRunner.runCommand: 
+					获取命令参数，通过while循环通过commands添加参数，并最终执行命令command.run
+		packages/flutter_tools/lib/src/commands/build.dart：
+				BuildCommand：
+					// 命令模式，把支持的命令添加到列表
+					addSubcommand(BuildAarCommand // flutter build aar
+					addSubcommand(BuildApkCommand // flutter build apk
+					... 
+				FlutterCommand：
+					run：
+						commandResult = await verifyThenRunCommand(commandPath); // 先校验再运行命令
+					verifyThenRunCommand：
+						1. 更新缓存
+						2. 校验命令
+						3. 先执行pub就先执行，列入pub下载依赖
+						4. 执行pub get下载依赖（即下载pubspec.yaml里配置的依赖）
+							await pub.get
+						5. 执行命令 runCommand
+		
+		列入BuildApkCommand：
+		packages/flutter_tools/lib/src/commands/build_apk.dart：【BuildApkCommand的源码】
+				runCommand：
+						androidBuilder.buildApk
+		packages/flutter_tools/lib/src/android/android_builder.dart：
+				get androidBuilder：执行packages/flutter_tools/lib/src/context_runner.dart中的context.run方法中的AndroidGradleBuilder实例
+				AndroidBuilder{
+					buildAar
+					buildApk
+					buildAab
+				}
+		AndroidGradleBuilder的实现类在packages/flutter_tools/lib/src/android/gradle.dart：
+				AndroidGradleBuilder{
+					buildApk{ // 1. 编译 apk
+						buildGradleApp // 2. 调用
+					}
+					buildGradleApp{ // 3. 真的编译
+						_exitWithUnsupportedProjectMessage // 4. 检查支持的android版本，获取android编译产物目录，默认项目根目录的build目录
+						bool usesAndroidX = isAppUsingAndroidX // 5. 是否使用androidx，发送编译参数
+						if (usesAndroidX) {
+      						 BuildEvent('app-using-android-x', flutterUsage: _usage).send();
+    					} else if (!usesAndroidX) {
+         					 BuildEvent('app-not-using-android-x', flutterUsage: _usage).send();
+     					}
+     					
+     					updateLocalProperties // 6. 更新local.properties的versionName和versionCode，值来自public.yaml
+						buildPluginsAsAar // 7. 编译aar的话就走buildPluginsAsAar方法
+					
+						// 8. 获取编译apk或者aab对应的task name构建参数等信息
+						BuildInfo buildInfo = androidBuildInfo.buildInfo；
+						String assembleTask = isBuildingBundle ? getBundleTaskFor(buildInfo) : getAssembleTaskFor(buildInfo);
+						// 9. 追加command的一堆参数，列入-Psplit-per-abi=true、-Pverbose=true、--no-daemon
+						command.add...
+						 exitCode = await  _processUtils.stream(command，...
+					}
+				}
+
+5. 编译流程汇总
+	一.	SDK/bin/internal模块shell脚本
+		1.  flutter build apk
+		环境变量flutter sdk检测到并执行 
+		2.  SDK/bin/flutter
+		3.  SDKbin/internal/shared.sh
+		flutter SDK内置dart环境，转换为执行dart命令
+		4. 执行dart命令：dart --disable-dart-dev --packages=xxx packages/flutter_tools/bin/flutter_tools.dart build apk
+		
+	二.	SDK/flutter_tools/bin 模块的dart语言
+		5. flutter_tools.dart 
+			->	SDK/flutter_tools/lib/src/runner/flutter_command_runner.dart 
+			-> SDK/flutter_tools/lib/src/runner/flutter_command.dart
+			->	SDK//flutter_tools/lib/src/commands/build.dart
+				1> 执行BuildCommand.run
+					-> 返回执行父类文件SDK/flutter_tools/lib/src/runner/flutter_command.dart
+						FlutterCommand.run
+						-> 更新缓存，校验命令，并pub get 下载pubspec.yaml依赖
+						-> 执行runCommand
+				2> 执行BuildApkCommand 【SDK/flutter_tools/lib/src/commands/build_apk.dart】
+					-> 接上面runCommand 
+						执行androidBuilder.buildApk
+					-> SDK/flutter_tools/lib/src/android/android_builder.dart
+					->	SDK/flutter_tools/lib/src/context_runner.dart
+						AndroidGradleBuilder.buildApk
+						-> packages/flutter_tools/lib/src/android/gradle.dart
+						AndroidGradleBuilder.buildGradleApp //组装一堆gradle命令参数，调用assembleTask并传递参数过去
+						
+	三.	SDK/flutter_tools_gradle 模块的gradle
+		6. settings.gradle 添加SDK/flutter_tools/gradle/app_plugin_loader.gradle【获取插件列表.flutter-plugins-dependencies，遍历添加include，导入project】
+			build.gradle 添加flutter task
+		7. 添加addFlutterTasks
+			1>	compileFlutterBuildDebug task后添加task依赖packLibsFlutterBuildDebug
+					packLibsFlutterBuildDebug task用途：
+						a. 把build/intermediates/flutter/debug/abi/app.so转换成jar
+						b. 执行任务packFlutterAppAotTask，用途是把上面jar，添加到依赖implementation(..jar)【目的是jar包的so参与到mergeDebugNativeLibs task】
+			2>	mergeDebugAssets task后添加copyFlutterAssetsTask，并在processDebugResource task前
+					copyFlutterAssetsTask task用途：
+						复制assets产物到中间产物目录build/app/intermediates/merged_assets/debug/out
+			3>	执行configurePlugins 
+					遍历获取到.flutter-plugins的插件url，添加依赖dependencies
+			添加addFlutterDependencies
+					添加依赖dependencies，插件io.flutter:arm64_v8a_debug:1.0.0等
+		8. BaseFlutterTask.buildBundle，组装一堆参数，然后exec 执行flutter assemble xxx参数命令编译dart 相关源码等
+		9. 上面执行完毕，产物参与标准安卓构建并生成apk
+			
+		gradle流程执行后产物如下：
+			flutter build apk --debug：
+				...
+				cleanMergeDebugAssets
+				flutterBuildDebug									// 1. build/app/intermediates/flutter/Debug  生成产物flutter_assets和lib.jar(有abi/libflutter.so)
+				...
+				mergeDebugAssets
+				copyFlutterAssetsDebug						// 2. 复制上面产物flutter_assets到 build/app/intermediates/merged_assets/debug/out目录
+				...
+				processDebugResource
+				...
+		
+				
