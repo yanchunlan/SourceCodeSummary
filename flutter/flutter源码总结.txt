@@ -3,6 +3,7 @@ flutter主要分为2部分，Engine，framework
 	Engine，是可供Flutter宿主应用提供的一个可移植运行时。Engine实现了Flutter的核心库，包括动画、图形、文件、网络I/O、访问支持、插件架构和Dart的运行时、编译工具链。【https://github.com/flutter/engine】
 	Flutter Framework，大部分的Flutter开发者主要通过Flutter Framework交互。Framework提供了一个现代的、可交互的框架，以及一个丰富的平台、布局、基础部件的集合。【https://github.com/flutter/flutter】
 一. 引擎的初始化流程
+	Flutter启动流程是：先初始化Dart运行时，然后加载Flutter引擎和Flutter Framework，创建Widget树和Element树，对Element树进行布局和绘制，最后启动应用程序并将UI渲染到窗口中
 	1. 安卓平台适配层
 		1> FlutterActivity
 			职责：
@@ -112,8 +113,156 @@ flutter主要分为2部分，Engine，framework
   				 phase_ = Phase::Running;     并更新当前Isolate状态为Running
 
 三.	Framework层的启动
-	
+	1.	main.runApp
+		-> WidgetsFlutterBinding.ensureInitialized.scheduleAttachRootWidget.scheduleWarmUpFrame
+		1. ensureInitialized：返回构造函数 WidgetsBinding.instance
+		2. scheduleAttachRootWidget  
+			-> WidgetsBinding.attachRootWidget		将一个Widget附着到renderViewElement
+			_renderViewElement = RenderObjectToWidgetAdapter<RenderBox>(xxx，rootWidget)
+		3. scheduleWarmUpFrame
+			-> SchedulerBinding.scheduleWarmUpFrame
+					handleBeginFrame：让framework准备好，创建新帧，调用所有scheduleFrameCallback注册的函数
+					handleDrawFrame：创建新的帧，一般跟在handleBeginFrame后
+						->		获取SchedulerPhase.persistentCallbacks的帧，其在RendererBinding.initInstantces中有addPersistentFrameCallback注册函数：
+								RendererBinding.initInstances 
+								-> addPersistentFrameCallback 
+								-> drawFrame  让渲染管线产生出一帧
+									 pipelineOwner.flushLayout();
+ 									 pipelineOwner.flushCompositingBits();
+   									 pipelineOwner.flushPaint();
+   									 pipelineOwner.flushSemantics();
+						->		获取SchedulerPhase.postFrameCallbacks的帧
+					scheduleFrame：调用Window的scheduleFrame安排一个新的帧
+						->		window.scheduleFrame
+						->		window.ScheduleFrame c++底层实现
+								UIDartState::Current()->window()->client()->ScheduleFrame();
+	2. 渲染管线
+		PipelineOwner		渲染树的持有者，维护布局、合成、绘制和可达性的状态
+		1>	flushLayout
+				更新所有“脏”RenderObject的布局信息
+		2>	flushCompositingBits
+				更新RenderObject的needsCompositing字位
+		3>	flushPaint
+				更新所有RenderObject的显示列表。布局操作之后，场景合成之前
+		4>	flushSemantics
+				更新RenderObject的语义
+	总结：
+		main.runApp ->
+			1. 将Widget树附着到WidgetsBinding上
+			2. 驱动渲染管线绘制首帧
+			3. 通过Window的scheduleFrame方法驱动引擎发起新一帧
 
+四.	Flutter渲染机制：Widget、Elment和RenderObject
+		RenderObjectToWidgetAdapter：		桥接RenderObject和Element树
+		attachToRenderTree：创建element并把widget设置到里面去
+	1. Widget
+		描述element的配置，一个Widget是UI中一个固定不变的部分。可以被填充成Element，而Element又管理底层的渲染树
+		Widget{
+			final Key key // 用于更新Element、替换Element以及换位置
+			createElement // 用于将配置填充为一个具体的实例
+			canUpdate	// 用于判断newWidget能否用于更新当前以oldWidget为配置的Element
+			_debugConcreteSubtype  // 返回一个编码值，用于指示Widget的实际子类型。1=StatefulWidget，2=StatelessWidget
+		}
+	1> StatelessWidget 不需要可变状态的情况
+		build 方法会在当前Widget被插入到给定BuildContext内的树中时被调用
+	2> StatefulWidget
+		其动态信息会保存在一切辅助类对象里，列如createState创建的state对象，或者是State订阅的对象
+	3> State
+		用于表示StatefulWidget的逻辑和内部状态
+		有以下生命周期：
+		1>	initState 依赖于BuildContext或Widget
+		2>	didChangeDependencies ，State的子类需要重写该方法，来实现包括InderitedWidget在内的初始化
+				如果调用了BuildContext.dependOnInheritedWIdgetOfExactType，后续InheritedWidget改变或当前widget在树中移动，
+				会再次触发didChangeDependencies
+		3>	如果重建widget，会将widget属性更新为新的Widget，并调用didUpdateWidget，将之前的widget作为参数传人，
+				【可以重载didUpdateWidget应对关联的widget更新】，并在之后调用build
+		4>	如果重载了，会调用reassemble，使iniState方法中准备好的数据重新初始化
+		5>	如果State子树被移除，会调用deactivate，【子类可重载此方法，来清理当前对象和树中其他element的连接】
+		6>	state对象可以延迟释放大部分资源，直到框架调用他们的dispose方法
+		7>	dispose后，mounted为false，此时不能调用setState
+	4> InheritedWidget
+		用于向下传播信息的Widget的基类
+		BuildContext.dependOnInheritedWidgetOfExactType可以从BuildContext中，获取最近的特定类型InheritedWidget实例
+		【使用这种方式引用了InheritedWidget，那么在其状态发生改变时，会引发消费者重建】
+	5> RenderObjectWidget
+		为RenderObjectElement提供配置，RenderObjectElement用于包装RenderObject。而RenderObject则是提供了应用实际渲染
+		有3个子类：LeafRenderObjectWidget、SingleChildRenderObjectWidget、MultiChildRenderObjectWidget用于无子节点、有单个子节点和有多个子节点的RenderObjectWidget
+	6> Widget小结
+		用于最上层,实现应用的UI
+	
+	2. Element
+	Element是Widget在树中特定位置的实例
+	element有如下特性:
+		1. createElement 创建Element,这个Widget被用来当作Element的初始化配置
+		2. 调用mount将新的Element添加到树中父节点中,mount方法负责填充所有子widget,以及在必要时调用attachRenderObject将关联的RenderObject附加在render树上
+		3. element 是active,可以显示屏幕上
+		4. update可以更新Widget
+		5. deactivateChild可以将当前Element从树中删除,并导致Element的RenderObject从渲染树删除.如果当前Element添加在owner的非活动Element列表中,则会被调用Element调用deactivate
+		6. 此时Element是inactive,且不显示在屏幕上,动画结束前/后保持inactive的Element会被unmount
+		7. Element重新合并入树中(或者Element或其祖先节点有一个global key),则Element会被owner的非活跃Element列表中移除,并将Element的RenderObject重新附着到渲染树中,并将其active
+		8. 如果动画结束后没有合并到树中,Element调用unmount
+		9. element 是defunct,且不合入树中
+	Element继承BuildContext,所以Element其实就是BuildContext
+	updateChild:
+			添加、更新、移除一个子节点被调用,通过比较子节点和给定新配置,来判断如何处理.
+	Element是抽象类,其子类有ComponentElement和RenderObjectElement
+	1. ComponentElement
+			主要是用于组合其他Element的Element,通过创建其他Element的方式创建RenderObject,其子类StatelessElement和StatefulElement分别是对应于StatelessWidget和StatefullWidget的Element,同样InheritedElement对应于InheritedWidget
+	2. RenderObjectElement
+			有一个关联渲染树RenderObject,其中RenderObject实际执行布局、绘制、碰撞检测等操作
+			RenderObject子模型有三种:
+			1>	叶节点RenderObject,无子节点：LeafRenderObjectElement处理
+			2>	单独子节点：SingleChildRenderObjectElement处理
+			3>	多个子节点的链表：MultiChildRenderObjectElement处理
+			子类RootRenderObjectElement,用于表示树的根节点,只有根节点可以设置BuildOwner,其他Element都只能继承父节点的BuildOwner
+			
+3. RenderObject
+	渲染库的核心,每个RenderObject都有父节点,有一个parentData用于供父RenderObject保存子节点相关数据,例如子节点位置,RenderObject类还实现了基本的布局和绘制协议.
+	RenderObject没有定义子节点模型,也没有定义坐标系.
+	RenderBox子类采用直角坐标系布局系统,
+	其子类RenderBox和RenderView.
+	1. RenderBox
+		二维直角坐标系内的RenderObject.  
+		size为宽和高,RenderBox坐标系的左上角(0, 0),右下角(width, height)
+		盒布局向下传递BoxConstraints对象实现布局,BoxConstraints为子节点宽高提供了最大值和最小值约束,子节点在确定自身尺寸时，必须遵守父节点给定的约束
+	2. RenderView
+		渲染树的根节点.RenderView表示的是渲染树的整体输出surface,它也处理整个渲染管线的启动工作,RenderView只有一个单独的子节点,这个子节点是RenderBox类，它负责填满整个输出surface
+	
+Widget,Element,RenderObject三者关系:
+		列如1: 
+			center -> Align -> SingleChildRenderObjectWidget 
+			-> SingleChildRenderObjectElement  // 其Element
+			
+			center重载了createRenderObject,其创建的是RenderPositionedBox -> RenderAligningShiftedBox 
+						-> RenderShiftedBox -> RenderBox
+						其使用AlignmentGeometry来对子节点进行定位
+		列入2:
+			Text -> StatelessWidget -> StatelessElement 
+			子类RichText -> MultiChildRenderObjectWidget, RichText可能有多个SizedBox类子节点,但子节点通过Text.rich创建[子节点children长度= 0]
+						   重载了createRenderObject -> RenderParagraph -> RenderBox -> RenderObject用于展示文字
+总结:
+	三棵树:   widget tree -> element tree -> render tree
+			Widget:	负责UI部分，与开发者直接交互
+			Element:		负责在指定位置实例化Widget，并维护树结构
+			RenderObject:		负责渲染的核心，负责包括布局、测量、绘制等工作
+	一个Widget可能对应多个Element, 一个Element对应一个Widget, 
+	只有继承于RenderObjectElement的Element会维护RenderObject, 而RenderObject的创建入口则是在RenderObjectWidget中
+
+五.	更新子控件
+	更新ui：
+	Framework 
+	-> 通知Engine 
+	-> 等到下个Vsync
+	-> 通知Framework执行animate, build，layout，paint
+	-> 生成layer提交给Engine，进行组合，生成纹理
+	-> 通过Open Gl接口提交数据给GPU，数据处理后显示在显示器上面
+
+具体函数调用：
+	widget.build 
+			-> 对上一帧的element树做遍历，调用updateChild
+			->  子节点类型是否一样，不一样就扔掉，创建新节点，一样做内容更新
+			->  renderObject.updateRenderObject 判断跟上一帧是否有改动，有改动标记dirty，重新 layout、paint，再生成新的 layer 交给 GPU
+		
 ---------------------------------------
 flutter 模块分析
 一.	dart package
