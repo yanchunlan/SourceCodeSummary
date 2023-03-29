@@ -119,6 +119,15 @@ flutter主要分为2部分，Engine，framework
 		2. scheduleAttachRootWidget  
 			-> WidgetsBinding.attachRootWidget		将一个Widget附着到renderViewElement
 			_renderViewElement = RenderObjectToWidgetAdapter<RenderBox>(xxx，rootWidget)
+			.attachToRenderTree：
+				1> element为null，则创建RenderObjectToWidgetElement，并执行buildScope{
+					 	element.mount(null, null); // 先执行这个方法，在执行buildScope内的其他
+					 		1. 更新_parent值为传入的值
+					 		2. 更新_slot,_depth,_activie。分别代表位置标记，Elemnt在Elemnt树中的深度，该Elemnt的状态。
+					 		3. 更新这个Elemnt的owner为父Elemnt的owner。管理树只需要一个BuildOwner，根Elemnt的owner属性赋值，子类使用这个值
+					 		4. 注册global key,更新依赖
+					 }
+				2> 如果不为null，则elemnt.markNeedsBuild
 		3. scheduleWarmUpFrame
 			-> SchedulerBinding.scheduleWarmUpFrame
 					handleBeginFrame：让framework准备好，创建新帧，调用所有scheduleFrameCallback注册的函数
@@ -153,7 +162,7 @@ flutter主要分为2部分，Engine，framework
 			3. 通过Window的scheduleFrame方法驱动引擎发起新一帧
 
 四.	Flutter渲染机制：Widget、Elment和RenderObject
-		RenderObjectToWidgetAdapter：		桥接RenderObject和Element树
+		RenderObjectToWidgetAdapter：		桥接RenderObject和Element树`
 		attachToRenderTree：创建element并把widget设置到里面去
 	1. Widget
 		描述element的配置，一个Widget是UI中一个固定不变的部分。可以被填充成Element，而Element又管理底层的渲染树
@@ -206,16 +215,52 @@ flutter主要分为2部分，Engine，framework
 	updateChild:
 			添加、更新、移除一个子节点被调用,通过比较子节点和给定新配置,来判断如何处理.
 	Element是抽象类,其子类有ComponentElement和RenderObjectElement
-	1. ComponentElement
+	1. ComponentElement   不是直接渲染在屏幕上的Elemnt
 			主要是用于组合其他Element的Element,通过创建其他Element的方式创建RenderObject,其子类StatelessElement和StatefulElement分别是对应于StatelessWidget和StatefullWidget的Element,同样InheritedElement对应于InheritedWidget
-	2. RenderObjectElement
+			mount：
+				-> _firstBuild -> rebuild -> 活跃且不为dirty，就执行performRebuild 
+				-> 1. build  得到一个widget
+						ComponentElemnt.build 空方法，其子类：
+							StatelessElement.build = widget.build(this);
+							StatefulElement.build = _state.build(this);
+							ProxyElement.build = widget.child;
+					2. updateChild		用得到的Widget去产生一个Element，更新Element树
+						1. deactivateChild：移除Element
+						2. 更新Element
+							a. updateSlotForChild：有相同的widget && slot != newSlot ，则如果插口位置不一致，则更新插口位置
+								newChild = child
+							b. updateSlotForChild：新旧widget不是同一个，但是canUpdate不是返回yes，重用elemnt,更新element的widget
+								newChild = child
+							c. deactivateChild：element和widget都不是同一个，在将element变为deactivate并增加一个新的element
+								newChild = inflateWidget
+						3. inflateWidget：创建或是从GloabalKey中重用一个Element
+								newChild = inflateWidget
+							其中inflateWidget定义：
+								a. newChild._activateWithParent		判断key是否是GlobalKey，是则从缓存中获取一次值
+								b. newWidget.createElement  	否则创建新的element
+								c. newChild.mount 		对新的element进行mount【子Element的mount】
+							后续继续走上述mount流程，子Element层层执行下去，其流程如下：
+							mount -> firstBuild -> rebuild - > performRebuild -> updateChild -> inflateWidget -> mount -> 子Element层层执行下去	
+	2. RenderObjectElement   渲染在屏幕上的Elemnt
 			有一个关联渲染树RenderObject,其中RenderObject实际执行布局、绘制、碰撞检测等操作
 			RenderObject子模型有三种:
 			1>	叶节点RenderObject,无子节点：LeafRenderObjectElement处理
 			2>	单独子节点：SingleChildRenderObjectElement处理
 			3>	多个子节点的链表：MultiChildRenderObjectElement处理
 			子类RootRenderObjectElement,用于表示树的根节点,只有根节点可以设置BuildOwner,其他Element都只能继承父节点的BuildOwner
-			
+			mount：
+				->	attachRenderObject
+					1. _findAncestorRenderObjectElement 	获取RenderObjctElement的上级Element节点
+					2. insertChildRenderObject			把对应的RenderObjct插入上面的 子RenderObelct列表
+					
+			RenderObjctElemnt的子节点有SingleChildRenderObjectElement和MultiChildRenderObjectElement：
+			SingleChildRenderObjectElement.mount：
+				->	updateChild
+			MultiChildRenderObjectElement..mount：
+				->	for(){
+					inflateWidget
+				}
+			总结：有子节点的RederObjctElement的子类，会调用inflateWidget，inflateWidget会产生第一个子节点，再调用子节点的mount
 3. RenderObject
 	渲染库的核心,每个RenderObject都有父节点,有一个parentData用于供父RenderObject保存子节点相关数据,例如子节点位置,RenderObject类还实现了基本的布局和绘制协议.
 	RenderObject没有定义子节点模型,也没有定义坐标系.
@@ -248,7 +293,66 @@ Widget,Element,RenderObject三者关系:
 	一个Widget可能对应多个Element, 一个Element对应一个Widget, 
 	只有继承于RenderObjectElement的Element会维护RenderObject, 而RenderObject的创建入口则是在RenderObjectWidget中
 
-五.	更新子控件
+五.	树的构建流程
+		如图树的构建流程
+		Widget管理Element树的构建和更新, Element树构建Widget和RenderObject树
+
+	1. BuildOwner
+		buildContext里面有BuildOwner缓存
+		1. Widget创建的Element会被绑定到BuildOwner上
+		2. Element绑定的时候,会调用Widget.build或者state.build
+		3. 子Widget产生子Element, 并绑定的时候, 会把子Element的parent指定到上面步骤2的Element, 继续子Element依次循环
+	
+六.	树的更新流程
+	1. setState 
+	-> element.markNeedsBuild 
+	-> if (!_active) return // 非活跃不做处理
+		_dirty = true // 标记Element需要更新
+		owner.scheduleBuildFor(this)
+	-> onBuildScheduled 通知engine更新下一帧
+		_dirtyElements.add(element)  加入Elemnt更新列表
+	
+	2. 接收到更新消息:
+	WidgetsBinding.drawFrame 
+	-> buildScope
+		callback // 1. 执行前面callback, 如果首次构建就是根Elemnt.mount
+		_dirtyElements[index].rebuild // 2. 循环执行element.rebuild -> element.performRebuild 
+														-> 如果是RenderObjctElemnt, 调用updateRenderObject -> ...
+															如果是ComponetElemnt,调用performRebuild -> updateChild -> ...
+		_dirtyElements.clear();  // 3. 清空_dirtyElements列表
+	
+	3. ComponetElemnt.updateChild 分别删除,修改,增加Elemnt子节点
+		1. new Widget为空, element不为空就deactivateChild, 把对应的element放在BuildlOwner._inactiveElements列表中
+		2. new Widget非空,
+			1. new Widget == 原来的widget, 但是slot不同, updateSlotForChild更新位置
+			2. new Widget != 原来的widget, 判断2个widget.canUpdate==true,
+				再判断slot不等, updateSlotForChild, 继续调用elemnt的update
+			3. 否则deactivateChild(child) 删除旧的, inflateWidget创建新的Element
+		3. newWidget为空，child为空。inflateWidget创建新的Element
+	汇总: 更新流程图
+	
+	4. RenderObjcetElement更新子节点RenderObjcetElement子树
+		列入Stack.updateChild -> MutilChildRederObjectElemnt.update -> updateChildren 遍历子节点对子节点调updateChild
+	
+ParentData
+	两个RenderObecjElement中间会存在ParentDataElemnt数据.
+	列如: Stack -> Position extends ParentDataWidget
+						-> ParentDataElemnt
+			绑定Widget的Element的时候,就调用attachRenderObject:
+						-> _findAncestorParentDataElement
+							_updateParentData
+							-> applyParentData
+							-> renderObject.parentData, 获取到parentData更新值后,调用renderObject的父节点重新布局
+								renderObject.parent.markNeedsLayout
+	流程如下:
+		找到上级的ParentDataElement -> 调用ParentDataElement的widget的applyParentData方法 ->设置parentData ->通知父RenderObjct更新
+
+总结
+	1. Element的构建和更新, 主要是递归调用, 一级一级往下对节点进行更新
+	2. 每个Element和RenderParent都有parent属性, 但Widget没有父节点, 所以Widget不是节点树, 只是每个Element都会对应一个Widget
+	3. 构建和更新流程是由BuildOwner的buildScope方法触发, Element实现，Element协调Widget树和RenderObjct树的构建和更新
+
+七.	更新子控件
 	更新ui：
 	Framework 
 	-> 通知Engine 
@@ -262,40 +366,3 @@ Widget,Element,RenderObject三者关系:
 			-> 对上一帧的element树做遍历，调用updateChild
 			->  子节点类型是否一样，不一样就扔掉，创建新节点，一样做内容更新
 			->  renderObject.updateRenderObject 判断跟上一帧是否有改动，有改动标记dirty，重新 layout、paint，再生成新的 layer 交给 GPU
-		
----------------------------------------
-flutter 模块分析
-一.	dart package
-
-二.	plugin
-
-
----------------------------------------
-其他模块源码分析：
-一. GlobalKey
-	Element? get _currentElement => WidgetsBinding.instance!.buildOwner!._globalKeyRegistry[this];
-	1. 数据获取
-		其中_globalKeyRegistry是一个map类型，在三棵树挂载的时候mount就会存值（挂载流程：element通过inflateWidget->mount-> rebuild(ComponentElement) -> performRebuild (ComponentElement)-> updateChild->inflateWidget递归创建element树结构），同理获取到_currentElement后，可以获取到其他widget，state，context数据
-	2. 数据状态保存
-		setState流程：markNeedsBuild将当前element标记为dirty，调用owner的 scheduleBuildFor(this)将当前element添加到owner的_dirtyElements里面，调用onBuildScheduled通知drawFrame，WidgetsBinding.drawFrame -> owner.buildScope处理dirty element的rebuild，调用buildOwner!.finalizeTree来释放_inactiveElements，在element的rebuild中调用performRebuild（build -> updateChild -> deactivateChild -> inflateWidget），其中deactivateChild没有立即释放element，而是将element添加到owner的_inactiveElements，后续inflateWidget递归构建新element树时，判断是否是GlobalKey，是则_retakeInactiveElement复用取出GlobalKey对应的element。
-	
-	二. Provider
-		Provider -> ChangeNotifierProvider -> ListenableProvider -> InheritedProvider -> SingleChildStatelessWidget -> 
-		1. ChangeNotifierProvider
-			继承ListenableProvider，有crete，value，dispose函数，其中create自动传递静态_dispose管理生命周期，value需要自己管理生命周期。
-		2. InheritedProvider
-			构造函数_CreateInheritedProvider/_ValueInheritedProvider，其中buildWithChild -> _InheritedProviderScope(xxx extends InheritedWidget)，
-			其中是否更新updateShouldNotify，子类_InheritedProviderScope重写了createElement，在_InheritedProviderScopeElement的performRebuild中创建了_delegateState并赋值element到_Delegate，待下一次build的时候notifyClients(widget)通知刷新
-			什么时候添加的监听：
-				_CreateInheritedProviderState在get value的时候添加监听delegate.startListening?.call，dispose的时候delegate.dispose?.call
-		总结：
-			Provider.of(context) -> _inheritedElementOf获取到element -> element.value获取到Counter状态类
-			当Counter.notifyListeners -> element.rebuild -> element.notifyClients通知dependOnInheritedWidgetOfExactType的context刷新
-			
-	三. ProxyProvider（ChangeNotifierProvider类似）
-		ProxyProvider -> ProxyProvider0 -> InheritedProvider -> 
-		1. 获取value的时候，调用update初始化value，若为ChangeNotifierProxyProvider则有create和监听，其中startListening无效时因为ProxyProvider没有startListening方法，实现自动更新通过Counter实现，Counter.notifyListeners -> _InheritedProviderScopeElement.build -> _delegateState.build -> delegate.update更新数据
-		
-	四. Selector 条件刷新
-		Selector -> Selector0( _Selector0State.buildWithChild) -> widget.selector(context) -> Provider.of(context) 创建监听
-		刷新判断：_Selector0State.buildWithChild中根据缓存旧Widget-cache、旧数据value，然后会判断widget是否相同、shouldRebuild条件、DeepCollectionEquality对比来判断是否需要更新组件

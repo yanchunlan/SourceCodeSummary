@@ -1,0 +1,27 @@
+一. GlobalKey
+	Element? get _currentElement => WidgetsBinding.instance!.buildOwner!._globalKeyRegistry[this];
+	1. 数据获取
+		其中_globalKeyRegistry是一个map类型，在三棵树挂载的时候mount就会存值（挂载流程：element通过inflateWidget->mount-> rebuild(ComponentElement) -> performRebuild (ComponentElement)-> updateChild->inflateWidget递归创建element树结构），同理获取到_currentElement后，可以获取到其他widget，state，context数据
+	2. 数据状态保存
+		setState流程：markNeedsBuild将当前element标记为dirty，调用owner的 scheduleBuildFor(this)将当前element添加到owner的_dirtyElements里面，调用onBuildScheduled通知drawFrame，WidgetsBinding.drawFrame -> owner.buildScope处理dirty element的rebuild，调用buildOwner!.finalizeTree来释放_inactiveElements，在element的rebuild中调用performRebuild（build -> updateChild -> deactivateChild -> inflateWidget），其中deactivateChild没有立即释放element，而是将element添加到owner的_inactiveElements，后续inflateWidget递归构建新element树时，判断是否是GlobalKey，是则_retakeInactiveElement复用取出GlobalKey对应的element。
+	
+二. Provider
+		Provider -> ChangeNotifierProvider -> ListenableProvider -> InheritedProvider -> SingleChildStatelessWidget -> 
+		1. ChangeNotifierProvider
+			继承ListenableProvider，有crete，value，dispose函数，其中create自动传递静态_dispose管理生命周期，value需要自己管理生命周期。
+		2. InheritedProvider
+			构造函数_CreateInheritedProvider/_ValueInheritedProvider，其中buildWithChild -> _InheritedProviderScope(xxx extends InheritedWidget)，
+			其中是否更新updateShouldNotify，子类_InheritedProviderScope重写了createElement，在_InheritedProviderScopeElement的performRebuild中创建了_delegateState并赋值element到_Delegate，待下一次build的时候notifyClients(widget)通知刷新
+			什么时候添加的监听：
+				_CreateInheritedProviderState在get value的时候添加监听delegate.startListening?.call，dispose的时候delegate.dispose?.call
+		总结：
+			Provider.of(context) -> _inheritedElementOf获取到element -> element.value获取到Counter状态类
+			当Counter.notifyListeners -> element.rebuild -> element.notifyClients通知dependOnInheritedWidgetOfExactType的context刷新
+			
+三. ProxyProvider（ChangeNotifierProvider类似）
+		ProxyProvider -> ProxyProvider0 -> InheritedProvider -> 
+		1. 获取value的时候，调用update初始化value，若为ChangeNotifierProxyProvider则有create和监听，其中startListening无效时因为ProxyProvider没有startListening方法，实现自动更新通过Counter实现，Counter.notifyListeners -> _InheritedProviderScopeElement.build -> _delegateState.build -> delegate.update更新数据
+		
+四. Selector 条件刷新
+		Selector -> Selector0( _Selector0State.buildWithChild) -> widget.selector(context) -> Provider.of(context) 创建监听
+		刷新判断：_Selector0State.buildWithChild中根据缓存旧Widget-cache、旧数据value，然后会判断widget是否相同、shouldRebuild条件、DeepCollectionEquality对比来判断是否需要更新组件
