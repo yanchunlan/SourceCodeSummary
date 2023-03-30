@@ -115,7 +115,31 @@ flutter主要分为2部分，Engine，framework
 三.	Framework层的启动
 	1.	main.runApp
 		-> WidgetsFlutterBinding.ensureInitialized.scheduleAttachRootWidget.scheduleWarmUpFrame
-		1. ensureInitialized：返回构造函数 WidgetsBinding.instance
+		1. ensureInitialized：返回构造函数 WidgetsBinding.instance    
+            1>	BindingBase
+                ui.SingletonFlutterWindow get window => ui.window; // SingletonFlutterWindow继承window
+                ui.PlatformDispatcher get platformDispatcher => ui.PlatformDispatcher.instance; // 返回platformDispatcher, 其负责Flutter分发engine的事件，和传递事件给engine层
+                BindingBase(){
+                    initInstances() // 实例化
+                    initServiceExtensions() // 注册服务
+                }
+            2>	WidgetsFlutterBinding extends BindingBase with xxx :
+                    BindingBase 各个binding相关的mixin的基类
+                    ServicesBinding 处理与原生的交互通道
+                    GestureBinding 处理手势
+                    RendererBinding 处理渲染
+                            initInstances会初始化一个PipelineOwner，用于管理RenderObjct树, 
+                            创建RenderView, 用于后面执行compositeFrame() // 告诉GPU渲染renderView
+                            并创建一个callback，其在每一帧刷新的时候都会调用
+                    PaintingBinding 处理绘制相关
+                    SemanticsBinding 处理语义化
+                    WidgetsBinding 处理widget
+                            initInstances会初始化一个BuildOwner，处于管理widget和Element树
+                3>	调用流程
+                    framework			<=>			WidgetsFlutterBinding			<=>			engine
+                    buildowner							RenderBinding										SingletonFlutterWindow
+                    PipelineOwner						WidgetsBinding									platformDispatcher		<=>		分发engine的事件
+				
 		2. scheduleAttachRootWidget  
 			-> WidgetsBinding.attachRootWidget		将一个Widget附着到renderViewElement
 			_renderViewElement = RenderObjectToWidgetAdapter<RenderBox>(xxx，rootWidget)
@@ -128,6 +152,29 @@ flutter主要分为2部分，Engine，framework
 					 		4. 注册global key,更新依赖
 					 }
 				2> 如果不为null，则elemnt.markNeedsBuild
+			ensureVisualUpdate:
+				ensureVisualUpdate(-> scheduleFrame -> ensureFrameCallbacksRegistered 
+																				等效于platformDispatcher.onBeginFrame = callback
+																						   platformDispatcher.onDrawFrame = callback
+			总结消息分发流程:
+					硬件发出VSync信号 
+					-> platformDispatcher.onDrawFrame 
+					-> SingletonFlutterWindow.onDrawFrame
+					-> SchedulerBinding._handleDrawFrame 
+					-> SchedulerBinding.handleDrawFrame
+					-> 消费RenderBinding._postFrameCallbacks存储的callback 
+					-> 其子类WidgetsBinding.drawFrame 
+					-> buildOwner.buildScope // 构建更新子树
+							调用去管理RenderObject树生成新的UI绘制信息，交给renderView, 并生成一个Scene给SingletonFlutterWindow，然后GPU去渲染新的界面
+						super.drawFrame() // 执行上面flushLayout/flushCompositingBits/flushPaint/flushSemantics ...
+							-> RenderBinding.drawFrame 
+								pipelineOwner.flushLayout() // 刷新布局
+    							pipelineOwner.flushCompositingBits() // 图层更新
+								pipelineOwner.flushPaint() // 刷新绘制
+								renderView.compositeFrame() // 告诉GPU渲染renderView
+								pipelineOwner.flushSemantics
+						buildOwner!.finalizeTree // 告诉buildOwner完成更新, 释放_inactiveElements
+						
 		3. scheduleWarmUpFrame
 			-> SchedulerBinding.scheduleWarmUpFrame
 					handleBeginFrame：让framework准备好，创建新帧，调用所有scheduleFrameCallback注册的函数
@@ -143,6 +190,13 @@ flutter主要分为2部分，Engine，framework
 						->		获取SchedulerPhase.postFrameCallbacks的帧
 					scheduleFrame：调用Window的scheduleFrame安排一个新的帧
 						->		window.scheduleFrame
+								platformDispatcher.scheduleFrame // 通知engine更新界面, 
+								列如:  setState 
+										-> BuildOwner.scheduleBuildFor 
+										->onBuildScheduled.callback 
+										-> WigetsBinding._handleBuildScheduled 
+										-> window.scheduleFrame
+										...
 						->		window.ScheduleFrame c++底层实现
 								UIDartState::Current()->window()->client()->ScheduleFrame();
 	2. 渲染管线
@@ -160,7 +214,10 @@ flutter主要分为2部分，Engine，framework
 			1. 将Widget树附着到WidgetsBinding上
 			2. 驱动渲染管线绘制首帧
 			3. 通过Window的scheduleFrame方法驱动引擎发起新一帧
-
+	简而言之就是:
+		1. 在Flutter的framework层和engine层建立一个连接WidgetsFlutterBinding，注册Vsync回调后，每一帧调用的时候都会触发WidgetsFlutterBinding里面的方法，从而去调用framework层的处理逻辑
+		2. 为传入的widget构建节点树，将节点树中的RenderObjct树的结果交给enginee层的SingletonFlutterWindow,然后通知到GPU进行渲染
+	
 四.	Flutter渲染机制：Widget、Elment和RenderObject
 		RenderObjectToWidgetAdapter：		桥接RenderObject和Element树`
 		attachToRenderTree：创建element并把widget设置到里面去
@@ -309,7 +366,8 @@ Widget,Element,RenderObject三者关系:
 	-> if (!_active) return // 非活跃不做处理
 		_dirty = true // 标记Element需要更新
 		owner.scheduleBuildFor(this)
-	-> onBuildScheduled 通知engine更新下一帧
+	-> onBuildScheduled.callback 通知engine更新下一帧
+		-> WigetsBinding._handleBuildScheduled -> window.scheduleFrame -> platformDispatcher.scheduleFrame
 		_dirtyElements.add(element)  加入Elemnt更新列表
 	
 	2. 接收到更新消息:
