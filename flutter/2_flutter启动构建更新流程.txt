@@ -171,7 +171,7 @@ flutter主要分为2部分，Engine，framework
 								pipelineOwner.flushLayout() // 刷新布局
     							pipelineOwner.flushCompositingBits() // 图层更新
 								pipelineOwner.flushPaint() // 刷新绘制
-								renderView.compositeFrame() // 告诉GPU渲染renderView
+								renderView.compositeFrame() // 告诉GPU渲染renderView(renderView其实就是widget里面的renderObject)
 								pipelineOwner.flushSemantics
 						buildOwner!.finalizeTree // 告诉buildOwner完成更新, 释放_inactiveElements
 						

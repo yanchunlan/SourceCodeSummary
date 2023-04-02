@@ -1,192 +1,72 @@
-一.	检测手段
-	flutter/packages/flutter_tools/gradle/flutter.gradle 的 buildModeFor 的debug 模式改为 profile ， 或者 flutter run --profile
-	1. Flutter Inspector
-		Select Widget Mode：快速查看陌生页面的布局实现方式
-		Repaint Rainbow：为所有 RenderBox 绘制一层外框，并在它们重绘时会改变颜色，
-										帮你找到 App 中频繁重绘导致性能消耗过大的部分【需要Select Widget Mode刷新一下】
-			解决方式：RepaintBoundary，将重绘范围缩小至本身所占用的区域减少绘制消耗，但是创建额外的绘制画布，增加了内存消耗
+一. flutter 启动优化
+	1. 分析方式:
+		flutter run --trace-startup --profile 或者 edit configuation 上添加additional run args中添加 --profile后直接运行
+		
+		1> 若是想获取更多点位代码改动：
+		1. flutter层
+			path/to/flutter/packages/flutter_tools/lib/src/tracing.dart 里面的 traceInfoFile.writeAsStringSync(toPrettyJson(traceInfo));后添加
 			
-	2. 性能图层
-		问题场景：build 耗时或主 Isolate同步I/O操作
-		分析渲染问题 Performance Overlay
-			GPU线程：上面		
-			UI线程：下面
-
-			蓝色：已执行的正常帧
-			绿色：当前帧
-			红色：卡顿帧（小于16ms）
+			// 新增 start_up_trace_events.json 生成
+			 final String traceEventsFilePath = globals.fs.path.join(getBuildDirectory(), 'start_up_trace_events.json');
+			 final File traceEventsFile = globals.fs.file(traceEventsFilePath);
+			 final List<Map<String, dynamic>> events =
+			 List<Map<String, dynamic>>.from((timeline['traceEvents'] as List<dynamic>).cast<Map<String, dynamic>>());
+			 traceEventsFile.writeAsStringSync(toPrettyJson(events));
+			 
+			再重新生成flutter tools，生成文件可通过 chrome://tracing 查看
 			
-		其主要是展示了 GPU(Raster )与 UI 线程的执行图表，其定位问题方式如下：
-		1>	GPU(Raster)线程定位：
-				检查多视图叠加的视图渲染开关 checkerboardOffscreenLayers
-					多视图叠加通常会用到 Canvas 里的 savaLayer，类似半透明效果
-					MaterialApp{
-						checkerboardOffscreenLayers: true, // 检测是否存在多视图叠加，频繁的刷新问题
-					}
-					优化方式：去除半透明效果，直接设置具体颜色
-					
-				检查缓存的图像开关 checkerboardRasterCacheImages
-					图像的渲染涉及 I/O、GPU 存储，以及不同通道的数据格式转换，所以渲染过程的构建需要消耗大量资源
-					MaterialApp{
-						checkerboardRasterCacheImages: true, // 检测静态图像是否没有缓存，导致构建耗费资源
-					}
-					优化方式：缓存图像等，避免频繁刷新
-					RepaintBoundary{ // flutter提供的多层次缓存快照，可以缓存静态图像，避免重复刷新
-						Container(color: Colors.black, height: 10.0, width: 10.0, ),
-					}
-		2>	UI线程定位：
-				1. 检测：火焰图获取方式： Open DevTools -> Performance -> Record -> stop 获取到火焰图
-					y轴：调用栈，一层一函数
-					x轴：单位时间
-				2. 优化：使用Isolate（或 compute）修改耗时操作
+		2> 若是想支持 flutter cli 参数透传
+		1. Android层
+			path/to/engine/src/flutter/shell/platform/android/io/flutter/embedding/engine/FlutterEngine.java
+			
+			// FlutterEngine 的构造参数 dartVmArgs 中添加 --trace-startup 
+			new FlutterEngine(mPlatform.getApplication().getApplicationContext(),
+						FlutterLoader.getInstance(),new FlutterJNI(),new String[]{"--trace-startup"},true);
+		2. ios层
+			path/to/engine/src/flutter/shell/platform/darwin/ios/framework/Source/FlutterDartProject.mm
+			新增函数
+			- (instancetype)initWithDartVmArgs:(nullable NSArray<NSString*>*)args {
+				 return [self initWithPrecompiledDartBundle:nil dartVmArgs:args];
+			}
+			
+			FlutterEngine.mm 时，作出如下设置：
+			_dartProject = [[FlutterDartProject alloc] initWithPrecompiledDartBundle:dartBundle dartVmArgs:@[@"--trace-startup"]];
+			_engine = [[FlutterEngine alloc] initWithName:@"io.flutter" project:_dartProject allowHeadlessExecution:YES];
 	
-二.	指标定义
-	1.	页面异常率
-		页面渲染过程中出现异常的概率，它统计的是页面维度下功能不可用的情况。
-
-			页面异常率 = 异常发生次数 / 整体页面 PV 数
-			异常发生次数：利用Zone 与 FlutterError ，在全局异常上报位统计
-			整体页面 PV 数：实现NavigatorObserver.didPush监听页面打开次数
-			
-			MaterialApp( 
-					navigatorObservers: [ MyObserver(), ], // 设置路由监听 
-					home: xxx, 
-				);
-
-	2.	页面帧率
-		即 FPS，画面每秒传输帧数，FPS 的计算口径为单位时间内渲染的帧总数。
-
-			FPS=60* 实际渲染的帧数 / 本来应该在这个时间内渲染完成的帧数
-			
-			var orginalCallback;
-				void main(){
-					//设置帧回调函数并保存原始帧回调函数
-					orginalCallback = window.onReportTimings;// 帧回调函数
-					window.onReportTimings = onReportTimings;
-					// Flutter 1.12.x 之后，SchedulerBinding.instance.addTimingsCallback(_onReportTimings);
-				}
-				...
-			需要保留最近 25 个 FrameTiming 用于求和计算
-			
-	3.	页面加载时长
-		页面从创建到可见的时间，检测创建页面视图是否存在过度绘制，或者绘制不合理导致创建视图时间过长的情况。
-
-		页面加载时长 = 页面可见的时间 - 页面创建的时间（包括网络加载时长）
-		页面可见的时间：WidgetsBinding.instance.addPostFrameCallback((_) {}
-		页面创建的时间：Page构造函数调用时间为启动时间
+	debug 参数：【debug模式支持的几种调试开关】
+		1. debugProfilePaintsEnabled
+		path/to/flutter/packages/flutter/lib/src/rendering/debug.dart
+		在渲染 Paint 阶段，显示所有 Paint 时节点的遍历情况，可以根据这些信息查看是否有无用的节点 Paint
 		
-		针对不同业务场景，一般TP90超过2秒就不正常
+		2. debugProfileBuildsEnabled
+		path/to/flutter/packages/flutter/lib/src/widgets/debug.dart
+		在 Widget Build 阶段，显示所有 Widget 节点 Build 时的遍历情况，可以根据这些信息查看是否有无用的节点 Build
 		
-三.	布局优化
-	1.	常规优化
-		1>	build中的耗时操作
-			文件读取、数据库操作、网络请求，通过 Future异步方式调用
-			CPU 计算频繁的（图片压缩），使用isolate方式优化
-		
-			原理：Flutter 会运行一个事件循环，它会从事件队列中取得最旧的事件，处理它，然后再返回下一个事件进行处理
-			直到事件队列清空为止，每当动作中断时，线程就会等待下一个事件。
-				不仅仅isolate，所有高级API(Futures、Streams、async 和 await等)，都构建于这个事件循环上
-				
-		2>	build中的大量widget
-			缺点：
-					1. 可读性差		2. 复用难		3. 影响性能（setState全重建）
-			解决方式：	Widget 拆小
-			
-		3>	使用widget，不是函数
-			StatelessWidget 替换函数。
-			优点：
-					1. 性能优化，const 构造函数，重建时不参与
-					2.	减少在布局切换时，函数可能重用某些先前的状态的情况
-					3.	确保热重载正常工作
-					4.	Flutter Inspector中可以观测到widget的状态和参数
-					5.	异常时，提示更加清晰，至少有个widget名称
-					6. 可定义key和方便使用context的api
-					
-		4>	尽可能地使用 const
-				实例用 const 定义，数据存储在常量池，节省RAM
-				
-		5>	尽可能地使用 const 构造器
-				const 构造函数，重建时不参与，即rebuild不执行，列入：通用报错组件和通用 loading 组件
-				
-		6>	使用 nil 去替代 Container() 和 SizedBox()
-				nil 是基础控件，无构建成本
-				
-		7>	列表优化
-				减少使用ListView(children: [],) 或 GridView(children: [],)，尽量使用ListView 和 GridView 的 builder方法，只会绘制可见内容
-			
-		8>	针对于长列表，记得在 ListView 中使用 itemExtent
-				其将计算 ListView 的滚动位置而不是计算每一个 Widget 的高度，对于滚动动画性能更好
-				
-		9>	减少可折叠 ListView 的构建时间
-				可折叠的 ListView，未展开状态时，设置其 itemCount 为 0
-		
-		10>	尽量不要为 Widget 设置半透明效果
-				设置纯色或者图片，这样遮挡的区域就不需要绘制了，提高性能
-		
-		11>	网络请求预加载
-		12>	抽取文本 Theme 等
-		
-	2.	深入优化
-		1>	优化GPU(Raster)线程
-			Flutter DevTools-Performance  -> Overlay检测GPU，UI线程哪个负载重
-			Timeline Events找到耗时最长事件，列入：SkCanvas::Flush，它负责解决所有待处理的 GPU 操作
-			找到对应代码区域，删除 Widgets 或方法的方式观测性能有无影响
-		2>	用 key 加速 Flutter 的性能优化光栅线程
-		几个key的对比：
-			GlobalKey  全局使用的 key
-			LocalKey	不需要访问 BuildContext、Element 和 State
-				ValueKey 比较的是 Widget 的值
-				ObjectKey 比较的是对象的 key
-				UniqueKey 则每次都会生成一个不同的值
-		元素生命周期：
-			Mount：挂载，当元素第一次被添加到树上的时候调用。
-			Active：当需要激活之前失活的元素时被调用。
-			Update：用新数据去更新 RenderObject。
-			Deactive：当元素从 Widget 树中被移除或移动时被调用。如果一个元素在同一帧期间被移动了且它有 GlobalKey，那么它仍然能够被激活。
-			UnMount：卸载，如果一个元素在一帧期间没有被激活，它将会被卸载，并且再也不会被复用。
-		优化方式：
-			建设Mount/UnMount，尽可能让 Widget 使用 Activie 和 Update，所以需要GlobayKeys 和 ValueKey 可以做到
+		3. debugProfileLayoutsEnabled
 	
-四.	启动速度优化	
-	1.	Flutter 引擎预加载
-		Looper.myQueue().addIdleHandler() 中初始化FlutterEngine，并将其缓存到集合中，后续需要时从集合中拿到它
-	2.	Dart VM 预热
-		public void preLoadDartVV() {
-        	FlutterLoader.getInstance().startInitialization(context);
-        	Handler handler = new Handler(Looper.getMainLooper());
-        	FlutterLoader.getInstance().ensureInitializationCompleteAsync(
-                	context,
-                	new String[]{},
-               	 	handler,
-                	() -> Log.d(TAG, "run: preLoadDartVV done"));
-   		 }
-   		 
-五.	内存优化
-	1.	const 实例化
-		Color()，GlobayKey() 等。const 对象会创建一个编译时长量，存储在常量池里，
-	2.	识别出消耗多余内存的图片
-		Flutter Inspector -> Invert Oversized Images 识别出解码大小超过展示大小的图片
-		优化方式：
-			设置cacheWidth/cacheHeight解决
-	3. 针对 ListView item 中有 image 的情况来优化内存
-		listView滑动/不滑动默认是通过AutomaticKeepAlive让子widget保活，滚动时通过RepaintBoundaries让子widget绘制一次
+	自定义打点：
+		列如想查看创建 IOSContext 的耗时：
+		std::unique_ptr<IOSContext> IOSContext::Create(IOSRenderingAPI rendering_api) {
+			 TRACE_EVENT0("flutter", "IOSContext::Create");
+			  ......
+			  FML_CHECK(false);
+			  return nullptr;
+		}
 		
-		修复方式：
-		ListView.builder(
-  			...
- 			addAutomaticKeepAlives: false (true by default)
- 			addRepaintBoundaries: false (true by default)
-		);
+	2. 查看方式
+		1. 查看具体帧
+			performance -> 选中具体帧 -> 点击build函数 -> 查看cpu flame chart【右侧过滤选中hide core xxx library】
+		2. 查看一段时间耗时情况
+			cpu profiler -> record 录制一段时间，点击stop -> 查看这段时间的cpu flame chart
 		
-六.	包体积优化
-	1.	图片优化
-		图片压缩或者使用在线的网络图片
-	2.	移除冗余的二三库
-		移除无用库
-	3. 启用代码缩减和资源缩减
-		打开 minifyEnabled 和 shrinkResources
-	4. 构建单 ABI 架构的包
-		1. 目前市面上x86 / x86_64/armeabi/mips / mips6很少，armeabi-v7a老旧手机有，arm64-v8a是主流，所以推荐使用arm64-v8a
-			flutter build apk --split-per-abi  arm64-v8a // 构建单一架构的安装包
-		2. 其他so动态下发
+二. flutter 内存优化
+	1. 分析方式
+		flutter run -> 点击Observatory网址 -> 点击isolate xxx(main) 进入线程 -> 选择allocation profile
 	
+	2. 查看方式
+		New generation: 新创建的对象，一般来说对象比较小，生命周期短，如local 变量。在这里GC活动频繁
+		Old generation：从GC中存活下来的New generation将会转移到Old generation，它比新生代空间大，更适合大的对象和生命周期长的对象
+		
+		点击右上角“Auto-refresh on GC”，实时更新gc
+		点击顶部的按钮 “ GC ” 来实现手动GC
+		Reset Accumulator 清空数据
