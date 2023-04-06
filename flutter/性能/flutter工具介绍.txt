@@ -1,0 +1,234 @@
+一. 开发者工具
+	1. inspector
+			选择 widget 模式
+			刷新树
+			慢速动画：五分之一的速度运行动画以便对它们进行优化。setSlowAnimations{	timeDilation = 5.0		}
+			显示引导线：覆盖一层引导线以帮助调整布局问题。debugPaintSizeEnabled
+			显示基线：针对文字对齐展示文字的基线。对检查文字是否对齐有帮助。debugPaintBaselinesEnabled
+			高亮重绘制内容：重新绘制时在图层上依次显示不同的颜色。debugRepaintRainbowEnabled
+			高亮尺寸过大的图片：在运行的应用程序中高亮并反转消耗过多内存的图像。debugInvertOversizedImages
+		布局预览器：
+			实时查看布局
+		树的详细信息：
+			Details Tree 
+	2. 性能视图（Performance）
+		火焰图
+			UI线程
+			栅格线程
+			卡顿（jank）：大于16ms认为是卡顿
+			着色器渲染：着色器会在初次使用时发生渲染。参与了着色器编译的构建帧已标记为深红色
+		时间线事件图
+			增强的追踪选项（Enhance tracing）
+				追踪 widget 的构建（Track Widget Builds）：会在widget出现对应名称的事件
+				追踪布局(Track layout)：查看 RenderObject 布局构建的事件
+				追踪绘制（Track Paints）：查看 RenderObject 的绘制事件
+			更多调试选项
+				渲染裁剪的图层：禁用来检测裁剪图层是否影响性能
+				渲染透明度图层：禁用来检测透明度图层是否影响性能
+				渲染物理形状图层：例如阴影和背景特效
+		cpu监控
+	3. cpu探测试图（cpu profiler）
+		cpu分析器
+			Record开始记录，stop停止记录
+		分析粒度
+			Profile granularity：抽样率低、中、高粒度分别顺序对应 1/50μs、1/250μs 和 1/1000μs
+		火焰图表(cpu flame chart)
+		调用树（call tree）：自上而下展示 CPU 中的调用堆栈信息方法
+			总时间
+			自执行时间
+			方法
+			源码
+		自下而上：自下而上的表示方式
+			总时间
+			自执行时间
+			方法
+			源码
+	4. 内存视图（Memory view）
+	5. 网格视图
+		HTTP, HTTPS，web socket
+	6. 调试器
+		完整的源码级调试器，支持断点、单步调试以及变量检视
+		设置断点
+		调用栈和变量区（Call stack / Variables）
+		单步调试源码
+			Step in 来进入被调用的方法
+			Step over 直接执行某个方法调用而不进入内部
+			Step out 来跳出当前方法
+		命令行输出
+		异常跳出
+	7. 日志视图
+		日志视图会展示：
+			Dart 运行时的垃圾回收事件
+			Flutter 框架事件，比如创建帧的事件
+			应用的 stdout 和 stderr 输出
+			应用的自定义日志事件
+	8. 应用大小分析工具
+		仅限 profile 或 release 模式的包
+		1> 分析标签页
+				dominator tree
+				call graph
+			读取一个体积文件
+			树状图和表格：查看您的应用体积的结构化数据
+				使用树状图
+				支配树和调用图
+					支配树：是一个树形结构的图表，其子节点可以立刻被支配
+					使用调用图：展示代码体积数据的节点之间存在的多对多关系
+		2> 差异标签页
+			读取体积文件
+			树状图和表格
+		3> 生成尺寸文件
+			要使用应用体积工具，您需要生成一个 flutter 体积分析文件，--analyze size
+			生成类似：build/apk-code-size-analysis_01.json
+
+二. 调试手段
+1.	应用层调试
+	打印widget树：debugDumpApp()
+	打印render树：debugDumpRenderTree()
+	打印layer树：debugDumpLayerTree()
+	打印Semantics树：debugDumpSemanticsTree()
+	找到事件触发对应的开始或结束帧:
+		 debugPrintBeginFrameBanner = true;
+		 debugPrintEndFrameBanner  = true;
+	debugPrintScheduleFrameStacks 可用来打印调用堆栈信息
+	
+2. 布局调试
+	可视化调试布局添加方式：
+	void main() {
+		debugPaintSizeEnabled = true; // 调试box大小
+		debugPaintBaselinesEnabled = true;l // 带有基线的对象明亮
+		debugPaintPointersEnabled = true; // 测试是否使用
+		debugPaintLayerBordersEnabled = true;// layer边界显示边框，【判断是否可添加RepaintBoundary】
+		debugRepaintRainbowEnabled  = true; // 重绘图层时，边框的颜色会被轮转的颜色覆盖【判断是否可添加RepaintBoundary】
+
+		runApp(const MyApp());
+	}
+	
+3. 性能调试
+	
+	1>	debugDumpRenderTree()
+			搜索RepaintBoundary查看边界线有用信息
+	
+	2>	debugPaintLayerBordersEnabled / debugRepaintRainbowEnabled
+			Flutter inspector - Highlight Repaints  	// 静态 widget 在彩虹七颜色轮转则说明需要添加重绘边界优化
+				
+	3>	debugPrintMarkNeedsLayoutStacks / debugPrintMarkNeedsPaintStacks
+			打印出堆栈跟踪，布局或者绘制时，每个渲染对象被标记为 dirty 的原因
+			类似services 库中的 debugPrintStack() 按需打印出堆栈的跟踪信息
+			
+4.	dart代码打点
+	import 'dart:developer';
+	{
+		  Timeline.startSync('interesting function');
+		  ...
+		  Timeline.finishSync();
+	}
+	devTools - Timeline - Performance 设置勾选了Dart 记录 - 观测
+	
+5. 性能图层
+	 Flutter inspector - Performance Overlay
+	 代码启动方式：
+	 	MaterialApp(
+      		showPerformanceOverlay: true, // 启动性能图层
+      		...
+      	);
+      	或者：
+      	PerformanceOverlay.allEnabled(
+      		child: ...,
+      	) 
+      	
+6. 网格对其
+	MaterialApp(
+      		debugShowMaterialGrid: true, // 启动网格对其
+      		...
+      	);
+      	或者：
+      	GridPaper widget(
+      		child: ...,
+      	) 
+
+三.	性能优化
+	1. 包大小
+		添加 --analyze-size ，生成*-code-size-analysis_*.json 文件，使用devTools工具apk size分析
+		减少应用大小：--split-debug-info  , 分离debug-info信息
+	2. 延长加载组件
+		仅 Android 可用，利用 Android 和 Google Play 商店的 动态功能模块 提供打包为 Android module 的延迟组件。
+		1>	步骤1:：依赖项和初始项目设置
+			 1.  android/app/build.gradle 添加依赖 implementation "com.google.android.play:core:1.8.0"
+		  	 2.  指定AndroidManifest.xml 中的 android:name为 io.flutter.embedding.android.FlutterPlayStoreSplitApplication
+		  	 	  嵌入层依赖注入的 DeferredComponentManager 实例来处理延迟组件的安装请求
+		  	 		import io.flutter.embedding.engine.dynamicfeatures.PlayStoreDeferredComponentManager;
+					import io.flutter.FlutterInjector;
+					... 
+					PlayStoreDeferredComponentManager deferredComponentManager = new
+  							PlayStoreDeferredComponentManager(this, null);
+					FlutterInjector.setInstance(new FlutterInjector.Builder()
+   						 .setDeferredComponentManager(deferredComponentManager).build());
+			  3. 将 deferred-components 依赖添加到应用程序的 pubspec.yaml 中的 flutter 下
+		2>	步骤2：
+	
+	4. 性能分析
+		 flutter run --profile
+		1>	性能图层
+				顶层：raster 线程耗费时间
+				底层：UI 线程耗费时间
+				垂直的绿色条：代表当前帧
+		2>	flutter 线程
+				平台线程：主线程，plugin代码运行位置
+				UI 线程：在 Dart VM 中执行 Dart 代码，UI线程先创建图层树（layer tree），并发送到将图层树发送到 GPU 线程来渲染到设备上
+				Raster 线程：拿到layer tree，交给GPU处理
+				I/O线程：耗时操作使用它执行
+		3>	UI图表的问题
+				分析 Dart VM 开始着手
+		4>	GPU图表的问题
+				GPU 图表显示红色，可能是：不必要的对 saveLayer 的调用，许多对象间的复杂操作，特定情形下的裁剪或者阴影
+				如果判定是动画导致的卡顿，Flutter inspector - Slow Animations，控制动画慢5倍
+				列如：不透明图层的长方形中用尖角来取代圆角裁剪，静态场景的淡入、旋转，可以使用重绘边界（RepaintBoundary）
+				1. 检查屏幕之外的视图
+				保存图层 (saveLayer)是很重量级的操作，尽量少的调用。
+				检查场景是否使用了 saveLayer：PerformanceOverlayLayer.checkerboardOffscreenLayers
+				检查是否有图像的轮廓闪烁
+				其主要场景有：透明度，裁剪或者阴影，类似这种场景最好是单独对widget应用
+				
+				2. 检查没有缓存的图像
+				使用重绘边界缓存图片RepaintBoundary
+				因为光栅缓存入口的构建需要大量资源，同时增加了 GPU 存储的负载，所以只在必须时才缓存图片
+				检查哪些图片被缓存：PerformanceOverlayLayer.checkerboardRasterCacheImages
+				运行应用来查看使用随机颜色网格渲染的图像，应该被缓存
+				
+		5>	检视 widget 重建性能	
+				可以检视 widget inspector 中当前屏幕和帧下的 widget 重建数量
+		
+	5. 着色器编译时卡顿
+		获取证据：--trace-skia 开启时查看追踪文件中的 GrGLProgramBuilder::finalize
+		1. 捕获 SkSL 中的着色器 
+			捕获 SkSL 中的着色器 ： flutter run --profile --cache-sksl
+			捕获 SkSL 中的着色器（并删除历史的）：flutter run --profile --cache-sksl --purge-persistent-cache
+		2. 多触发动画
+		3. flutter run 按下m捕获到flutter_01.sksl.json文件，
+		4. 构建带有 SkSL 预热的应用
+			flutter build ios --bundle-sksl-path flutter_01.sksl.json
+			如果它会构建一个类似 test_driver/app.dart 的驱动测试，请确保指定 --target=test_driver/app.dart
+		5. 测试app
+		或者一个综合命令自动执行前面步骤：
+		flutter drive --profile --cache-sksl --write-sksl-on-exit flutter_01.sksl.json -t test_driver/app.dart
+		
+	6. 性能指标
+		第一帧的启动时间
+				WidgetsBinding.instance.firstFrameRasterized 为 true时查看耗时
+		一帧的构建时间，栅格化时间，以及总时间
+				在 API 文档中查看 FrameTiming 
+		一帧的构建时间 buildDuration (*_frame_build_time_millis)
+				监测四个数据：平均值、90 分位值、99 分位值和最差帧构建时间
+				列如：
+		一帧的栅格化时间 rasterDuration (*_frame_build_time_millis)
+				监测四个数据：平均值、90 分位值、99 分位值和最差帧构建时间
+		CPU/GPU 的使用情况（一个可以近似衡量功耗的指标）
+				通过跟踪事件获取。查看 profiling_summarizer.dart 
+		release_size_bytes 对 Flutter 应用程序的大小进行估算
+				查看 basic_material_app_android、basic_material_app_ios、hello_world_android、hello_world_ios、flutter_gallery_android 和 flutter_gallery_ios 测试案例
+				
+	7. 性能常见问题
+		1. 为 Flutter 编写渲染速度测试
+			https://github.com/flutter/flutter/wiki/How-to-write-a-render-speed-test-for-Flutter
+		2. 为 Flutter 编写内存测试
+			https://github.com/flutter/flutter/wiki/How-to-write-a-memory-test-for-Flutter

@@ -158,8 +158,11 @@ flutter主要分为2部分，Engine，framework
 																						   platformDispatcher.onDrawFrame = callback
 			总结消息分发流程:
 					硬件发出VSync信号 
-					-> platformDispatcher.onDrawFrame 
-					-> SingletonFlutterWindow.onDrawFrame
+					-> platformDispatcher._onDrawFrame 
+					->  hooks._invoke
+					->  CustomZone.runGuarded
+					->  CustomZone.run
+					-> zone._rootRun
 					-> SchedulerBinding._handleDrawFrame 
 					-> SchedulerBinding.handleDrawFrame
 					-> 消费RenderBinding._postFrameCallbacks存储的callback 
@@ -171,6 +174,14 @@ flutter主要分为2部分，Engine，framework
 								pipelineOwner.flushLayout() // 刷新布局
     							pipelineOwner.flushCompositingBits() // 图层更新
 								pipelineOwner.flushPaint() // 刷新绘制
+									-> PaintingContext.repaintCompositedChild 		// PaintingContext从_nodesNeedingPaint获取获取，是renderView.prepareInitialFrame()初始化加入，RendererBinding.initInstances里面的initRenderView初始化
+									-> PaintingContext._repaintCompositedChild
+									-> RenderObject._paintWithContext
+									-> RenderProxyBoxMinxin.paint 		 // 真实的子类绘制
+									-> PaintingContext.paintChild 		 // 判断isRepaintBoundary为真，不参与父类绘制单独新建OffsetLayer用一个layer绘制
+									-> RenderObject.paintChild
+									-> RenderObject._paintWithContext
+									...
 								renderView.compositeFrame() // 告诉GPU渲染renderView(renderView其实就是widget里面的renderObject)
 								pipelineOwner.flushSemantics
 						buildOwner!.finalizeTree // 告诉buildOwner完成更新, 释放_inactiveElements
