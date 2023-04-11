@@ -31,7 +31,7 @@
 						checkerboardRasterCacheImages: true, // 检测静态图像是否没有缓存，导致构建耗费资源
 					}
 					优化方式：缓存图像等，避免频繁刷新
-					RepaintBoundary{ // flutter提供的多层次缓存快照，可以缓存静态图像，避免重复刷新
+					RepaintBoundary{ // flutter提供的多层次layer缓存快照，可以缓存静态图像，避免重复刷新
 						Container(color: Colors.black, height: 10.0, width: 10.0, ),
 					}
 		2>	UI线程定位：

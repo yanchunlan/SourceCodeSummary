@@ -174,8 +174,8 @@ flutter主要分为2部分，Engine，framework
 								pipelineOwner.flushLayout() // 刷新布局
     							pipelineOwner.flushCompositingBits() // 图层更新
 								pipelineOwner.flushPaint() // 刷新绘制
-									-> PaintingContext.repaintCompositedChild 		// PaintingContext从_nodesNeedingPaint获取获取，是renderView.prepareInitialFrame()初始化加入，RendererBinding.initInstances里面的initRenderView初始化
-									-> PaintingContext._repaintCompositedChild
+									-> PaintingContext.repaintCompositedChild 		// PaintingContext从_nodesNeedingPaint获取获取，是renderView.prepareInitialFrame()初始化加入，RendererBinding.initInstances里面的initRenderView初始化，获取绘制的脏节点
+									-> PaintingContext._repaintCompositedChild			// 绘制流程，深度优先
 									-> RenderObject._paintWithContext
 									-> RenderProxyBoxMinxin.paint 		 // 真实的子类绘制
 									-> PaintingContext.paintChild 		 // 判断isRepaintBoundary为真，不参与父类绘制单独新建OffsetLayer用一个layer绘制

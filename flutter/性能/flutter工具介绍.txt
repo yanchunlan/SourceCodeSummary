@@ -82,10 +82,10 @@
 
 二. 调试手段
 1.	应用层调试
-	打印widget树：debugDumpApp()
-	打印render树：debugDumpRenderTree()
-	打印layer树：debugDumpLayerTree()
-	打印Semantics树：debugDumpSemanticsTree()
+	打印widget树：debugDumpApp()  									-> renderViewElement.toStringDeep
+	打印render树：debugDumpRenderTree()						-> renderView.toStringDeep
+	打印layer树：debugDumpLayerTree()							-> renderView.debugLayer.toStringDeep
+	打印Semantics树：debugDumpSemanticsTree()			-> renderView.debugSemantics.toStringDeep
 	找到事件触发对应的开始或结束帧:
 		 debugPrintBeginFrameBanner = true;
 		 debugPrintEndFrameBanner  = true;
@@ -185,14 +185,20 @@
 				列如：不透明图层的长方形中用尖角来取代圆角裁剪，静态场景的淡入、旋转，可以使用重绘边界（RepaintBoundary）
 				1. 检查屏幕之外的视图
 				保存图层 (saveLayer)是很重量级的操作，尽量少的调用。
-				检查场景是否使用了 saveLayer：PerformanceOverlayLayer.checkerboardOffscreenLayers
+				检查场景是否使用了 saveLayer：MaterialApp中添加 checkerboardOffscreenLayers 可以检测
 				检查是否有图像的轮廓闪烁
 				其主要场景有：透明度，裁剪或者阴影，类似这种场景最好是单独对widget应用
+				
+				排查方式：
+					1. 使用timeline查看Flutter 对 Skia 的调用
+						flutter run --profile --trace-skia
+					2. 接上，继续捕捉 SKPicture 来分析每一条绘图指令【上传到 https://debugger.skia.org/ 分析】
+						flutter screenshot --type=skia --observatory-uri=uri  
 				
 				2. 检查没有缓存的图像
 				使用重绘边界缓存图片RepaintBoundary
 				因为光栅缓存入口的构建需要大量资源，同时增加了 GPU 存储的负载，所以只在必须时才缓存图片
-				检查哪些图片被缓存：PerformanceOverlayLayer.checkerboardRasterCacheImages
+				检查哪些图片被缓存：MaterialApp中添加 checkerboardRasterCacheImages 可以检测
 				运行应用来查看使用随机颜色网格渲染的图像，应该被缓存
 				
 		5>	检视 widget 重建性能	

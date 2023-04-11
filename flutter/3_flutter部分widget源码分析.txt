@@ -4,6 +4,16 @@
 		其中_globalKeyRegistry是一个map类型，在三棵树挂载的时候mount就会存值（挂载流程：element通过inflateWidget->mount-> rebuild(ComponentElement) -> performRebuild (ComponentElement)-> updateChild->inflateWidget递归创建element树结构），同理获取到_currentElement后，可以获取到其他widget，state，context数据
 	2. 数据状态保存
 		setState流程：markNeedsBuild将当前element标记为dirty，调用owner的 scheduleBuildFor(this)将当前element添加到owner的_dirtyElements里面，调用onBuildScheduled通知drawFrame，WidgetsBinding.drawFrame -> owner.buildScope处理dirty element的rebuild，调用buildOwner!.finalizeTree来释放_inactiveElements，在element的rebuild中调用performRebuild（build -> updateChild -> deactivateChild -> inflateWidget），其中deactivateChild没有立即释放element，而是将element添加到owner的_inactiveElements，后续inflateWidget递归构建新element树时，判断是否是GlobalKey，是则_retakeInactiveElement复用取出GlobalKey对应的element。
+		
+	key相关类描述：
+	1. LocalKey 
+		ValueKey：使用特定类型的值来做标识的，值引用
+		ObjectKey：对象引用
+		UniqueKey：生成一个独一无二的key值
+		PageStorageKey：用于保存和还原比Widget生命周期更长的值
+	2. GlobalKey
+		LabeledGlobalKey：带有标签的GlobalKey。 该标签仅用于调试，不用于比较
+		GlobalObjectKey：对象引用
 	
 二. Provider
 		Provider -> ChangeNotifierProvider -> ListenableProvider -> InheritedProvider -> SingleChildStatelessWidget -> 
@@ -25,3 +35,7 @@
 四. Selector 条件刷新
 		Selector -> Selector0( _Selector0State.buildWithChild) -> widget.selector(context) -> Provider.of(context) 创建监听
 		刷新判断：_Selector0State.buildWithChild中根据缓存旧Widget-cache、旧数据value，然后会判断widget是否相同、shouldRebuild条件、DeepCollectionEquality对比来判断是否需要更新组件
+
+五. RepaintBoundary
+	原理：包裹的子widget，单独使用一层layer去参与print，与renderView层绘制隔离开，每次帧绘制的时候，直接从RepaintBoundary控件print
+	使用场景：子类有频繁绘制，或者嵌套层级较深，使用其包裹，列入：动画控件，自定义print控件
