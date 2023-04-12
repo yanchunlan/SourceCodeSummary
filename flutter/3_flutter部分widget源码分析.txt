@@ -39,3 +39,44 @@
 五. RepaintBoundary
 	原理：包裹的子widget，单独使用一层layer去参与print，与renderView层绘制隔离开，每次帧绘制的时候，直接从RepaintBoundary控件print
 	使用场景：子类有频繁绘制，或者嵌套层级较深，使用其包裹，列入：动画控件，自定义print控件
+	
+六. Layer
+	1. 分类
+		1>	PictureLayer 图像绘制 如:Text ,Image
+				class PictureLayer extends Layer {
+				ui.Picture? _picture;
+				@override
+  				void addToScene(ui.SceneBuilder builder, [ Offset layerOffset = Offset.zero ]) {
+    				builder.addPicture(layerOffset, picture!, isComplexHint: isComplexHint, willChangeHint: willChangeHint);
+ 				 }
+				}
+				
+				一个_picture就可以绘制一层画面，
+				RenderObject绘制流程：
+					1. RenderObject.paint(PaintingContext context, Offset offset)
+					2. PaintingContext内部有Canvas，并含有ContainerLayer，通过paint创建了Picturelayer，会append到ContainerLayer上
+					3. _startRecording 把当前的PictureLayer append到_containerLayer上
+				汇总上面流程就是：
+					 PaintingContext context = PaintingContext(rootLayer,Rect.fromLTRB(0, 0, 1000, 1000));  // 1. 建立rootLayer与当前Layer的关联
+  					 context.canvas.drawRect(Rect.fromLTRB(200, 200, 800, 800), Paint()..color = Colors.blue); // 2. 当前Layer绘制，模拟paint方法 
+  					 context.stopRecordingIfNeeded(); // 3. 当前PictureLayer添加到rootLayer
+ 					  final SceneBuilder builder = ui.SceneBuilder();
+ 					  final Scene scene = rootLayer.buildScene(builder); // 4. 合成所有layer到rootLayer
+ 					  ui.window.render(scene); // 5. 发送Scene数据到引擎
+ 					  scene.dispose(); // 释放这次的Scene数据
+				
+		2>	TextureLayer 外接纹理 如: 视频播放
+		3>	PlatformViewLayer  Flutter嵌套Native View
+		4>	PerformanceOverlayLayer 性能监控相关，能够显示出GPU对当前帧光栅化的耗时以及帧渲染的耗时
+		5>	ContainerLayer 复合层  相当于一个根节点可以合成多个叶子节点的layer ，TransformLayer属于ContainerLayer的派生类
+		6>	ClipPathLayer 剪裁图层，剪裁子图层【图层对的剪裁是比较消耗性能的,尽可能避免使用】
+		7>	ColorFilterLayer 滤色器图层 ，色子图层
+	2. 特殊的Layer
+		RepaintBoundary 或者 自定义RandomColorRenderObject重写isRepaintBoundary的值
+		列如：自定义设置isRepaintBoundary为true或者false，点击文字会发现返回false的时候RandomColorRenderObject的piant会被调用，而返回true的时候RandomColorRenderObject的piant不会会被调用
+		使用场景：某个Layer的绘制耗时且不频繁刷新时，通过设置isRepaintBoundary为true，复用提升性能
+		
+七. AnimationController 动画控件
+	1. vsync
+		一般传入 SingleTickerProviderStateMixin，且内部执行_ticker = vsync.createTicker(_tick)，
+		原理：Ticker是被SchedulerBinding所驱动。SchedulerBinding则是监听着Window.onBeginFrame回调【该提供一个scene】，简而言之就是接收一帧，就绘制一帧

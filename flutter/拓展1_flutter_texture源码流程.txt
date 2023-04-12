@@ -1,0 +1,41 @@
+一. 使用方式
+	原生层：
+		channel = new MethodChannel()
+		channel.setMethodCallHandler(){
+			switch (call.method) {
+                case "createTexture":
+                   	TextureRegistry.SurfaceTextureEntry entry = flutterEngine.getRenderer().createSurfaceTexture();
+        			Surface surface = new Surface(entry.surfaceTexture());
+					... // 创建相机，绑定surface
+					result.success(entry.id()); //相机opend成功，把id返给给flutter层
+		}
+	flutter层：
+		int textureId = methodChannel.invokeMethod('createTexture');
+		widget： Texture(textureId: textureId,)
+		
+		拓展：Texture和PlatformView的区别
+		PlatformView是Flutter中嵌套Platform中的View,如:TextView，区别是Texture是渲染层的东西，而PlatformView本质是一个View它拥有View所有的属性
+		
+二. 原理分析
+	1. Texture的创建【原生层】
+		FlutterRenderer.createSurfaceTexture
+		-> FlutterRenderer.registerTexture(entry.id(), entry.textureWrapper()) // 传入id，SurfaceTexture
+		-> Flutter Engine.RegisterTexture(platform_view_android_jni_impl.cc)
+		-> PlatformViewAndroid::RegisterExternalTexture(platform_view_android.cc)
+		-> PlatformView::RegisterTexture(platform_view.cc)
+		-> Shell::OnPlatformViewRegisterTexture(shell.cc)
+		-> TextureRegistry::RegisterTexture(texture.cc)
+		-> TextureRegistry::RegisterTexture(texture.cc)
+			 mapping_[texture->Id()] = texture; // Flutter Engine层把SurfaceTexture存到mapping_中
+			 
+	2. Texture的获取【flutter层】
+		TextureLayer.addToScene
+		SceneBuilder._addTexture
+			native 'SceneBuilder_addTexture'; // 调用Engine中的方法
+			-> SceneBuilder::addTexture(scene_builder.cc)
+				std::make_unique<flutter::TextureLayer>(...)// 获取到mapping_中保存的Texture，并创建一个TextureLayer
+				AddLayer(...) // 添加到layer层
+		绘制：
+			TextureLayer::Paint（texture_layer.cc）
+				std::shared_ptr<Texture> texture = context.texture_registry.GetTexture(texture_id_); // 获取texture_registry中注册好的texture
+				texture->Paint

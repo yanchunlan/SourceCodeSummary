@@ -197,6 +197,9 @@ flutter主要分为2部分，Engine，framework
 									 pipelineOwner.flushLayout();
  									 pipelineOwner.flushCompositingBits();
    									 pipelineOwner.flushPaint();
+   									 renderView.compositeFrame();
+   									 		final ui.Scene scene = layer!.buildScene(builder); // 根部的layer，调用合成所有的layer，生成引擎层的句柄Scene
+   									 		_window.render(scene); // 发送Scene到引擎
    									 pipelineOwner.flushSemantics();
 						->		获取SchedulerPhase.postFrameCallbacks的帧
 					scheduleFrame：调用Window的scheduleFrame安排一个新的帧
@@ -379,7 +382,7 @@ Widget,Element,RenderObject三者关系:
 		owner.scheduleBuildFor(this)
 	-> onBuildScheduled.callback 通知engine更新下一帧
 		-> WigetsBinding._handleBuildScheduled -> window.scheduleFrame -> platformDispatcher.scheduleFrame
-		_dirtyElements.add(element)  加入Elemnt更新列表
+		_dirtyElements.add(element)  Elemnt加入Elemnt的脏集合更新列表
 	
 	2. 接收到更新消息:
 	WidgetsBinding.drawFrame 
