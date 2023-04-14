@@ -1,0 +1,44 @@
+1. 基础类
+    Animation
+    AnimationController
+    CurvedAnimation
+    Tween
+    Listeners 和 StatusListeners
+
+2.  实践
+    1. 基础动画
+        addListener和setState刷新控件
+        缺点：
+            复用性差，冗余代码多
+            setState会重新build浪费性能
+
+    2. AnimatedWidget
+        缺点：
+            创建 AnimatedWidget 的子类增加维护成本
+            它的子类Widget也会重新build
+
+    3. AnimatedBuilder
+
+3.  系统动画组件
+    1. AnimatedContainer：带动画功能的 Container
+    2. AnimatedCrossFade：让2个组件在切换时出现交叉渐入的效果
+    3. AnimatedIcon：使用这些动画图标的控件，类似AnimatedIcons.add_event
+        其他：
+            AnimatedAlign
+            AnimatedDefaultTextStyle
+            AnimatedModalBarrier
+            AnimatedOpacity
+            AnimatedPadding
+            AnimatedPhysicalModel
+            AnimatedPositioned
+            AnimatedPositionedDirectional
+            AnimatedSize
+     4. 转场动画：页面与页面之间的切换
+        PageRouteBuilder：
+            PageRouteBuilder(
+                pageBuilder:    创建所要跳转到的页面
+                transitionsBuilder: 自定义的转场效果
+            )
+      5. 过渡动画：点击一张图片，切换到另一个页面时
+        Hero：
+            Hero(tag: ) // 只需要2个Hero的tag保持一致即可

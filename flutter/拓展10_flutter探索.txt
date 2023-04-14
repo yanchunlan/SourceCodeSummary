@@ -1,0 +1,33 @@
+flutter方案探索
+1.  混合框架
+    混合容器：
+        共享engine
+        FlutterBoost
+        
+    动态化
+        JavaScript实现逻辑，Skia渲染引擎，腾讯开源
+        源码生成AST Json树，Dart VM执行AST，美团方案
+
+    UI自动化测试：
+        flutter app：main函数开启VMService
+        脚本侧：通过WebSocket和InspectorService建立连接，去拿到Element ID
+
+    组件库：
+        https://github.com/LianjiaTech/bruno
+
+2.  性能优化
+    图片优化
+        https://github.com/LianjiaTech/bk_flutter_image 【flutter通过纹理texture调用原生，安卓glide，ios用SDWebImage】
+        https://github.com/alibaba/power_image
+            
+    流畅度优化
+        https://github.com/LianjiaTech/keframe  【addPostFrameCallback第一帧之后setState刷新子Element】
+
+
+    动画
+
+
+
+
+3.  其他黑科技
+    AspectD aop切面编程，https://github.com/alibaba-flutter/aspectd

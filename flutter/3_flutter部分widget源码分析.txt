@@ -15,7 +15,7 @@
 		LabeledGlobalKey：带有标签的GlobalKey。 该标签仅用于调试，不用于比较
 		GlobalObjectKey：对象引用
 	
-二. Provider
+二. Provider(内部是InheritedWidget实现)
 		Provider -> ChangeNotifierProvider -> ListenableProvider -> InheritedProvider -> SingleChildStatelessWidget -> 
 		1. ChangeNotifierProvider
 			继承ListenableProvider，有crete，value，dispose函数，其中create自动传递静态_dispose管理生命周期，value需要自己管理生命周期。
@@ -80,3 +80,18 @@
 	1. vsync
 		一般传入 SingleTickerProviderStateMixin，且内部执行_ticker = vsync.createTicker(_tick)，
 		原理：Ticker是被SchedulerBinding所驱动。SchedulerBinding则是监听着Window.onBeginFrame回调【该提供一个scene】，简而言之就是接收一帧，就绘制一帧
+		
+八. NetworkImage
+	ImageProvider：图⽚的抽象概念（如下图NetworkImage、FileImage等），约定图⽚唯⼀性(key)、获取图⽚字节数据(load)，创建  ImageStream⽤于监听结果。key⽤于描述图⽚的唯⼀以及是否已有缓存。
+	Image ：显示图⽚的Widget，通过ImageState管理ImageProvider的⽣命周期。
+	ImageStream：图⽚的加载对象，通过 ImageStreamCompleter 最后会返回⼀个 ImageInfo,⽽ImageInfo 中的ui.Image是RenderObject的⽬标绘制对象。
+	ImageCache:图⽚缓存单例PaintingBinding.instance.imageCache（默认100MB或1000张图满⾜其⼀，就标记最先缓存的对象给释放其引用）
+
+九. InheritedWidget
+	观察者模式
+	创建map：mount- > updateInheritance -> 传递map或者构造map
+	注册：context.inheritFromWidgetOfExactType(MyInheritedWidget)会将当前Element添加到map中
+	刷新：updateShouldNotify为true -> 从map中获取到Element，并调用didChangeDependencies，调用markNeedsBuild，标记刷新，等待后续Vsync信号刷新
+
+十. Stream
+	

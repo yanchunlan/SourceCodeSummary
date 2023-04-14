@@ -1,0 +1,115 @@
+一.	MethodChannel
+    Flutter与原生端方法调用使用，它是双向通信，双端都可以主动发起
+	1. Flutter调用原生方法
+		原生层：
+			MethodChannel methodChannel = new MethodChannel(xxx, "com.example.methodChannel/test");
+			methodChannel.setMethodCallHandler(new MethodChannel.MethodCallHandler() {
+            	@Override
+            	public void onMethodCall(@NonNull MethodCall call, @NonNull MethodChannel.Result result) {
+                        switch (call.method){
+                            case "getVersion":
+                                result.success(1);
+                                break;
+                        }
+            	}
+        	});
+        	
+		flutter层：
+			const MethodChannel _channel = MethodChannel("com.example.methodChannel/test");
+			_channel.invokeMethod("getVersion", <String, dynamic>{// map参数});
+			
+	2. 原生调用Flutter方法
+		原生层：
+			MethodChannel methodChannel = new MethodChannel(xxx, "com.example.methodChannel/test");
+			methodChannel.invokeMethod("getFlutterInfo", null, new MethodChannel.Result() {
+            	@Override
+           	 	public void success(@Nullable Object result) { }
+            	@Override
+           		 public void error(String errorCode, @Nullable String errorMessage, @Nullable Object errorDetails) {}
+            	@Override
+           		 public void notImplemented() {}
+        });
+		
+		flutter层：
+			const MethodChannel _channel = MethodChannel("com.example.methodChannel/test");
+  			_channel.setMethodCallHandler((MethodCall call){
+    			Completer<dynamic> completer = Completer();
+   					 switch(call.method){
+      					case "getFlutterInfo":
+       					 completer.complete("Flutter info test");
+        				break;
+   					 }
+    				return completer.future;
+  			});
+  			
+二.	EventChannel
+    原生与Flutter相互发送事件使用，它是单向通信的
+    1. 原生发送事件到Flutter
+        原生层：
+            EventChannel eventChannel = new EventChannel(xxx,"com.example.eventChannel/test");
+            EventChannel.EventSink eventSink;
+            eventChannel.setStreamHandler(new EventChannel.StreamHandler() {
+                @Override
+                public void onListen(Object arguments, EventChannel.EventSink events) {
+                    eventSink = events;
+                }
+                @Override
+                public void onCancel(Object arguments) {}
+            });
+            if(eventSink != null) eventSink.success(200); //发送事件到Flutter
+
+        flutter层：
+            EventChannel _eventChannel = EventChannel('com.example.eventChannel/test');
+            //监听原生端发送过来的事件
+            _eventChannel.receiveBroadcastStream().listener()
+
+三.  源码流程
+    1. MethodChannel
+        安卓层是DartMessenger，flutter是_DefaultBinaryMessenger，分别负责接收/发送消息
+        1> flutter调原生函数
+        flutter层：
+                mainMethodChannel.invokeMethod
+                ->  BasicMessageChannel.invokeMethod
+                ->  binaryMessenger.send
+                ->  _DefaultBinaryMessenger.send
+                ->  ui.PlatformDispatcher.instance.sendPlatformMessage
+                ->  platform_dispatcher.sendPlatformMessage
+                    native 'PlatformConfiguration_sendPlatformMessage'
+        原生层：
+                FlutterJNI.handlePlatformMessage
+                ->  binaryMessenger.handleMessageFromDart
+                ->  binaryMessenger.dispatchMessageToQueue
+                ->  invokeHandler
+                ->  IncomingMethodCallHandler.onMessage
+                ->  MethodCallHandler.onMethodCall
+                ->  Reply.reply
+                MethodChannel.Result 触发上层回调
+        2> 原生调flutter
+        原生层：
+            methodChannel.invokeMethod
+            ->  BinaryMessenger.send
+            ->  DartMessenger.send
+                pendingReplies.put(replyId, callback); // 存储map, key是计数器递增，value是回调函数
+                flutterJNI.dispatchPlatformMessage  // 通知native函数
+                ->  flutterJNI.nativeDispatchPlatformMessage
+        flutter层：
+            ...
+    2.  EventChannel
+        1>  原生发送事件到Flutter
+            原生层：
+                eventChannel.setStreamHandler
+                    onListen // Flutter端注册监听
+                EventSink.success
+                ->  DartMessenger.send
+                ->  FlutterJNI.dispatchPlatformMessage
+            flutter层：
+                EventChannel.receiveBroadcastStream
+                ->  binaryMessenger.setMessageHandler
+                ->  PlatformDispatcher._dispatchPlatformMessage
+                ->  window.onPlatformMessage
+                ->  _DefaultBinaryMessenger.handlePlatformMessage
+                    调用原生层setMessageHandler.onListen
+
+    总结：
+        1.  flutter与原生数据进行了二进制编码，flutter framework层使用StandardMessageCodec，基于二进制传输，默认只支持String,int,double,bool,List,Map数据类型
+        2.  Java --> C/C++ —> Dart，其实都是通过c/c++层传输数据，类似JsBridge
