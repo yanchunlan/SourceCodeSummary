@@ -37,9 +37,31 @@
 		刷新判断：_Selector0State.buildWithChild中根据缓存旧Widget-cache、旧数据value，然后会判断widget是否相同、shouldRebuild条件、DeepCollectionEquality对比来判断是否需要更新组件
 
 五. RepaintBoundary
-	原理：包裹的子widget，单独使用一层layer去参与print，与renderView层绘制隔离开，每次帧绘制的时候，直接从RepaintBoundary控件print
-	使用场景：子类有频繁绘制，或者嵌套层级较深，使用其包裹，列入：动画控件，自定义print控件
-	
+	原理：包裹的子widget，单独使用一层layer去child._layer添加到_containerLayer，不会继续遍历子节点，相当于与renderView层绘制隔离开，每次帧绘制的时候，直接从RepaintBoundary控件print
+	使用场景：子类有频繁绘制，或者嵌套层级较深，使用其包裹，列如：动画控件，自定义print控件
+	        外部频繁刷新，不想子类频繁刷，也可以将其包裹
+
+	        总结就是绘制会在RepaintBoundary控件中断，无论上下绘制都是绘制isRepaintBoundary = false的控件
+	列如：
+	    1. 上下包裹控件(仅绘制变化CustomPaint)
+	    _CupertinoScrollbarState，_ScrollbarState，_GlowingOverscrollIndicatorState，
+	    build(){
+	        return Notification(
+	            child: RepaintBoundary(
+	                child: CustomPaint( // 上下均用RepaintBoundary包裹，仅绘制中间层
+	                    ...
+	                    child: RepaintBoundary(...)
+	                )
+	            )
+	        )
+	    }
+        2. 还有单个包裹控件
+        _TextFieldState，_CupertinoTextFieldState，SliverChildBuilderDelegate，Flow，
+
+        3. 其他
+        水波纹：RawMaterialButton 未上下嵌套
+        输入框：TextField 也需套一层
+
 六. Layer
 	1. 分类
 		1>	PictureLayer 图像绘制 如:Text ,Image
@@ -94,4 +116,16 @@
 	刷新：updateShouldNotify为true -> 从map中获取到Element，并调用didChangeDependencies，调用markNeedsBuild，标记刷新，等待后续Vsync信号刷新
 
 十. Stream
+
+
+十一. CustomPainter
+    在频繁刷新或者结合动画的场景，属性repaint可传入animation，通过内部自行监听控制canvas执行绘制操作，减少外部控件buil,layout耗时
+
+    非CustomPaint绘制控件：
+    1. ColoredBox
+        ColoredBox -> _RenderColoredBox -> paint -> context.canvas.drawRect
+    2. Image
+        Image -> RawImage.createRenderObject -> RenderImage.paint -> paintImage -> canvas.drawImageRect
+    3. Text
+        Text.build -> RichText.createRenderObject -> RenderParagraph.print -> _textPainter.print -> canvas.drawParagraph
 	

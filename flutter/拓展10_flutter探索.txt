@@ -24,8 +24,11 @@ flutter方案探索
         https://github.com/LianjiaTech/keframe  【addPostFrameCallback第一帧之后setState刷新子Element】
 
 
-    动画
+    内存泄露监控
+        https://github.com/liujiakuoyx/leak_detector/blob/main/README_zh-CN.md【利用VmService实现】
 
+    应用内调试工具
+        flutter_ume：https://github.com/bytedance/flutter_ume/blob/master/README_cn.md
 
 
 

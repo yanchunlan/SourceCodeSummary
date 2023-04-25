@@ -5,7 +5,7 @@
 			switch (call.method) {
                 case "createTexture":
                    	TextureRegistry.SurfaceTextureEntry entry = flutterEngine.getRenderer().createSurfaceTexture();
-        			Surface surface = new Surface(entry.surfaceTexture());
+          			Surface surface = new Surface(entry.surfaceTexture());
 					... // 创建相机，绑定surface
 					result.success(entry.id()); //相机opend成功，把id返给给flutter层
 		}

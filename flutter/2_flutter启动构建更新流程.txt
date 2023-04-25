@@ -166,25 +166,43 @@ flutter主要分为2部分，Engine，framework
 					-> SchedulerBinding._handleDrawFrame 
 					-> SchedulerBinding.handleDrawFrame
 					-> 消费RenderBinding._postFrameCallbacks存储的callback 
-					-> 其子类WidgetsBinding.drawFrame 
-					-> buildOwner.buildScope // 构建更新子树
-							调用去管理RenderObject树生成新的UI绘制信息，交给renderView, 并生成一个Scene给SingletonFlutterWindow，然后GPU去渲染新的界面
-						super.drawFrame() // 执行上面flushLayout/flushCompositingBits/flushPaint/flushSemantics ...
-							-> RenderBinding.drawFrame 
-								pipelineOwner.flushLayout() // 刷新布局
-    							pipelineOwner.flushCompositingBits() // 图层更新
-								pipelineOwner.flushPaint() // 刷新绘制
-									-> PaintingContext.repaintCompositedChild 		// PaintingContext从_nodesNeedingPaint获取获取，是renderView.prepareInitialFrame()初始化加入，RendererBinding.initInstances里面的initRenderView初始化，获取绘制的脏节点
-									-> PaintingContext._repaintCompositedChild			// 绘制流程，深度优先
-									-> RenderObject._paintWithContext
-									-> RenderProxyBoxMinxin.paint 		 // 真实的子类绘制
-									-> PaintingContext.paintChild 		 // 判断isRepaintBoundary为真，不参与父类绘制单独新建OffsetLayer用一个layer绘制
-									-> RenderObject.paintChild
-									-> RenderObject._paintWithContext
-									...
-								renderView.compositeFrame() // 告诉GPU渲染renderView(renderView其实就是widget里面的renderObject)
-								pipelineOwner.flushSemantics
-						buildOwner!.finalizeTree // 告诉buildOwner完成更新, 释放_inactiveElements
+					-> 其子类WidgetsBinding.drawFrame
+                        -> 1> buildOwner.buildScope // 构建更新子树
+                                Element.rebuild
+                                ->  StatefulElement.performReBuild
+                                ->  ComponentElement.performReBuild
+                                ->  Element.updateChild
+                                    ->  1>  MultiChildRenderObjectElement.update
+                                            -> RenderObjectElement.updateChildren
+                                            -> Element.updateChild
+                                        2>  SingleChildRenderObjectElement.update
+                                            -> RenderObjectElement.update
+                                            -> Semantics,updateRenderObject
+                                            -> Element.dependOnInheritedWidgetOfExactType
+                                            -> dependOnInheritedElement
+                        -> 2> RenderBinding.drawFrame // 绘制子树
+                                    pipelineOwner.flushLayout() // 刷新布局
+                                        -> RenderObject._layoutWithoutResize...
+                                        -> RenderObject.layout...
+                                    pipelineOwner.flushCompositingBits() // 图层更新
+                                    pipelineOwner.flushPaint() // 刷新绘制
+                                        -> PaintingContext.repaintCompositedChild 		// PaintingContext从_nodesNeedingPaint获取获取，是renderView.prepareInitialFrame()初始化加入，RendererBinding.initInstances里面的initRenderView初始化，获取绘制的脏节点
+                                        -> PaintingContext._repaintCompositedChild			// 绘制流程，深度优先
+                                            1> ContainerLayer.removeAllChildren         // 移除所有layer
+                                            2> RenderObject._paintWithContext
+                                            -> RenderProxyBoxMinxin.paint 		 // 真实的子类绘制
+                                            -> PaintingContext.paintChild 		 // 判断isRepaintBoundary为真，不参与父类绘制单独新建OffsetLayer用一个layer绘制
+                                            -> RenderObject.paintChild
+                                            -> RenderObject._paintWithContext
+                                            ...
+                                    renderView.compositeFrame() // 告诉GPU渲染renderView(renderView其实就是widget里面的renderObject)
+                                       1> ContainerLayer.buildScene
+                                        -> TransformLayer.addToScene
+                                       2> SceneBuilder.SceneBuilder
+                                       3> RenderView._updateSystemChrome
+                                       4> FlutterView.render
+                                    pipelineOwner.flushSemantics
+                        -> 3> buildOwner!.finalizeTree // 告诉buildOwner完成更新, 释放_inactiveElements
 						
 		3. scheduleWarmUpFrame
 			-> SchedulerBinding.scheduleWarmUpFrame
@@ -232,7 +250,7 @@ flutter主要分为2部分，Engine，framework
 		1. 在Flutter的framework层和engine层建立一个连接WidgetsFlutterBinding，注册Vsync回调后，每一帧调用的时候都会触发WidgetsFlutterBinding里面的方法，从而去调用framework层的处理逻辑
 		2. 为传入的widget构建节点树，将节点树中的RenderObjct树的结果交给enginee层的SingletonFlutterWindow,然后通知到GPU进行渲染
 	
-四.	Flutter渲染机制：Widget、Elment和RenderObject
+四.	Flutter渲染机制：Widget、Element和RenderObject
 		RenderObjectToWidgetAdapter：		桥接RenderObject和Element树`
 		attachToRenderTree：创建element并把widget设置到里面去
 	1. Widget
@@ -252,7 +270,7 @@ flutter主要分为2部分，Engine，framework
 		有以下生命周期：
 		1>	initState 依赖于BuildContext或Widget
 		2>	didChangeDependencies ，State的子类需要重写该方法，来实现包括InderitedWidget在内的初始化
-				如果调用了BuildContext.dependOnInheritedWIdgetOfExactType，后续InheritedWidget改变或当前widget在树中移动，
+				如果调用了BuildContext.dependOnInheritedWidgetOfExactType，后续InheritedWidget改变或当前widget在树中移动，
 				会再次触发didChangeDependencies
 		3>	如果重建widget，会将widget属性更新为新的Widget，并调用didUpdateWidget，将之前的widget作为参数传人，
 				【可以重载didUpdateWidget应对关联的widget更新】，并在之后调用build
@@ -286,12 +304,12 @@ flutter主要分为2部分，Engine，framework
 	updateChild:
 			添加、更新、移除一个子节点被调用,通过比较子节点和给定新配置,来判断如何处理.
 	Element是抽象类,其子类有ComponentElement和RenderObjectElement
-	1. ComponentElement   不是直接渲染在屏幕上的Elemnt
+	1. ComponentElement   不是直接渲染在屏幕上的Element
 			主要是用于组合其他Element的Element,通过创建其他Element的方式创建RenderObject,其子类StatelessElement和StatefulElement分别是对应于StatelessWidget和StatefullWidget的Element,同样InheritedElement对应于InheritedWidget
 			mount：
 				-> _firstBuild -> rebuild -> 活跃且不为dirty，就执行performRebuild 
 				-> 1. build  得到一个widget
-						ComponentElemnt.build 空方法，其子类：
+						ComponentElement.build 空方法，其子类：
 							StatelessElement.build = widget.build(this);
 							StatefulElement.build = _state.build(this);
 							ProxyElement.build = widget.child;
@@ -312,7 +330,7 @@ flutter主要分为2部分，Engine，framework
 								c. newChild.mount 		对新的element进行mount【子Element的mount】
 							后续继续走上述mount流程，子Element层层执行下去，其流程如下：
 							mount -> firstBuild -> rebuild - > performRebuild -> updateChild -> inflateWidget -> mount -> 子Element层层执行下去	
-	2. RenderObjectElement   渲染在屏幕上的Elemnt
+	2. RenderObjectElement   渲染在屏幕上的Element
 			有一个关联渲染树RenderObject,其中RenderObject实际执行布局、绘制、碰撞检测等操作
 			RenderObject子模型有三种:
 			1>	叶节点RenderObject,无子节点：LeafRenderObjectElement处理
@@ -331,7 +349,7 @@ flutter主要分为2部分，Engine，framework
 				->	for(){
 					inflateWidget
 				}
-			总结：有子节点的RederObjctElement的子类，会调用inflateWidget，inflateWidget会产生第一个子节点，再调用子节点的mount
+			总结：有子节点的RenderObjectElement的子类，会调用inflateWidget，inflateWidget会产生第一个子节点，再调用子节点的mount
 3. RenderObject
 	渲染库的核心,每个RenderObject都有父节点,有一个parentData用于供父RenderObject保存子节点相关数据,例如子节点位置,RenderObject类还实现了基本的布局和绘制协议.
 	RenderObject没有定义子节点模型,也没有定义坐标系.
@@ -382,18 +400,18 @@ Widget,Element,RenderObject三者关系:
 		owner.scheduleBuildFor(this)
 	-> onBuildScheduled.callback 通知engine更新下一帧
 		-> WigetsBinding._handleBuildScheduled -> window.scheduleFrame -> platformDispatcher.scheduleFrame
-		_dirtyElements.add(element)  Elemnt加入Elemnt的脏集合更新列表
+		_dirtyElements.add(element)  Element加入Element的脏集合更新列表
 	
 	2. 接收到更新消息:
 	WidgetsBinding.drawFrame 
 	-> buildScope
-		callback // 1. 执行前面callback, 如果首次构建就是根Elemnt.mount
+		callback // 1. 执行前面callback, 如果首次构建就是根Element.mount
 		_dirtyElements[index].rebuild // 2. 循环执行element.rebuild -> element.performRebuild 
-														-> 如果是RenderObjctElemnt, 调用updateRenderObject -> ...
-															如果是ComponetElemnt,调用performRebuild -> updateChild -> ...
+														-> 如果是RenderObjectElement, 调用updateRenderObject -> ...
+															如果是ComponetElement,调用performRebuild -> updateChild -> ...
 		_dirtyElements.clear();  // 3. 清空_dirtyElements列表
 	
-	3. ComponetElemnt.updateChild 分别删除,修改,增加Elemnt子节点
+	3. ComponetElement.updateChild 分别删除,修改,增加Element子节点
 		1. new Widget为空, element不为空就deactivateChild, 把对应的element放在BuildlOwner._inactiveElements列表中
 		2. new Widget非空,
 			1. new Widget == 原来的widget, 但是slot不同, updateSlotForChild更新位置
@@ -405,6 +423,10 @@ Widget,Element,RenderObject三者关系:
 	
 	4. RenderObjcetElement更新子节点RenderObjcetElement子树
 		列入Stack.updateChild -> MutilChildRederObjectElemnt.update -> updateChildren 遍历子节点对子节点调updateChild
+       更新结束后，Element 、RenderObject 、State这些对象都都根据配置信息更新完成
+
+	5. RendererBinding.drawFrame
+	    上面BuildOwner.buildScope执行完成后，开始执行endererBinding.drawFrame绘制操作，pipelineOwner.flushPaint找到脏集合，深度遍历element去执行print
 	
 ParentData
 	两个RenderObecjElement中间会存在ParentDataElemnt数据.

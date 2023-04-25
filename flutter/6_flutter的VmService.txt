@@ -1,0 +1,122 @@
+一.  简介
+    Dart VM Service：Dart 虚拟机内部提供的一套 Web 服务，数据传输协议是 JSON-RPC 2.0，主要使用WebSocket 实现RPC远程通信
+    debug/profile模式Flutter Engine会开启一个DartService Isolate，在其中创建VmService，devTools获取到运行时的各种信息，就是基于此Service的可视化工具
+
+二.  创建VmService
+    1. 创建DartService Isolate
+        // dart_isolate.cc
+        DartIsolate::DartCreateAndStartServiceIsolate{
+            if(settings.enable_observatory) // release 模式下会禁用
+
+            tonic::DartState::Scope scope(service_isolate);
+            if (!DartServiceIsolate::Startup(...)) // // service_isolate中启动Vm Service
+
+            return service_isolate->isolate() // 启动service_isolate
+        }
+    2.  启动Vm Service
+        // dart_isolate.cc
+        DartServiceIsolate::Startup{
+            //调用dart:vmservice_io中的代码
+            Dart_Handle uri = Dart_NewStringFromCString("dart:vmservice_io");
+        }
+        // engine/src/third_party/dart/sdk/lib/_internal/vm/bin/vmservice_io.dart
+        _lazyServerBoot{
+            if (localServer != null) return localServer;
+
+            final service = VMService();
+            localServer = Server(service,...)
+            return localServer;
+        }
+
+三.  连接VmService
+    flutter插件vm_service（https://pub.flutter-io.cn/packages/vm_service），通过webSocket连接到Flutter Engine中的VM Service，使用时需--no-dds禁用devTool
+    1.  获取vm_service uri
+        settings.h 文件中    observatory_host // 默认127.0.0.1
+                            observatory_port // 默认0
+        debug模式，通过FlutterJNI.getObservatoryUri 获取到uri
+    2.  连接vm_service
+        String url =  // 通过MethodChannel获取getObservatoryUri
+        Uri uri = Uri.parse(url);
+        Uri socketUri = convertToWebSocketUrl(serviceProtocolUrl: uri);
+        final vmService = await vmServiceConnectUri(socketUri.toString());
+
+四.  使用场景
+    VmService源码位置：engine/src/third_party/dart/runtime/vm/service.cc
+    可以通过其查看内存,CPU,GC等信息，基于开发的工具有DevTools，
+                                            字节ume（https://pub.flutter-io.cn/packages/flutter_ume）
+                                            内存泄露工具leak_detector（https://pub.flutter-io.cn/packages/leak_detector）
+
+    VmService提供的服务： 【service.cc中service_methods_都是VmService具备的能力】
+        static const ServiceMethodDescriptor service_methods_[] = {
+          { "_echo", Echo,  NULL },
+          { "_respondWithMalformedJson", RespondWithMalformedJson,  NULL },
+          { "_respondWithMalformedObject", RespondWithMalformedObject,  NULL },
+          { "_triggerEchoEvent", TriggerEchoEvent,  NULL },
+          { "addBreakpoint", AddBreakpoint,  add_breakpoint_params },
+          { "addBreakpointWithScriptUri", AddBreakpointWithScriptUri,  add_breakpoint_with_script_uri_params },
+          { "addBreakpointAtEntry", AddBreakpointAtEntry,  add_breakpoint_at_entry_params },
+          { "_addBreakpointAtActivation", AddBreakpointAtActivation,  add_breakpoint_at_activation_params },
+          { "_buildExpressionEvaluationScope", BuildExpressionEvaluationScope,  build_expression_evaluation_scope_params },
+          { "clearCpuSamples", ClearCpuSamples,  clear_cpu_samples_params },
+          { "clearVMTimeline", ClearVMTimeline,  clear_vm_timeline_params, },
+          { "_compileExpression", CompileExpression, compile_expression_params },
+          { "_enableProfiler", EnableProfiler,  enable_profiler_params, },
+          { "evaluate", Evaluate,  evaluate_params },
+          { "evaluateInFrame", EvaluateInFrame,  evaluate_in_frame_params },
+          { "_getAllocationProfile", GetAllocationProfile,  get_allocation_profile_params },
+          { "getAllocationProfile", GetAllocationProfilePublic,  get_allocation_profile_params },
+          { "getAllocationTraces", GetAllocationTraces,  get_allocation_traces_params },
+          { "_getNativeAllocationSamples", GetNativeAllocationSamples,  get_native_allocation_samples_params },
+          { "getClassList", GetClassList,  get_class_list_params },
+          { "getCpuSamples", GetCpuSamples,  get_cpu_samples_params },
+          { "getFlagList", GetFlagList,  get_flag_list_params },
+          { "_getHeapMap", GetHeapMap,  get_heap_map_params },
+          { "getInboundReferences", GetInboundReferences,  get_inbound_references_params },
+          { "getInstances", GetInstances,  get_instances_params },
+          { "_getInstancesAsArray", GetInstancesAsArray,  get_instances_as_array_params },
+          { "getPorts", GetPorts,  get_ports_params },
+          { "getIsolate", GetIsolate,  get_isolate_params },
+          { "_getIsolateObjectStore", GetIsolateObjectStore,  get_isolate_object_store_params },
+          { "getIsolateGroup", GetIsolateGroup,  get_isolate_group_params },
+          { "getMemoryUsage", GetMemoryUsage,  get_memory_usage_params },
+          { "getIsolateGroupMemoryUsage", GetIsolateGroupMemoryUsage,  get_isolate_group_memory_usage_params },
+          { "_getIsolateMetric", GetIsolateMetric,  get_isolate_metric_params },
+          { "_getIsolateMetricList", GetIsolateMetricList,  get_isolate_metric_list_params },
+          { "getObject", GetObject,  get_object_params },
+          { "_getObjectStore", GetObjectStore,  get_object_store_params },
+          { "_getPersistentHandles", GetPersistentHandles, get_persistent_handles_params, },
+          { "_getPorts", GetPortsPrivate,  get_ports_private_params },
+          { "getProcessMemoryUsage", GetProcessMemoryUsage,  get_process_memory_usage_params },
+          { "_getReachableSize", GetReachableSize,  get_reachable_size_params },
+          { "_getRetainedSize", GetRetainedSize,  get_retained_size_params },
+          { "getRetainingPath", GetRetainingPath,  get_retaining_path_params },
+          { "getScripts", GetScripts,  get_scripts_params },
+          { "getSourceReport", GetSourceReport,  get_source_report_params },
+          { "getStack", GetStack,  get_stack_params },
+          { "_getTagProfile", GetTagProfile,  get_tag_profile_params },
+          { "_getTypeArgumentsList", GetTypeArgumentsList,  get_type_arguments_list_params },
+          { "getVersion", GetVersion,  get_version_params },
+          { "getVM", GetVM,  get_vm_params },
+          { "getVMTimeline", GetVMTimeline,  get_vm_timeline_params },
+          { "getVMTimelineFlags", GetVMTimelineFlags,  get_vm_timeline_flags_params },
+          { "getVMTimelineMicros", GetVMTimelineMicros,  get_vm_timeline_micros_params },
+          { "invoke", Invoke, invoke_params },
+          { "kill", Kill, kill_params },
+          { "pause", Pause,  pause_params },
+          { "removeBreakpoint", RemoveBreakpoint,  remove_breakpoint_params },
+          { "reloadSources", ReloadSources,  reload_sources_params },
+          { "_reloadSources", ReloadSources,  reload_sources_params },
+          { "resume", Resume,  resume_params },
+          { "requestHeapSnapshot", RequestHeapSnapshot,  request_heap_snapshot_params },
+          { "_evaluateCompiledExpression", EvaluateCompiledExpression,  evaluate_compiled_expression_params },
+          { "setBreakpointState", SetBreakpointState,  set_breakpoint_state_params },
+          { "setExceptionPauseMode", SetExceptionPauseMode,  set_exception_pause_mode_params },
+          { "setFlag", SetFlag,  set_flags_params },
+          { "setLibraryDebuggable", SetLibraryDebuggable,  set_library_debuggable_params },
+          { "setName", SetName,  set_name_params },
+          { "setTraceClassAllocation", SetTraceClassAllocation,  set_trace_class_allocation_params },
+          { "setVMName", SetVMName,  set_vm_name_params },
+          { "setVMTimelineFlags", SetVMTimelineFlags,  set_vm_timeline_flags_params },
+          { "_collectAllGarbage", CollectAllGarbage,  collect_all_garbage_params },
+          { "_getDefaultClassesAliases", GetDefaultClassesAliases,  get_default_classes_aliases_params },
+        }
