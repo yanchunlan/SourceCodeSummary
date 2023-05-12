@@ -25,7 +25,12 @@ flutter方案探索
 
 
     内存泄露监控
-        https://github.com/liujiakuoyx/leak_detector/blob/main/README_zh-CN.md【利用VmService实现】
+        https://github.com/liujiakuoyx/leak_detector/blob/main/README_zh-CN.md【利用VmService实现，类似jvmTI】
+        原理：通过NavigatorObserver监听Route生命周期，didPush时拿到element/widget/state添加弱饮用集合列表，didPop时取值后延迟一段时间，执行gc后再开启compute分析弱饮用，分析完成后存储数据到onLeakedStream中
+        关键函数：    1. 存储弱引用: expando[x] = x
+                    2. 主动触发gc: vmService.getAllocationProfile(isolateId, gc: true);
+                    3. 获取调用链信息： vmService.getRetainingPath(isolateId, objId, limit);
+
 
     应用内调试工具
         flutter_ume：https://github.com/bytedance/flutter_ume/blob/master/README_cn.md

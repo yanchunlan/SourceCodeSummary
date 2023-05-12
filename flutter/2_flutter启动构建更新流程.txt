@@ -126,14 +126,24 @@ flutter主要分为2部分，Engine，framework
             2>	WidgetsFlutterBinding extends BindingBase with xxx :
                     BindingBase 各个binding相关的mixin的基类
                     ServicesBinding 处理与原生的交互通道
+                        _defaultBinaryMessenger 负责与platform通信
+                        _restorationManager 状态恢复回调,数据保存/恢复管理
+                        SystemChannels.system.setMessageHandler 系统消息处理，如内存低(memoryPressure -> handleMemoryPressure)
+                        _parseAppLifecycleMessage 生命状态回调的处理 (AppLifecycleState.paused -> AppLifecycleState.paused)
                     GestureBinding 处理手势
-                    RendererBinding 处理渲染
+                    SchedulerBinding 任务调度绑定器【UI构建前/UI构建后任务调度及其优先级排序】
+                        addPersistentFrameCallback/addPostFrameCallback UI流水线构建的回调
+                        addTimingsCallback 光栅化耗时回调【可以用做GPU耗时检测】
+                        scheduleTask 优先级执行异步任务
+                        scheduleFrameCallback 构建任务，动画，ui
+                        scheduleFrame 通知Engine有UI更新
+                    RendererBinding 处理渲染（渲染管线PipelineOwner(管理RenderObject)，注册platform显示相关监听，如亮度改变，字体缩放因子改变，创建第一个RenderObject=RenderView）
                             initInstances会初始化一个PipelineOwner，用于管理RenderObjct树, 
                             创建RenderView, 用于后面执行compositeFrame() // 告诉GPU渲染renderView
                             并创建一个callback，其在每一帧刷新的时候都会调用
-                    PaintingBinding 处理绘制相关
-                    SemanticsBinding 处理语义化
-                    WidgetsBinding 处理widget
+                    PaintingBinding 处理图像绘制相关（Flutter图像缓存和创建图像编解码器，GPU着色器程序预热）
+                    SemanticsBinding 处理语义化（处理Platform上辅助服务事件）
+                    WidgetsBinding 处理widget（处理Widget, Element间的业务，如Widget层注册生命周期的监听，亮度改变）
                             initInstances会初始化一个BuildOwner，处于管理widget和Element树
                 3>	调用流程
                     framework			<=>			WidgetsFlutterBinding			<=>			engine

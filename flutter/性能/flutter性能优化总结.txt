@@ -124,8 +124,43 @@
 				设置纯色或者图片，这样遮挡的区域就不需要绘制了，提高性能
 		
 		11>	网络请求预加载
+		    页面请求预加载（上一页提前请求）
+            列表分页预加载（未滑到底就请求下一页）
+            列表刷新时取消其他请求（防止多次刷新）
+
 		12>	抽取文本 Theme 等
-		
+
+		13> 减少ClipPath，Opacity控件使用
+		    ClipPath/ClipRRect 替换为Container的radius:BoxDecoration
+		    Opacity 替换为AnimatedOpacity或FadeInImage
+		    图片的Clip裁剪，使用定制图片库Transform实现
+
+		14> RepaintBinary隔离
+            Swiper、PageView、Lottie，动图等等均需要使用RepaintBinary隔离，独立layer绘制，防止影响到其他layer
+
+        15> isolate执行耗时计算
+            列如：头部滑动计算透明度场景 - 使用isolate将滑动实时计算透明度及偏移量的逻辑进行隔离操作，计算成功后将结果返回
+            低端机头部滑动减少setState次数
+            低端机大json解析compute化，不柱塞UI 线程
+
+        16> 图片优化
+            1. 加载优化
+                图片预加载 precacheImage
+                延迟加载：keframe
+            2. 资源优化
+                图片裁剪，cdn图片，图片压缩（建议webp）
+            3. 内存优化
+                混合app共享内存，使用native内存
+                图片加载指定cacheWidth/cacheHeight，防止很多位置均使用同一图片，图片的内存缓存的命中和width/height、cacheWidth/cacheHeight均算作同一图片
+        17> 减少gc
+            减少AliFlutter的gc函数调用次数
+
+        18> CustomScrollView预渲染区默认250
+            低端机减少预渲染区cacheExtent:60
+
+        19> 埋点批量/闲时上报
+            批量/不可见/闲时强制 flush 队列上报，并在子线程执行
+
 	2.	深入优化
 		1>	优化GPU(Raster)线程
 			Flutter DevTools-Performance  -> Overlay检测GPU，UI线程哪个负载重
