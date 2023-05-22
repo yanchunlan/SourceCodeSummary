@@ -1,0 +1,243 @@
+一.  事件分发流程
+    GestureBinding.initInstances
+    ->  platformDispatcher.onPointerDataPacket = _handlePointerDataPacket // 设置window的onPointDartPacket回调
+    ->  GestureBinding._handlePointerDataPacket
+    ->  GestureBinding._flushPointerEventQueue
+        while(_pendingPointerEvents.isNotEmpty){ _handlePointerEvent} // 循环遍历，执行回调
+        ->  GestureBinding._handlePointerEvent
+        ->  GestureBinding._handlePointerEventImmediately
+        ->  GestureBinding._handlePointerEventImmediately
+            列如观测PointerDownEvent事件
+            ->  GestureBinding.hitTest((hitTestResult, event.position)) // 测试down的落点是否在这个RenderObject的范围内
+            ->  result.add(HitTestEntry(this)) // 添加HitTestEntry到HitTestResult中
+
+    RendererBinding extends GesturesBinding, 所以实现了hitTest函数
+    RendererBinding.hitTest(result, position: position)
+    ->  renderView.hitTest(result, position: position) // 从RenderObject树根遍历整颗RenderTree，执行hitTest
+    ->  child.hitTest(result, position: position)
+    ->  RenderBox.hitTest(result, position: position)
+        if (_size.contains(position)) {
+              // 优先判断children，再判断自己【涉及事件冲突时，children优先级高于自己】
+            if (hitTestChildren(result, position: position) || hitTestSelf(position)) {
+              result.add(BoxHitTestEntry(this, position));
+              return true;
+            }
+        }
+        ->  RenderBox.hitTestChildren // 空实现，具体由子类实现
+
+    1.  判断是否在范围内 hitTestChildren
+         列如：单孩子容器 - Padding，其Render是RenderPadding，继承RenderShiftedBox
+         RenderShiftedBox.hitTestChildren
+                final BoxParentData childParentData = child.parentData as BoxParentData;
+                return result.addWithPaintOffset(
+                  offset: childParentData.offset, // 偏移offset，调用RenderBox里的hitTest
+                  position: position,
+                  hitTest: (BoxHitTestResult result, Offset transformed) {
+                    return child.hitTest(result, position: transformed); // 返回是否命中
+                  },
+                );
+
+         列如：多孩子容器 - Row/Column，则父类是Flex，对应RenderFlex
+         RenderFlex.hitTestChildren
+         -> RenderFlex.defaultHitTestChildren
+                final ParentDataType childParentData = child.parentData as ParentDataType;
+                final bool isHit = result.addWithPaintOffset(
+                  offset: childParentData.offset,// 偏移offset，调用RenderBox里的hitTest
+                  position: position,
+                  hitTest: (BoxHitTestResult result, Offset transformed) {
+                    assert(transformed == position - childParentData.offset);
+                    return child.hitTest(result, position: transformed);// 返回是否命中
+                  },
+                );
+                if (isHit) // 命中则返回
+                  return true;
+                child = childParentData.previousSibling; // 未命中继续前移
+
+    2.  如果在范围内 result.add(BoxHitTestEntry(
+        则添加BoxHitTestEntry到HitTestResult的集合中
+
+    3.  Up/Cancel事件移除
+        hitTestResult = _hitTests.remove(event.pointer);
+
+    4.  event.down移动move事件
+        hitTestResult = _hitTests[event.pointer];
+
+    5.  其他事件分发（Hover/Added/Remove）
+        dispatchEvent(event, hitTestResult);
+        ->  HitTestDispatcher.dispatchEvent
+        ->  HitTestDispatcher.dispatchEvent
+            for (final HitTestEntry entry in hitTestResult.path) {
+                try {
+                  entry.target.handleEvent(event.transformed(entry.transform), entry); // 事件分发entry.target.handleEvent()
+                } catch (exception, stack) {
+                }
+            }
+     总结：
+        设备触发point事件时，RenderBinding和GestureBinding参与分发，RenderView是RenderTree分发总入口
+        1.  事件是point down时，遍历child执行hitTest，把符合条件的RenderObject加入hitTestResult中
+        2.  事件是Up/Cancel时，事件移除
+        3.  事件是move时，事件更新
+        4.  事件是其他，遍历hitTestResult.path执行 entry.target.handleEvent
+     所以如果需要拦截事件，在hitTestResult处理
+
+二.  事件冲突处理
+    1. 事件相关类
+        // arena.dart
+        手势竞技场 _GestureArena,记录当前所有的参与者
+        手势竞技场成员 GestureArenaMember ，这是个抽象类，实际开发我们更多看到的是GestureRecognizer
+        手势竞技场管理者 GestureArenaManager，这个是竞技场的核心管理类，可以决定哪个事件胜利或失败
+        GestureArenaEntry 这个不需要怎么关心，粘合了member和manager
+
+        // 实际参与者
+        GestureArenaMember 所有竞技场参与者的父类
+        GestureRecognizer 同上,GestureArenaMemberd 子类，是个虚拟类，手势识别的基类
+        OneSequenceGestureRecognizer  主要是跟踪单个手势,点击，拖动
+        PrimaryPointerGestureRecognizer 单个手势跟踪的实现类
+        BaseTapGestureRecognizer 单击手势的基类
+        TapGestureRecognizer 单击手势识别
+        LongPressGestureRecognizer 长按
+        DragGestureRecognizer 手势拖动识别的基类
+        MultiTapGestureRecognizer 多个点的触摸，好像没怎么用到过
+        DoubleTapGestureRecognizer 双击
+
+    2. 事件分发流程
+    entry.target.handleEvent
+    ->  GestureBinding.handleEvent
+         pointerRouter.route(event); // 事件分发
+          if (event is PointerDownEvent) {
+            gestureArena.close(event.pointer); // 关闭事件注册
+          } else if (event is PointerUpEvent) {
+            gestureArena.sweep(event.pointer); // 清理事件
+          } else if (event is PointerSignalEvent) {
+            pointerSignalResolver.resolve(event); // 离散事件
+          }
+
+        2.1 gestureArena.close 关闭事件注册
+                final _GestureArena state = _arenas[pointer]; // 根据事件id获取竞技场
+                state.isOpen = false;   // 标记false，不再接收新成员
+                _tryToResolveArena  // 查看竞技场接收事件逻辑
+            ->  _tryToResolveArena
+                  if (state.members.length == 1) {
+                    scheduleMicrotask(() => _resolveByDefault(pointer, state)); // 成员为1，直接接收事件，拦截后续move，up事件
+                  } else if (state.members.isEmpty) {
+                    _arenas.remove(pointer); // 没有竞争者，则remove
+                  } else if (state.eagerWinner != null) {
+                    _resolveInFavorOf(pointer, state, state.eagerWinner); // 宣布指定的竞争者接收事件
+                  }
+
+            ->  _resolveByDefault // 处理接收事件逻辑
+                final List<GestureArenaMember> members = state.members;
+                _arenas.remove(pointer); // 接收事件则移除数据
+                state.members.first.acceptGesture(pointer); // 接收事件，done
+            ->  _resolveInFavorOf // 处理指定接收事件的竞争者
+                _arenas.remove(pointer);
+                for (final GestureArenaMember rejectedMember in state.members) {
+                    rejectedMember.rejectGesture(pointer); // 其他全部拒绝事件
+                }
+                member.acceptGesture(pointer); // 接收事件，done
+
+        2.2 gestureArena.sweep 清理事件
+            _arenas.remove(pointer); // 清理事件
+
+三. flutter中的事件相关类
+    Listener 仅事件接收转发，不处理事件冲突，也不识别点击，滑动，缩放手势
+    GestureDetector 内部封装手势识别器，注册类某回调列如onTap，就会参与竞争
+
+    1. GestureDetector
+    extends StatelessWidget
+    核心类：
+        GestureRecognizerFactoryWithHandlers：注册各种Recognizer（TapGestureRecognizer/VerticalDragGestureRecognizer）等
+        RawGestureDetector：GestureDetector的实现类，底层使用Listener
+    事件执行顺序：entry.target.handleEvent -> GestureBinding.handleEvent
+
+    列如：单击事件识别器 TapGestureRecognizer
+    1.1  down事件
+        RawGestureDetector.build
+        ->  Listener(onPointerDown: _handlePointerDown
+        ->  _handlePointerDown
+        ->  recognizer.addPointer
+        ->  addAllowedPointer
+        ->  PrimaryPointerGestureRecognizer.addAllowedPointer
+        ->  OneSequenceGestureRecognizer.startTrackingPointer // 注册事件回调
+            GestureBinding.instance.pointerRouter.addRoute(...,handleEvent) // 接上面handleEvent中事件分发，pointerRouter.route(event);
+        ->  PrimaryPointerGestureRecognizer.handleEvent
+        ->  handlePrimaryPointer // down事件执行
+        ->  BaseTapGestureRecognizer.handlePrimaryPointer
+          if (event is PointerUpEvent) {
+            _checkUp(); // up事件检测
+          } else if (event is PointerCancelEvent) {
+            resolve(GestureDisposition.rejected); // cancel拒绝事件
+          } else if (event.buttons != _down.buttons) {
+            resolve(GestureDisposition.rejected); // button不同，则拒绝
+            stopTrackingPointer(primaryPointer);
+          }
+        ->  _checkUp
+          if (!_wonArenaForPrimaryPointer || _up == null) return; // _wonArenaForPrimaryPointer为false/up==null，则返回
+          handleTapUp(down: _down, up: _up);
+
+        总结：
+            1.  hitTest命中HitResult，分发
+            2.  RawGestureDetector.Listener分发到事件，_handlePointerDown -> pointerRouter.addRouter注册回调，到_addPointerToArena把自己加入手势竞技场
+
+    1.2  up事件
+         GestureBinding.handleEvent
+            pointerRouter.route // 事件分发
+        ->  gestureArena.sweep
+            默认第一个成员接收
+        ->  GestureArenaMember.acceptGesture
+            if (pointer == primaryPointer) {
+                _checkDown // 回调GesturetureDetictord.onTapDown
+                _wonArenaForPrimaryPointer = true; // 标记已经接收事件
+                _checkUp // 回调了GesturetureDetictord.onTapUp，GesturetureDetictord.onTap()，重置状态，回调结束
+            }
+        总结：
+            1.  route分发，如果down事件已经消费了，则回调onTapUp(),onTap()
+            2.  竞技场清扫sweep，默认第一个成员接收事件，执行onTapDown(),onTapUp(),onTap()，GestureRecognizer状态重置
+
+四. HitTestBehavior
+    GestureDetector(
+        onTap: () { print("click"); },
+        behavior: HitTestBehavior.deferToChild,
+        child: Container(...),),
+    问题：点击Container空白区域不响应？
+    解决方式：
+        1. 设置behavior为HitTestBehavior.opaque或者translucent
+        2. Container设置背景色,任意背景色都可以
+
+    1.  behavior为HitTestBehavior.opaque或者translucent会响应的原因
+    GestureDetector.build
+    ->  RawGestureDetector(behavior: ...)
+    ->  RawGestureDetector.build
+    ->  Listener(behavior: ...) -> _PointerListener -> RenderPointerListener -> RenderProxyBoxWithHitTestBehavior
+    ->  RenderProxyBoxWithHitTestBehavior.hitTest
+        if (size.contains(position)) {
+            hitTarget = hitTestChildren(result, position: position) || behavior == HitTestBehavior.opaque;
+            if (hitTarget || behavior == HitTestBehavior.translucent)
+            result.add(BoxHitTestEntry(this, position));
+        }
+    所以behavior = HitTestBehavior.opaque/translucent 会消费事件，所以可以响应事件，否则不响应
+
+    2.  Container设置背景色会响应的原因
+    Container.build
+        if (color != null) return ColoredBox(color: color, child: current);
+    ->  ColoredBox
+    ->  _RenderColoredBox
+        _RenderColoredBox({@required Color color}) // 构造函数
+            : _color = color,
+              super(behavior: HitTestBehavior.opaque); // 默认设置behavior = HitTestBehavior.opaque
+    默认设置了behavior = HitTestBehavior.opaque，所有Container设置背景色会响应
+
+    translucent和opaque的区别：
+        RenderProxyBoxWithHitTestBehavior.hitTest
+        ->  RenderStack.hitTestChildren 【外部控件如果是Stack，对应的Render是RenderStack】
+        ->  RenderBoxContainerDefaultsMixin.defaultHitTestChildren
+              final ParentDataType childParentData = child.parentData as ParentDataType;
+              final bool isHit = result.addWithPaintOffset(
+                offset: childParentData.offset,
+                position: position,
+                hitTest: (BoxHitTestResult result, Offset transformed) {
+                  assert(transformed == position - childParentData.offset);
+                  return child.hitTest(result, position: transformed);
+                },
+              );
+              if (isHit) return true;// translucent支持透传，

@@ -287,8 +287,8 @@
 		innerScrollPositionKeyBuilder：
 		pinnedHeaderSliverHeightBuilder：
 	32. GestureDetector
-		HitTestBehavior.opaque 自己处理事件 
- 		HitTestBehavior.deferToChild child处理事件
+		HitTestBehavior.opaque 自己处理事件
+		HitTestBehavior.deferToChild child处理事件
 		HitTestBehavior.translucent 自己和child都可以接收事件
 	33. AnimatedOpacity
 		opacity 动画渐变效果
@@ -306,7 +306,12 @@
 		ignoring true不响应事件 false响应事件
 		
 	38. VisibilityDetector 可见性检测控件
-		
+	39. SizedOverflowBox 允许子控件大小超过父控件
+            OverflowBox：允许子控件大小超过父控件
+            SizedOverflowBox：允许子控件大小超过父控件，且可对子组件进行尺寸局部的限度
+	40. FutureBuilder 根据一个Future的执行状态，来构建不同的Widget【用于替换setState】
+	41. StreamBuilder 控制 stream 的输入输出，添加任何的状态来更新指定状态下的 UI【用于替换setState】
+
 -----------------------------------------------------------------
 接口总结
 	1. AutomaticKeepAliveClientMixin

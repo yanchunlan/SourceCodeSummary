@@ -132,8 +132,12 @@
 
 		13> 减少ClipPath，Opacity控件使用
 		    ClipPath/ClipRRect 替换为Container的radius:BoxDecoration
-		    Opacity 替换为AnimatedOpacity或FadeInImage
+		    Opacity 替换为AnimatedOpacity或FadeInImage或者Container(color: Color.fromRGBO(255, 0, 0, 0.5))
 		    图片的Clip裁剪，使用定制图片库Transform实现
+		    ShaderMask
+            ColorFilter
+            Chip，当disabledColorAlpha != 0xff的时候，会调用saveLayer()。
+            Text
 
 		14> RepaintBinary隔离
             Swiper、PageView、Lottie，动图等等均需要使用RepaintBinary隔离，独立layer绘制，防止影响到其他layer

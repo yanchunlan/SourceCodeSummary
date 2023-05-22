@@ -1,0 +1,59 @@
+一. widget build异常捕获
+    // ComponentElement
+    void performRebuild{
+        try {
+            built = build();
+        } catch (e, stack) {
+            built = ErrorWidget.builder(
+                  _debugReportException(
+                    ErrorDescription('building $this'),
+                    e,
+                    stack,
+                    ...,
+                  ),
+                );
+        }
+    }
+    FlutterErrorDetails _debugReportException(...){
+        final FlutterErrorDetails details = FlutterErrorDetails(...);
+        FlutterError.reportError(details);
+    }
+    总结：
+        1.  build()使用try/catch捕获异常
+        2.  ErrorWidget.builder，这个就是红屏控件
+            使用方式：
+                var defaultErrorBuilder = ErrorWidget.builder;
+                ErrorWidget.builder = (FlutterErrorDetails details) {
+                  Widget errorBuilder;
+                  if (debug){
+                    errorBuilder = defaultErrorBuilder(details);
+                  } else{
+                     errorBuilder = buildErrorWidget(details);
+                  }
+                  return errorBuilder;
+                };
+        3.  FlutterError.reportError 调用FlutterError.onError默认调用控制台输出debugPrint，如果实现则替换
+            使用方式：
+                final defaultOnError = FlutterError.onError;
+                FlutterError.onError = (FlutterErrorDetails details) {
+                  // 1. 处理异常
+                  // 2. 异常向上透传，是否透传取决于业务
+                  defaultOnError(details);
+                };
+
+二. Zone异常捕获
+    // zone
+    runZonedGuarded(...){
+      try {
+        return _runZoned<R>(body, zoneValues, zoneSpecification);
+      } catch (error, stackTrace) {
+        onError(error, stackTrace); // 捕获同步异常
+      }
+    }
+    // 异步异常
+    Future -> FutureImpl -> _propagateToListeners -> source._zone.handleUncaughtError -> onError
+
+
+三. 其他异常处理
+    1. 越界
+    使用Wrap组件，类似：Wrap(direction: Axis.horizontal,...)

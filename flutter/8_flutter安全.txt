@@ -1,0 +1,37 @@
+一.  保护应用
+    1.  始终使用https通信
+    2.  统一处理错误界面
+        ErrorWidget.builder = CustomErrorWidget(...
+    3.  数据加密
+        使用 flutter_security_Storage 对存储数据加解密
+    4.  代码混淆
+        --obfuscate --split-debug-info=build/app/outputs/symbol
+    5.  ssl证书校验
+        import 'dart:io';
+        import 'package:flutter/material.dart';
+        import 'package:flutter/services.dart';
+        import 'package:http/io_client.dart';
+
+        Future<SecurityContext> get globalContext async {
+          final sslCert = await rootBundle.load('assets/certs/ryandsilva-dev.pem');
+          final sc = SecurityContext(withTrustedRoots: false);
+          sc.setTrustedCertificatesBytes(sslCert.buffer.asInt8List());
+          return sc;
+        }
+        Future<bool> verifyHandshake(String url) async {
+          try {
+            final client = HttpClient(context: await globalContext);
+            client.badCertificateCallback = ((cert, host, port) => false);
+            final ioClient = IOClient(client);
+            await ioClient.get(Uri.parse(url));
+            return true;
+          } catch (e) {
+            debugPrint('Could not complete SSL handshake: ${e.toString()}');
+            return false;
+          }
+        }
+        bool isSecureConnection = await verifyHandshake('https://ryandsilva.dev/');
+    6.  网络安全配置
+        android：    /res/xml里面放 Security_config.xml
+    7.  越狱检测
+        使用flutter_jailbreak_check检测

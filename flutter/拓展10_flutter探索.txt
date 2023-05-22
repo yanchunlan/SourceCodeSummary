@@ -39,3 +39,5 @@ flutter方案探索
 
 3.  其他黑科技
     AspectD aop切面编程，https://github.com/alibaba-flutter/aspectd
+        @Call不会修改原始方法的内部
+        @Execute修改方法内部

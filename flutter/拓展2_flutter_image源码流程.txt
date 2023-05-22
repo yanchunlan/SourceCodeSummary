@@ -1,0 +1,44 @@
+一.  图片加载流程
+    Image.initState
+    ->  Image.didChangeDependencies
+    ->  Image._resolveImage
+        ->  ImageStream newStream = provider.resolve(...) // 1. 执行图片请求流程
+            ->  ImageProvider.resolve
+                ->  _createErrorHandlerAndKey((){ resolveStreamForKey() })
+                ->  ImageProvider.resolveStreamForKey
+                    ImageStreamCompleter? completer = PaintingBinding.instance!.imageCache!.putIfAbsent((){ load()})
+                    stream.setCompleter(completer)
+        ->  _updateSourceStream(newStream) // 2. 对resolve返回的Stream注册监听
+
+    接上面load函数，ImageStreamCompleter.load
+    ->  MultiFrameImageStreamCompleter(codec: _loadAsync, ...)
+    ->  NetworkImage._loadAsync
+        final HttpClientRequest request = await _httpClient.getUrl(resolved); // HttpClient请求
+
+二.  图片展示流程
+    ImageState.build
+    ->  RawImage(image: _imageInfo?.image, ...) // 关键数据_imageInfo
+
+    接上面_updateSourceStream(newStream)
+    ->  _imageStream.addListener(_getListener)
+    ->  _getListener
+        _imageStreamListener = ImageStreamListener(_handleImageFrame,...)
+        ->  ImageState._handleImageFrame
+        ->  setState(() {   _imageInfo = imageInfo; }) // 设置imageInfo
+    所以主要是回调_imageStreamListener，再通过setState({_imageInfo= imageInfo}), 把数据刷新到界面
+    _imageStreamListener
+    ->  MultiFrameImageStreamCompleter // 支持动图的多帧解析器
+        ->  codec.then<void>(_handleCodecReady,...
+        ->  MultiFrameImageStreamCompleter._handleCodecReady
+        ->  MultiFrameImageStreamCompleter._decodeNextFrameAndSchedule
+            _nextFrame = await _codec!.getNextFrame() // c中获取到图片的一帧
+            _emitFrame // 多帧执行
+            _scheduleAppFrame // 单帧执行， 还是会走到_emitFrame
+
+            接上面 _emitFrame
+            ->  ImageStreamCompleter.setImage
+                for (final ImageStreamListener listener in localListeners) {
+                    listener.onImage(image, false); // 遍历localListeners回调listener.onImage
+                }
+                ->  ImageStream.addLister
+                ->  走到上面 _imageStream.addListener(_getListener)

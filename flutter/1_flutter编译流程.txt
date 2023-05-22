@@ -264,6 +264,8 @@
 					super.run(args);
 				CommandRunner.runCommand: 
 					获取命令参数，通过while循环通过commands添加参数，并最终执行命令command.run
+
+		假若从generateCommands中看一个BuildCommand如下：
 		packages/flutter_tools/lib/src/commands/build.dart：
 				BuildCommand：
 					// 命令模式，把支持的命令添加到列表
@@ -328,10 +330,16 @@
 		4. 执行dart命令：dart --disable-dart-dev --packages=xxx packages/flutter_tools/bin/flutter_tools.dart build apk
 		
 	二.	SDK/flutter_tools/bin 模块的dart语言
-		5. flutter_tools.dart 
-			->	SDK/flutter_tools/lib/src/runner/flutter_command_runner.dart 
-			-> SDK/flutter_tools/lib/src/runner/flutter_command.dart
-			->	SDK//flutter_tools/lib/src/commands/build.dart
+		5. flutter_tools.dart
+		    -> executable.main
+		    -> runner.run(.., () => generateCommands
+                -> 其中generateCommands内部包含了所有的命令
+                上面run.run函数执行路径如下：
+                -> SDK/flutter_tools/lib/src/runner/flutter_command.dart
+                -> SDK/flutter_tools/lib/src/runner/flutter_command_runner.dart
+                   -> 通过while循环通过commands添加参数，并最终执行命令command.run
+			列如看generateCommands其中一个命令BuildCommand如下：
+			->	SDK/flutter_tools/lib/src/commands/build.dart
 				1> 执行BuildCommand.run
 					-> 返回执行父类文件SDK/flutter_tools/lib/src/runner/flutter_command.dart
 						FlutterCommand.run
@@ -345,7 +353,9 @@
 						AndroidGradleBuilder.buildApk
 						-> packages/flutter_tools/lib/src/android/gradle.dart
 						AndroidGradleBuilder.buildGradleApp //组装一堆gradle命令参数，调用assembleTask并传递参数过去
-						
+			列如其他Command：
+                PackagesCommand.run -> _runPubGet -> pub.get -> pub.batch -> pub._pubCommand -> 执行dart命令
+
 	三.	SDK/flutter_tools_gradle 模块的gradle
 		6. settings.gradle 添加SDK/flutter_tools/gradle/app_plugin_loader.gradle【获取插件列表.flutter-plugins-dependencies，遍历添加include，导入project】
 			build.gradle 添加flutter task

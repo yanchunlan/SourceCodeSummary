@@ -1,0 +1,36 @@
+flutter android 端启动流程
+1.  FlutterApplication
+    FlutterApplication.onCreate
+    ->  FlutterMain.startInitialization(this);
+    ->  FlutterMain.startInitialization(...);
+        initConfig // 初始化配置信息
+        VsyncWaiter.getInstance // 初始化VsyncWaiter，并设置回调
+        initResources // 初始化资源
+        System.loadLibrary("flutter") // 加载libflutter.so
+            JNI_onLoad
+                InitJavaVM // 初始化 JVM
+                FlutterMain::Register // 注册 FlutterMain
+                PlatformViewAndroid::Register // 注册 PlatformView
+                VsyncWaiterAndroid::Register //注册 VSyncWaiter
+        FlutterJNI.nativeRecordStartTimestamp // 调用底层方法记录初始化时间
+
+2.  MainActivity extends FlutterActivity
+    onCreate
+    -> FlutterActivity.onCreate
+        1>  FlutterActivityAndFragmentDelegate.onAttach // 初始化插件
+            setUpFlutterEngine
+                初始化一堆channel
+                registerPlugins
+                flutterLoader.ensureInitializationComplete
+                    FlutterJNI.nativeInit // native 注册
+
+            host.providePlatformPlugin // 初始化平台插件
+            host.configureFlutterEngine // 注册插件，反射调用io.flutter.plugins.GeneratedPluginRegistrant.registerWith
+        2>  createFlutterView
+            FlutterActivityAndFragmentDelegate.onCreateView // 返回包含flutterView的启动页flutterSplashView
+            ->  flutterView.attachToFlutterEngine(flutterEngine)
+            ->  一堆插件的注册
+    onStart
+    delegate.onStart
+    ->  doInitialFlutterViewRun
+    ->  flutterEngine.getDartExecutor().executeDartEntrypoint
