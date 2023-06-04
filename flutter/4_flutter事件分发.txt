@@ -1,4 +1,14 @@
 一.  事件分发流程
+     Flutter中定义了以下事件类型:
+        PointerAddedEvent : 接触屏幕(获取事件，创建了事件追踪器)
+        PointerHoverEvent ：悬停事件(前面已经创建了事件追踪器，再次使用事件追踪器，与PointerAddedEvent互斥)
+        PointerDownEvent ：按下事件(发生在PointerAddedEvent或PointerHoverEvent之后)
+        PointerMoveEvent ：滑动事件
+        PointerUpEvent : 完全离开屏幕事件
+        PointerCancelEvent : 事件取消(事件追踪器被断开,比如正在滑动时弹出Dialog焦点变化导致事件取消，与PointerAddedEvent成对）
+        PointerRemovedEvent : 事件可能已偏离设备的检测范围，或者可能已完全与系统断开连接。
+
+    事件分发流程：
     GestureBinding.initInstances
     ->  platformDispatcher.onPointerDataPacket = _handlePointerDataPacket // 设置window的onPointDartPacket回调
     ->  GestureBinding._handlePointerDataPacket
@@ -241,3 +251,88 @@
                 },
               );
               if (isHit) return true;// translucent支持透传，
+
+五.  事件分发全流程
+        事件发起：（android层）
+            FlutterView.onTouchEvent
+            ->  androidTouchProcessor.onTouchEvent // 封装ByteBuffer数据
+            ->  renderer.dispatchPointerDataPacket
+            ->  flutterJNI.dispatchPointerDataPacket
+            ->  flutterJNI.nativeDispatchPointerDataPacket
+            // jni层注册
+            ->  .name = nativeDispatchPointerDataPacket // shell/platform/android/platform_view_android_jni_impl.cc
+
+        事件响应：（flutter层）
+            window.onPointerDataPacket = _handlePointerDataPacket
+            platformDispatcher.onPointerDataPacket = _handlePointerDataPacket // native 发送事件ByteBuffer -> flutter层转换为PointerDataPacket对象
+            -> _handlePointerDataPacket // 事件入队
+            -> _flushPointerEventQueue // 事件出队
+               while(..) { handlePointerEvent }
+            -> _flushPointerEventQueue // 事件出队
+            -> _handlePointerEventImmediately
+                1. PointerDownEvent||PointerSignalEvent||PointerHoverEvent      -> hitTestResult = HitTestResult(), 且hitTest()  // hitTest发起点击检测，看落点是不是在某个 RenderObject 上
+                2. PointerUpEvent||PointerCancelEvent                           -> hitTestResult = _hitTests.remove(event.pointer)
+                3. event.down                                                   -> hitTestResult = _hitTests[event.pointer]
+                4. PointerAddedEvent||PointerRemovedEvent                       -> dispatchEvent(event, hitTestResult)       // 事件分发，分发到具体的某个 RenderObject 上
+
+                1> hitTest 事件检测
+                -> RenderBinding.hitTest
+                -> renderView.hitTest
+                   且 super.hitTest // GestureBinding.hitTest 等效 result.add(HitTestEntry(this)
+                -> child.hitTest // 递归检测，并讲view添加到集合中
+                   if(hitTestChildren(result, position: position) || hitTestSelf(position))
+                      result.add(BoxHitTestEntry(this, position));
+                // result 集合存储顺序是(最低4个数据)：renderView -> 父容器renderObject -> 子容器renderObject -> GestureBinding
+
+                2> dispatchEvent 事件分发【down事件检测并存储，move/up分发事件】
+                ->  GestureBinding.dispatchEvent
+                ->  entry.target.handleEvent // 事件检测后，在范围内事件的renderObject执行handleEvent
+                ->  pointerRouter.route(event)  // 手势竞技场事件分发
+                    1. PointerDownEvent     -> gestureArena.close       // 关闭竞技场，就是只有一个元素，那么该元素就获胜
+                    2. PointerUpEvent       -> gestureArena.sweep       // 竞争竞技场，就是第一个获得手势处理权，其他的手势拒绝手势
+                    3. PointerSignalEvent   -> pointerSignalResolver.resolve
+                ->  _dispatchEventToRoutes // 根据_routeMap[event.pointer] 获取到具体routes，执行分发
+                ->  _dispatch
+                ->  route(event)
+                    // 具体添加路由地方在 内部执行了 pointerRouter.addRoute
+                    GestureRecognizer.startTrackingPointer(int pointer,...){
+                        GestureBinding.instance.pointerRouter.addRoute(pointer,...)
+                        ...
+                    }
+
+        Listener：
+            注册回调：Listener.onPointerDown
+            ->  RenderPointerListener.onPointerDown
+
+            回调被调用: RenderPointerListener.handleEvent 调用   // 接上面entry.target.handleEvent，执行之后，就执行后面 pointerRouter.route
+            ->  onPointerDown?.call(event)
+
+
+        GestureDetector：
+            注册回调：GestureDetector.onTapDown
+            ->  RawGestureDetector.gestures
+            ->  RawGestureDetectorState.build
+                return Listener( // 走到Listener注册回调
+                    onPointerDown: _handlePointerDown,
+                    ...
+                )
+            ->  _handlePointerDown
+            ->  recognizer.addPointer // 遍历_recognizers.values，执行addPointer
+            ->  GestureRecognizer.addPointer
+            ->  GestureRecognizer.addAllowedPointer
+            ->  GestureRecognizer.startTrackingPointer
+                GestureBinding.instance!.pointerRouter.addRoute(pointer, handleEvent,...)
+            ->  handleEvent // PrimaryPointerGestureRecognizer
+            ->  handlePrimaryPointer
+                // 里面没有down事件的处理，至此GestureBinding.handleEvent已经执行完成，后面执行上面的 pointerRouter.route函数
+
+            GestureBinding.handleEvent
+                1. PointerDownEvent -> gestureArena.close
+            ->  gestureArena.close
+            ->  _tryToResolveArena
+            ->  _resolveByDefault // 如果上面state.members.length == 1，执行到这
+            ->  acceptGesture  // 在手势竞技场内 _arenas.containsKey(pointer)，则执行到这，代表手势获胜 消费掉
+            ->  _checkDown
+            ->  handleTapDown
+                kPrimaryButton -> invokeCallback<void>('onTapDown', () => onTapDown!(details)) // 回调到自定义手势 onTapDown回调中
+            回调到：GestureDetector.onTapDown 函数中

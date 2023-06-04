@@ -5,12 +5,15 @@
 
 5.	代码管理
 	gitlab:	https://git.lug.ustc.edu.cn/users/sign_in
+	github
 
 
 
 3.	文档管理，记录
 	wiki:	
 	有道云：
+	github:
+	gitlab:
 
 
 
@@ -20,8 +23,21 @@
 
 
 5.	bug
-	jare:	
+	jare:
+	tapd:
+	github:
 
+
+6.  常用文档记录工具
+    obsidian:
+        插件：Auto Note Mover
+             Kanban
+             Mind Map
+             Obsidian Git
+             Outliner
+             Recent Files
+    codEditor:
+    bbEdit:
 
 
 

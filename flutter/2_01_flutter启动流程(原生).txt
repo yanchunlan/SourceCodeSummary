@@ -17,16 +17,22 @@ flutter android 端启动流程
 2.  MainActivity extends FlutterActivity
     onCreate
     -> FlutterActivity.onCreate
-        1>  FlutterActivityAndFragmentDelegate.onAttach // 初始化插件
-            setUpFlutterEngine
-                初始化一堆channel
-                registerPlugins
-                flutterLoader.ensureInitializationComplete
-                    FlutterJNI.nativeInit // native 注册
+        1>  FlutterActivityAndFragmentDelegate.onAttach // 初始化FlutterEngine，并注册各个插件
+            setUpFlutterEngine  // 返回一个flutterEngine对象
+                FlutterEngineCache.getInstance().get(cachedEngineId) // 从缓存中获取flutterEngine
+                host.provideFlutterEngine // 从Activity.provideFlutterEngine的子类中获取
+                flutterEngine = new FlutterEngine // 上面方式均未获取到，则新建flutterEngine
 
-            host.providePlatformPlugin // 初始化平台插件
-            host.configureFlutterEngine // 注册插件，反射调用io.flutter.plugins.GeneratedPluginRegistrant.registerWith
-        2>  createFlutterView
+            flutterEngine.getActivityControlSurface().attachToActivity // 调用各个插件的onAttachedToActivity方法
+            host.providePlatformPlugin // 创建PlatformPlugin，初始化平台插件
+            host.configureFlutterEngine // 注册插件，反射调用io.flutter.plugins.GeneratedPluginRegistrant.registerWith（包含pubspec.yaml中配置的插件）
+                若是 flutterActivity：
+                ->  configureFlutterEngine
+                    GeneratedPluginRegistrant.registerWith
+                        //  通过反射调用GeneratedPluginRegistrant.registerWith
+                        ... flutterEngine.getPlugins().add()
+
+        2>  createFlutterView  // 创建FlutterView并绑定到FlutterEngine
             FlutterActivityAndFragmentDelegate.onCreateView // 返回包含flutterView的启动页flutterSplashView
             ->  flutterView.attachToFlutterEngine(flutterEngine)
             ->  一堆插件的注册
@@ -34,3 +40,70 @@ flutter android 端启动流程
     delegate.onStart
     ->  doInitialFlutterViewRun
     ->  flutterEngine.getDartExecutor().executeDartEntrypoint
+
+3.  其他类
+    1.  configureFlutterEngine
+        ->  GeneratedPluginRegistrant.registerWith
+            //  通过反射调用GeneratedPluginRegistrant.registerWith
+            ... flutterEngine.getPlugins().add()
+
+    2.  FlutterEngine
+        assetManager = context.createPackageContext // 1.初始化AssetsManager。
+        this.dartExecutor = new DartExecutor // 2.创建DartExecutor并设置对应PlatformMessageHandler。
+        xxxChannel = new xxxChannel // 3.初始化一系列的系统channel。
+        flutterLoader = injector.flutterLoader() // 4.初始化FlutterLoader，加载Resource资源和libflutter.so、libapp.so等apk产物。
+        this.renderer = new FlutterRenderer // 5.创建FlutterRenderer、FlutterEngineConnectionRegistry。
+        GeneratedPluginRegister.registerGeneratedPlugins // 6.如果需要，自动注册pubspec.yaml中声明的插件。
+
+    3.  FlutterLoader
+        是一个单例，一个进程只用初始化一次，主线程执行
+        startInitialization
+            flutterApplicationInfo = ApplicationInfoLoader.load // 获取activity的meta配置信息
+            ResourceExtractor resourceExtractor = initResources(...) // 获取assets资源,列如：mSnapshotData、isolateSnapshotData
+            flutterJNI.loadLibrary // 加载so，等效于System.loadLibrary
+        ensureInitializationComplete
+            shellArgs.add   // 动态配置了flutter启动需要加载的一些资源的路径
+            flutterJNI.init     //  jni层去初始化Dart VM和Flutter engine
+
+    总结：
+        纯flutter项目中，Android默认以FlutterActivity的形式承载flutter界面。Native-Flutter混合工程中还可以使用FlutterFragment/FlutterView2种方式，具体看使用场景。
+        2.FlutterActivity将绝大部分工作委托给FlutterActivityAndFragmentDelegate实现。
+        3.启动过程主要是FlutterActivity的onCreate()和onStart()方法。
+            onCreate() 会初始化FlutterEngine、注册各个插件，之后创建FlutterView并绑定到FlutterEngine。
+            onStart() 主要是通过DartExecutor去执行Dart代码的入口函数。
+        4.初始化第一个FlutterEngine时会创建和初始化DartVM。可以创建多个FlutterEngine，一个FlutterEngine对应一个DartExecutor，每个DartExecutor在自己的DartIsolate中执行。
+        5.DartExecutor可以和FlutterRender配合渲染UI，也可以只执行Dart代码不渲染UI。
+        6.FlutterView有两种模式：FlutterSurfaceView和FlutterTextureView。顾名思义，即分别使用surfaceView和textureView来承载flutter视图。FlutterSurfaceView渲染性能更好，但是视图在Native-Flutter混合工程中不支持灵活的z-index设置
+
+4.  热更新【仅修改release包】
+    flutter主要产物：
+        1.  flutter_assets
+            所有资源文件，包含font、images、audio等
+        2.  libflutter.so
+            flutter embedder层相关的C++代码
+        3.  libapp.so 【size最大】
+            应用层Dart代码编译后的产物
+    热更新就是替换libapp.so文件，其加载位置在：FlutterLoader.ensureInitializationComplete 中的 aot-shared-library-name 位置
+
+    1.  方法一：反射修改FlutterLoader
+    aot-shared-library-name 路径替换
+        1>  继承FlutterLoader，重写ensureInitializationComplete，讲 "aot-shared-library-name" 对应路径修改为自定义路径
+        2>  FlutterLoader创建位置：flutterLoader = FlutterInjector.instance().flutterLoader
+            实例化自定义的FlutterLoader，通过反射替换FlutterInjector中的flutterLoader实例
+    2. 方法二：重写getFlutterShellArgs()
+    aot-shared-library-name 这个key里面添加了2个值，只有当相对路径下找不到文件的情况下才回去寻找绝对路径下的文件
+    那么只需将自定义的so文件路径设置为 "aot-shared-library-name" 第一条value 即可
+
+    修改args参数：
+    FlutterLoader.ensureInitializationComplete
+    ->  FlutterEngine(..., String[] dartVmArgs, ...)
+    ->  delegate.setUpFlutterEngine
+    ->  host.getFlutterShellArgs().toArray()
+    ->  FlutterActivity.getFlutterShellArgs()
+    所以只需要在MainActivity中重写getFlutterShellArgs即可，如下：
+        fun getFlutterShellArgs(){
+            val flutterShellArgs = super.getFlutterShellArgs()
+            val path = patchFileDir + file.separator + patchFileName
+            flutterShellArgs.add("aot-shared-library-name=$path")
+            return flutterShellArgs
+        }
