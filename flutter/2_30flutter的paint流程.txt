@@ -1,0 +1,111 @@
+一. print绘制流程
+        drawFrame
+          buildOwner!.buildScope(renderViewElement!); // 1.重新构建widget
+          super.drawFrame();
+                  pipelineOwner.flushLayout();              // 2.更新布局
+                  pipelineOwner.flushCompositingBits();     // 3.更新“层合成”信息
+                  pipelineOwner.flushPaint();               // 4.重绘
+                  if (sendFramesToEngine) {
+                    renderView.compositeFrame();            // 5. 上屏，将绘制出的bit数据发送给GPU
+                  }
+          buildOwner.finalizeTree() // 6. 遍历执行elements.unmount
+
+
+        绘制相关函数：
+            Canvas： 绘制类，绘制完成后，通过PictureRecorder获取绘制产物，保存到Layer中
+            layout： 图层类，包含容器类，绘制类。绘制一般是在图层上进行的，绘制产物保存在PictureLayer.picture中，
+                     常见layout类：
+                     1. OffsetLayer [容器类 Layer, 可以添加多个子layer]
+                        根 Layer， extends ContainerLayer, ContainerLayer extends Layer
+
+                     2. PictureLayer [绘制类 Layer, ]
+                        保存绘制产物的 Layer， extends Layer, 其绘制产物PictureRecorder被保存在 PictureLayer.picture 对象中
+
+
+    绘制有如下2中场景：
+    1.  初次绘制
+        RenderView.paint  // RenderView是一个RenderObject
+        ->  context.paintChild(child,offset)
+            stopRecordingIfNeeded
+                ->  _currentLayer!.picture = _recorder!.endRecording();
+
+            _compositeChild
+                1>  child._needsPaint = true    // 需要重绘时
+                    repaintCompositedChild(child,...) // 创建图层，并放入child
+                    ->  _repaintCompositedChild
+                        1.  if(childLayer == null) child._layer = childLayer = OffsetLayer() // 为空，则new OffsetLayer
+                        2.  childContext ??= PaintingContext(child._layer!, child.paintBounds)
+                            child._paintWithContext(childContext, Offset.zero)
+                            ->  paint(context, offset)
+                                // 绘制自身子类
+                                // 或者继续走下面流程 PaintingContext.paintChild
+                                ->  PaintingContext.paintChild(context, offset)
+                                    ->  if(child.isRepaintBoundary) // 是边界子节点
+                                        stopRecordingIfNeeded  // 则停止绘制
+                                        _compositeChild(child, offset) // 重新申请新的ContainerLayer并且在新的图层上面绘制
+                                    ->  否则child._paintWithContext(this, offset) // 此处看出，非边界子节点RenderObject都是PaintingContext，也就是在一个ContainerLayer图层绘制
+                                        ->  paint(context, offset)
+                                        备注： 详情可看2_31flutter_print的layer流程.jpg
+
+                            childContext.stopRecordingIfNeeded()
+                2>  child._needsPaint = false  // 不需要重绘时
+                    复用该边界节点的 layer
+                3>  final OffsetLayer childOffsetLayer = child._layer! as OffsetLayer; // 如果child.layer 有值，则复用
+                    childOffsetLayer.offset = offset;
+                    appendLayer(child._layer!) // 将当前边界节点的layer添加到父边界节点
+
+    2.  更新绘制
+        widget.layout
+        ->  markNeedsPaint // RenderObject.markNeedsPaint 请求绘制
+            1.  if (isRepaintBoundary) // 是边界节点
+                owner!._nodesNeedingPaint.add(this) // 节点加入绘制列表
+                owner!.requestVisualUpdate(); // 通知更新，会调用 scheduleFrame
+            2.  else if (parent is RenderObject)  // 存在父节点
+                parent.markNeedsPaint() // 向上递归调用  【此处与layout一样，查找递归向上，绘制递归向下】
+            3.  else owner!.requestVisualUpdate(); // 通知更新，会调用 scheduleFrame
+
+        接收到vsync通知， -> drawFrame
+        ->  pipelineOwner.flushPaint()
+            List<RenderObject> dirtyNodes = _nodesNeedingPaint
+            for(node in dirtyNodes) {
+                PaintingContext.repaintCompositedChild(node) // 遍历集合中节点，让每个节点都执行repaintCompositedChild
+            }
+        ->  PaintingContext.repaintCompositedChild
+        ->  _repaintCompositedChild
+        ...     // 【后续跟上面初次绘制，流程一致了】
+
+
+    3.  详情可看2_31flutter_print的layer流程.jpg
+        备注： 详情可看2_31flutter_print的layer流程.jpg
+        流程描述：
+            1. RenderView 首次绘制，创建OffsetLayer1
+            2. RenderView -> Row -> Column1 都不需要绘制自身，所以均使用OffsetLayer1
+            3. text1 需要绘制自身，OffsetLayer1是第一次绘制，所以创建PictureLayer1 Canvas1执行绘制
+            4. text2 需要绘制自身，OffsetLayer1不是第一次绘制类，所以复用PictureLayer1 Canvas1执行绘制
+            5. Column1绘制完成，则PictureLayer1承载的是Text1 和 Text2 的绘制产物
+
+            6. 绘制第二节点，因为是边界节点RepaintBoundary，创建OffsetLayer2
+            7. 继续绘制Column2-> text3 -> text4 ,因为isRepaintBoundary=true，所以复用，都绘制在OffsetLayer2里面
+            8. RepaintBoundary子节点绘制完成，将其layer（OffsetLayer2）添加到父Layer中（OffsetLayer1）
+        总结：
+            从图中，可以看到同层layer是可以共享的，列如：text1/text2共享PictureLayer1，所以重绘时会导致一起重绘，解决方式使用RepaintBoundary隔开
+
+    4.  Canvas
+        Canvas get canvas {
+             if (_canvas == null) _startRecording();
+             return _canvas;
+        }
+        // 创建PictureLayer和canvas
+        void _startRecording() {
+              _currentLayer = PictureLayer(estimatedBounds);
+              _recorder = ui.PictureRecorder();
+              _canvas = Canvas(_recorder!);
+              _containerLayer.append(_currentLayer!);   //将pictureLayer添加到_containerLayer（是绘制边界节点的Layer）中
+        }
+        // 置空引用，其Layer存在_containerLayer中
+        void _startRecording() {
+              _currentLayer!.picture = _recorder!.endRecording();
+              _currentLayer = null;
+              _recorder = null;
+              _canvas = null;
+        }

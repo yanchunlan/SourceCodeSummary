@@ -1,4 +1,4 @@
-一.	MethodChannel
+一.	MethodChannel【全双工】
     Flutter与原生端方法调用使用，它是双向通信，双端都可以主动发起
 	1. Flutter调用原生方法
 		原生层：
@@ -42,7 +42,7 @@
     				return completer.future;
   			});
   			
-二.	EventChannel
+二.	EventChannel【单工】
     原生与Flutter相互发送事件使用，它是单向通信的
     1. 原生发送事件到Flutter
         原生层：

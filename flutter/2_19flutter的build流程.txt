@@ -1,0 +1,134 @@
+一. build构建流程
+        drawFrame
+          buildOwner!.buildScope(renderViewElement!); // 1.重新构建widget
+          super.drawFrame();
+                  pipelineOwner.flushLayout();              // 2.更新布局
+                  pipelineOwner.flushCompositingBits();     // 3.更新“层合成”信息
+                  pipelineOwner.flushPaint();               // 4.重绘
+                  if (sendFramesToEngine) {
+                    renderView.compositeFrame();            // 5. 上屏，将绘制出的bit数据发送给GPU
+                  }
+          buildOwner.finalizeTree() // 6. 遍历执行elements.unmount
+
+
+    构建有如下2中场景：
+    1.  初次树构建
+        runApp调用scheduleAttachRootWidget，构建Widgets Tree，Element Tree与RenderObject Tree三棵树
+        runApp
+        ->  WidgetsBinding.attachRootWidget
+        ->  RenderObjectToWidgetAdapter.attachToRenderTree // RenderObjectToWidgetAdapter是一个RenderObjectWidget
+        ->  element.mount
+        ->  RenderObjectToWidgetElement._rebuild
+        ->  RenderObjectToWidgetElement.updateChild
+        ->  RenderObjectToWidgetElement.inflateWidget
+            1.  key = GlobalKey，则复用GlobalKey的Element
+            2.  否则newChild = createElement，并挂载newChild.mount
+            ->  createElement  // element有2个子类ComponentElement/RenderObjectElement
+                1>  ComponentElement.mount
+                    ->  super.mount // 主要是存赋值
+                        _parent = parent; // 存储parent
+                        _depth = _parent != null ? _parent!.depth + 1 : 1 // 深度+1
+                        _owner = parent.owner; // 存储owner
+                        owner!._registerGlobalKey(key, this) // 存储GlobalKey到owner中
+                        _updateInheritance()  // 存储_inheritedWidgets，用于context.dependOnInheritedWidgetOfExactType拿到element 【_inheritedWidgets = _parent?._inheritedWidgets】
+                    ->  state.didChangeDependencies() // didChangeDependencies 函数调用
+                    ->  _firstBuild
+                        ->  performRebuild
+                            built = build();
+                            1. 如果子类是stateless， build => widget.build(this)
+                            2. 如果子类是stateful，build => state.build(this)
+                        ->  updateChild
+                            -> 循环到上面 RenderObjectToWidgetElement.updateChild，层层循环下去
+                            ...
+
+                2>  RenderObjectElement.mount
+                    ->  attachRenderObject
+                        ... = _findAncestorRenderObjectElement() // 找到最近的父RenderObjectElement
+                        .insertRenderObjectChild(renderObject,...) // 当前renderObject插入父RenderObjectElement
+                                renderObject.child = child // 把父类.child = 当前renderObject对象
+                        parentDataElement = _findAncestorParentDataElement() // 找到最近的父ParentDataElement
+                        _updateParentData(parentDataElement.widget) // 把ParentDataWidget数据赋值给当前renderObject.ParentData
+
+    2.  树更新
+        更新dirty区域的Element，并执行Build构建Widget
+        setState
+        ->  _element.markNeedsBuild
+            _dirty = true // 标记当前element需要更新
+            owner.scheduleBuildFor(this)
+                    onBuildScheduled
+                            buildOwner.onBuildScheduled = _handleBuildScheduled
+                            ->  _handleBuildScheduled
+                            ->  ensureVisualUpdate
+                            ->  scheduleFrame
+                                ensureFrameCallbacksRegistered // 注册window.onBeginFrame，window.onDrawFrame回调
+                                       onBeginFrame：执行动画回调，onDrawFrame：处理状态SchedulerPhase.persistentCallbacks，build/layout等
+                                window.scheduleFrame // 注册下一帧回调
+
+                                window.onDrawFrame = handleDrawFrame
+                                    ->  1.  遍历_persistentCallbacks集合的callback // addPersistentFrameCallback添加，每次都回调
+                                        2.  遍历_postFrameCallbacks集合的callback // addPostFrameCallback添加，只回调一次（因为回调前clear了）
+                                针对_persistentCallbacks 添加位置在
+                                ->  initInstances
+                                    addPersistentFrameCallback(_handlePersistentFrameCallback)
+                                    ->  _handlePersistentFrameCallback
+                                    ->  WidgetsBinding.drawFrame
+                                        buildOwner.buildScope(renderViewElement) // build构建
+                                        super.drawFrame(); // layout，print，compositeFrame
+                                                pipelineOwner.flushLayout();          //layout布局
+                                                pipelineOwner.flushCompositingBits();
+                                                pipelineOwner.flushPaint();
+                                                if (sendFramesToEngine) {
+                                                    renderView.compositeFrame();
+                                                pipelineOwner.flushSemantics();
+                                                }
+                                        buildOwner.finalizeTree() // 遍历执行elements.unmount
+
+                                    ->  buildOwner.buildScope(renderViewElement)
+                                        _dirtyElements[index].rebuild() // 遍历dirtyElements里面的element.rebuild
+                                        ->  rebuild
+                                        ->  performRebuild // element有2个子类ComponentElement/RenderObjectElement
+                                            1>  ComponentElement.performRebuild
+                                                ->  built = build()
+                                                    子类是stateful，stateful，build => state.build(this)
+                                                ->  updateChild
+                                                    1.  子widget不变，子element和子widget匹配（就是是否都是stateless，或都是stateful），那么更新slot
+                                                    2.  子element和子widget匹配，但子widget发生了变化，就调用子element.update(newWidget)来更新widget配置
+                                                        ->  child.update(newWidget);
+                                                            1>  如果子类是stateless
+                                                                widget == newWidget
+                                                                rebuild
+                                                                ->  performRebuild // 继续递归上面函数
+                                                                ...
+                                                            2>  如果子类是stateful
+                                                                _widget = newWidget // 使用新build的newWidget赋盖老的widget
+                                                                state.didUpdateWidget // 相比stateless，多一个生命周期回调函数
+                                                                rebuild
+                                                                ->  performRebuild // 继续递归上面函数
+                                                                ...
+                                                            3>  如果子类是RenderObjectElement
+                                                                _widget = newWidget // 使用新build的newWidget赋盖老的widget
+                                                                widget.updateRenderObject(this, renderObject)
+                                                                    renderObject
+                                                                          ..borderRadius = borderRadius!
+                                                                          ..clipBehavior = clipBehavior
+                                                                          ..clipper = clipper
+                                                                        ->  通过其中的setxxx函数，内部有 markNeedsLayout回调 // 有layout回调
+                                                                仅更新widget配置
+                                                    3.  子element和子widget不匹配，那么就把老的child element加入到一个_inactiveElements列表中（变成未激活状态），然后进行重建element
+
+                                            2>  RenderObjectElement.performRebuild
+                                                ->  widget.updateRenderObject(this, renderObject)
+                                                        renderObject
+                                                            ..borderRadius = borderRadius!
+                                                            ..clipBehavior = clipBehavior
+                                                                ..clipper = clipper
+                                                            ->  通过其中的setxxx函数，内部有 markNeedsLayout回调 // 有layout回调
+                                                ->  RenderObjectElement.updateChild
+                                                仅更新widget配置
+
+                    _dirtyElements.add(element);
+                    element._inDirtyList = true
+
+    3.  总结
+        1.  element的链条怎么形成
+            Element.mount中有存储父类_parent = parent，后面通过updateChild层层递归下去

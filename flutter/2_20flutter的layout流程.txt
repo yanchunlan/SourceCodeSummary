@@ -1,0 +1,96 @@
+一. layout布局流程
+        drawFrame
+          buildOwner!.buildScope(renderViewElement!); // 1.重新构建widget
+                  super.drawFrame();
+                  pipelineOwner.flushLayout();              // 2.更新布局
+                  pipelineOwner.flushCompositingBits();     // 3.更新“层合成”信息
+                  pipelineOwner.flushPaint();               // 4.重绘
+                  if (sendFramesToEngine) {
+                    renderView.compositeFrame();            // 5. 上屏，将绘制出的bit数据发送给GPU
+                  }
+          buildOwner.finalizeTree() // 6. 遍历执行elements.unmount
+
+
+    布局有如下2中场景：
+    1.  初次布局
+        RendererBinding.initInstances
+        ->  initRenderView
+        ->  renderView.prepareInitialFrame
+        ->  RenderView.scheduleInitialLayout
+            _relayoutBoundary = this;
+            owner!._nodesNeedingLayout.add(this);  // owner就是PipelineOwner，将当前renderView（根RenderObject）添加到list中
+
+    2.  更新布局
+        markNeedsLayout
+        1. if (_relayoutBoundary != this) markParentNeedsLayout
+            // 拓展：relayoutBoundary布局边界，依赖布局边界，缩小更新范围（如果relayoutBoundary!=当前的renderObject，
+            // 则请求parent layout，parent重复markNeedsLayout并找relayoutBoundary边界布局）
+            finaRenderObject parent = this.parent! as RenderObject;
+            if (!_doingThisLayoutWithCallback) { // 如果当前没有处于layout阶段，那么就parent请求layout
+               parent.markNeedsLayout();
+            }
+
+        2. 否则代表是布局边界，会把当前的renderObject加入到一个需要layout的list中，并调用requestVisualUpdate
+            owner!._nodesNeedingLayout.add(this);
+            owner!.requestVisualUpdate();
+            ->  onNeedVisualUpdate?.call() // RendererBinding.initInstances初始化PipelineOwner传入参数 onNeedVisualUpdate
+            ->  scheduleFrame
+            ->  ensureFrameCallbacksRegistered // 注册window.onBeginFrame，window.onDrawFrame回调
+                            onBeginFrame：执行动画回调，onDrawFrame：处理状态SchedulerPhase.persistentCallbacks，build/layout等
+                window.scheduleFrame // 注册下一帧回调
+
+            window.onDrawFrame = handleDrawFrame
+            ->  1.  遍历_persistentCallbacks集合的callback // addPersistentFrameCallback添加，每次都回调
+                2.  遍历_postFrameCallbacks集合的callback // addPostFrameCallback添加，只回调一次（因为回调前clear了）
+            针对_persistentCallbacks 添加位置在
+            ->  initInstances
+                addPersistentFrameCallback(_handlePersistentFrameCallback)
+                ->  _handlePersistentFrameCallback
+                ->  RendererBinding.drawFrame
+                    pipelineOwner.flushLayout();          //layout布局
+                    pipelineOwner.flushCompositingBits();
+                    pipelineOwner.flushPaint();
+                    if (sendFramesToEngine) {
+                       renderView.compositeFrame();
+                       pipelineOwner.flushSemantics();
+                    }
+                ->  pipelineOwner.flushLayout
+                ->  _nodesNeedingLayout // 深度遍历需要layout的脏节点
+                    node._layoutWithoutResize
+                ->  RenderObject._layoutWithoutResize
+                ->  performLayout
+                    ->  RenderObject.layout
+                        relayoutBoundary // 确定布局边界
+                        performResize
+                        performLayout // 执行布局，递归调用子组件的layout方法
+                        markNeedsPaint // 执行重绘
+                    markNeedsPaint
+    3.  总结
+        layout更新布局：
+            1. markNeedsLayout 是从子组件自下而上执行 parent.markNeedsLayout（不是布局边界markParentNeedsLayout且_needsLayout置为true）
+            2. 找到顶部的布局边界，就把当前renderObject添加到_nodesNeedingLayout集合中，并注册回调scheduleFrame,等待下一帧回调
+            3. 下一帧回调到来drawFrame，执行flushLayout，并从脏集合中深度遍历，找到之前添加的顶部布局边界的renderObject，执行renderObject.performLayout
+            4. performLayout递归调用子组件的layout方法（_needsLayout!=true则return）
+        列如：
+        Text.RenderObject的layout
+        ->  RenderParagraph.performLayout
+        ->  TextPainter(...).layout()
+        ->  _paragraph.layout  // Paragraph 是Flutter中用于文字绘制的类
+        ->  layout(ParagraphConstraints constraints)
+        ->  _layout(constraints.width) native 'Paragraph_layout';
+        调用原生函数实现布局
+
+        触发Text.layout时机(build的时候就会触发)：
+        RenderObjectElement.performRebuild
+        ->  widget.updateRenderObject
+        ->  Text.updateRenderObject
+            renderObject
+                ..text = text
+                ..textAlign = textAlign
+                ..textDirection = textDirection ?? Directionality.of(context)
+                ..softWrap = softWrap
+                ..overflow = overflow
+                ..textScaleFactor = textScaleFactor
+                ..maxLines = maxLines
+                ...
+            上面一堆setxxx，列如maxLines函数内部有 markNeedsLayout回调 // 有layout回调
