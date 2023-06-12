@@ -470,3 +470,84 @@ ParentData
 			-> 对上一帧的element树做遍历，调用updateChild
 			->  子节点类型是否一样，不一样就扔掉，创建新节点，一样做内容更新
 			->  renderObject.updateRenderObject 判断跟上一帧是否有改动，有改动标记dirty，重新 layout、paint，再生成新的 layer 交给 GPU
+
+
+八.	RenderObject
+    layout布局流程
+    Widget.update
+    ->  RenderObjectWidget.updateRenderObject
+    ->  RenderObject.markNeedsLayout
+        if(_relayoutBoundary==this) // 当前节点不是布局边界
+        owner!._nodesNeedingLayout.add(this); // 加入绘制集合
+        owner!.requestVisualUpdate(); // 通知下次绘制
+    ->  RenderBinding.drawFrame
+        PipelineOwner.flushLayout
+        ->  for(node in _nodesNeedingLayout){ // 取出所有需要更新的节点，执行_layoutWithoutResize
+                node._layoutWithoutResize();
+            }
+    ->  _layoutWithoutResize
+        performLayout // 算出节点自身的位置和大小
+        markNeedsPaint // 子类实现
+        如果一个子节点，调用performLayout足够，如果多个子节点，需要调用 layout(Constraints constraints,...)
+
+    1.  layout函数：
+        1. 处理布局边界_relayoutBoundary
+        2. sizedByParent是true，则调用performResize方法决定大小
+        3. performLayout
+        4. markNeedsPaint
+        1>  布局边界 _relayoutBoundary_
+            layout：
+                !parentUsesSize || sizedByParent || constraints.isTight || parent is! RenderObject
+                //1由父节点决定子节点的大小
+                //2父节点不需要用到子节点的大小
+                //3给定的约束能确定唯一的大小
+                //4父节点不是一个RenderObject
+            如果满足上面条件，则复用当前布局边界
+        2>  performResize
+            if (sizedByParent) {
+                performResize
+            }
+        3>  performLayout
+    2.  RenderBox
+        大小和位置：
+            RenderBox{
+                BoxConstraints _constraints;
+                BoxParentData parentData;
+            }
+
+            BoxConstraints extends Constraints{ // 确定节点大小
+                final double minWidth;//最小宽度
+                final double maxWidth;//最大宽度
+                final double minHeight;.//最小高度
+                final double maxHeight;//最大高度
+            }
+            BoxParentData extends ParentData{ // 确定节点起始位置
+                Offset offset = Offset.zero;//基于笛卡尔积的起始点，
+            }
+        计算大小：
+            double getMinIntrinsicWidth(double height) //得到最小宽度
+            double getMaxIntrinsicWidth(double height) //得到最大宽度
+            double getMinIntrinsicHeight(double width) //得到最小高度
+            double getMaxIntrinsicHeight(double width) //得到最大高度
+            Size getDryLayout(BoxConstraints constraints) //得到父节点给的约束下子节点的大小
+        流程：
+            performLayout -> layout -> getMinIntrinsicxxx/getDryLayout获取宽高，获取子节点尺寸后进行自身的布局
+
+    3.  hitTest
+        事件分发
+        GestureBinding._handlePointerDataPacket
+        GestureBinding._handlePointerEventImmediately
+            1. hitTest
+                RenderBinding.hitTest
+                renderView.hitTest
+                child.hitTest
+                RenderBox.hitTest
+                    if (_size!.contains(position))
+                    if (hitTestChildren(result, position: position) || hitTestSelf(position)) {
+                       result.add(BoxHitTestEntry(this, position));
+                       return true;
+                    }
+                上面执行完成后，添加到hitTestResult
+
+            2. dispatchEvent
+                entry.target.handleEvent

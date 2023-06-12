@@ -1,0 +1,47 @@
+模拟点击与群控
+一. adb
+    开启点击位置坐标：开发者模式 - 输入 - 显示点按操作反馈/指针位置
+    点击事件：adb shell input tap 500 1000                   // 点击（500,1000）
+    滑动事件：adb shell input swipe 500 1000 500 500 500     // (500,1000)滑动到（500,500），滑动500ms
+    输入文本：adb shell input text "hello world"             // 输入"hello world"
+
+    EG: 启动app并登陆
+        adb shell am start -n com.example.myapp/.MainActivity  // 启动app
+        adb shell input tap 100 200
+        adb shell input text "username"
+        adb shell input tap 100 500
+        adb shell input text "password"
+        adb shell input tap 500 1000   //点击登录按钮坐标(500,1000)
+
+二. accessibility辅助
+    1.  服务注册与权限申请
+        AndroidManifest注册AccessibilityService服务
+        并申请权限BIND_ACCESSIBILITY_SERVICE
+        并自定义配置@xml/accessibility_service_config.xml
+    2.  创建辅助服务
+        public class xxxAccessibilityService extends AccessibilityService {
+            @Override
+            public void onAccessibilityEvent(...) { //任意事件触发都会调用该函数，因此可以在此实现辅助功能代码  }
+
+            @Override
+            public void onInterrupt() { //退出时调用 }
+        }
+    3.  实现点击事件
+        根据 AccessibilityEvent 递归遍历view找到点击viewId的AccessibilityNodeInfo
+        根据 AccessibilityNodeInfo 得到其坐标（x，y）
+        利用 GestureDescription 实现点击坐标（x，y）
+
+        备注：递归遍历打印getContentDescription或者getText的信息，定位目标viewId
+    4.  实现滑动事件
+        利用 GestureDescription 实现点击操作，执行向上滑动操作
+    5.  实现评论事件【设置文本-发送】
+        找到输入框的AccessibilityNodeInfo，并输入"msg"信息
+            Bundle bundle = new Bundle();
+            bundle.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "msg");
+            node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, bundle);
+
+        找到发送按钮的viewId，找到AccessibilityNodeInfo，并找到坐标（x，y），实现点击坐标操作
+
+三. autojs
+    利用accessibility功能实现的一套免root自动化模拟点击框架
+    autojs（免费）  ->      Autojs Pro(付费)  ->   autox(代替品)
