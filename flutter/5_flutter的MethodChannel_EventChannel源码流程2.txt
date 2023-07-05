@@ -1,0 +1,38 @@
+一.	Platform到Dart的互相通信的几个类
+    BasicMessageChannel：用于传递字符串和半结构化的信息
+    MethodChannel：用于传递方法调用（method invocation）
+    EventChannel: 用于数据流（event streams）的通信
+
+    1. BasicMessageChannel
+    flutter层：
+        //初始化
+        BasicMessageChannel<String> _basicMessageChannel = BasicMessageChannel('BasicMessageChannelPlugin', StringCodec());
+
+        //设置监听函数
+        _basicMessageChannel
+            .setMessageHandler((String message) => Future<String>(() {
+                  setState(() {
+                    showMessage = 'BasicMessageChannel:'+message;
+                  });
+                  return "收到Native的消息ab：" + message;
+                }));
+
+
+        //向Native端发送消息
+        response = await _basicMessageChannel.send(value);
+    android层：
+        //初始化
+        this.messageChannel = new BasicMessageChannel<>(messenger, "BasicMessageChannelPlugin", StringCodec.INSTANCE);
+
+        //设置监听函数
+        @Override
+        public void onMessage(String s, BasicMessageChannel.Reply<String> reply) {//处理Dart发来的消息
+            reply.reply("BasicMessageChannel收到：" + s);//可以通过reply进行回复
+            if (activity instanceof IShowMessage) {
+                ((IShowMessage) activity).onShowMessage(s);
+            }
+            Toast.makeText(activity, s, Toast.LENGTH_SHORT).show();
+        }
+
+        //向Dart端发送消息
+        messageChannel.send(message, callback);

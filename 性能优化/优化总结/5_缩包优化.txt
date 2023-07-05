@@ -137,6 +137,26 @@
 		assets/so动态下发：
 			下发可以通过前后台，或者第一次启动下发等
 			使用可通过修改字节码，在调用处替换为自定义的封装类，在封装类内部有判断是否从远端plugin加载资源
-	
+			实现原理：
+			1. System.load()
+			    1>  读取elf文件
+			        elf文件获取魔数Magic，从魔数判断是否是32/64位，根据其32/64数据结构，获取程序头偏移量
+			        【列如是32位，有7个程序头，偏移52，则后续遍历程序头从偏移位置为 0x52 处开始遍历，每次增加步长为32】
+			    2>  程序头找到.dynamic偏移
+			        遍历程序头【程序头也有对应的数据格式】，找到p_type = PT_DYNAMIC，则其p_offset就是偏移
+			    3>  遍历.dynamic拿到所有依赖
+			        根据.dynamic的数据格式，遍历它，找到 d_tag 为：NEEDED 和 STRTAB 的内容
+			        【NEEDED：依赖库，STRTAB：偏移量】
+			    4>  结合.table拿到所有so名称
+                    在.table中根据STRTAB偏移找到对应的so文件，后续以此类推递归查找，得到完整的依赖路径
+                加载时根据依赖先后顺序加载 SO 文件，解决加载失败的问题
+            全局替换so加载函数【因为so动态下发,路径有变动】
+                ASM替换System.load函数，为替换函数【替换函数封装有整个 SO 获取依赖信息以及加载的逻辑】
+                或者使用 ReLinker（https://github.com/KeepSafe/ReLinker）或者Facebook 开源的 SoLoader（https://github.com/facebook/SoLoader）
+            2. System.loadLibrary()
+                动态加载的 SO 库存放目录通过反射添加到 nativeLibraryPathElements 数组的第一个位置
+                具体参考腾讯tinker(https://github.com/Tencent/tinker/blob/610dcaa4202df4db85b4b5e412c57d8a2c256dd4/tinker-android/tinker-android-lib/src/main/java/com/tencent/tinker/lib/library/TinkerLoadLibrary.java#L275)
+	        Android N（7.0）dlopen failed 的问题：
+	            需要把 SO 库拷贝到应用的沙盒目录ld_library_paths，default_library_paths，permitted_paths中即可
 	5.	监控
 		appChecker：包大小监控，结合CI平台

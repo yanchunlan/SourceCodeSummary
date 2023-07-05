@@ -1,6 +1,7 @@
 检测有无adb: 	adb
 检测设备是否连接：	adb devices
 apk安装到手机：	adb install xxxx.apk（拖动apk到cmd命令窗口显示目录）
+apk安装到指定手机：	adb -s xxx install xxxx.apk（拖动apk到cmd命令窗口显示目录）
 无线连接局域网:	adb connect to 192.168.1.27:5555
 启动app:		adb shell am start 包名/.Activity (要启动的Activity) 
 从设备上下载文件到电脑:		adb pull <远程路径> <本地路径>

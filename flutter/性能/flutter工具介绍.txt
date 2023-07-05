@@ -189,7 +189,7 @@
 				检查是否有图像的轮廓闪烁
 				其主要场景有：透明度，裁剪或者阴影，类似这种场景最好是单独对widget应用
 				
-				排查方式：
+				排查方式：【flutter 2.0以上废除】
 					1. 使用timeline查看Flutter 对 Skia 的调用
 						flutter run --profile --trace-skia
 					2. 接上，继续捕捉 SKPicture 来分析每一条绘图指令【上传到 https://debugger.skia.org/ 分析】

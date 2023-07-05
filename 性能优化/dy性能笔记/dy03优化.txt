@@ -1,0 +1,38 @@
+一. 静态代码分析
+
+
+二. 包大小优化实践
+    1.  背景介绍
+        技术优化：无用代码移除，有用代码精简，dex格式优化
+        业务优化：代码覆盖率，需求有效性，业务管控
+
+    2.  技术优化
+        dex优化：Redex
+        指令优化：
+            减少无用指令： log日志删除，冗余类型检查去除，冗余赋值删除，keep规则优化
+                        keep规则优化：
+                                修改proguard源码，新增记录keep影响记录classVisitor，收益减少dex数量
+            精简复杂指令： kotlin npe合并，data class优化，StringBuilder外联
+                        data class优化：
+                                    额外生成大量hashCode，equal,toString函数，包含大量指令无法自动移除
+                                    优化方式：弄个统一父类，父类有上面函数即可，子类无需拥有
+                        StringBuilder外联：
+                                    StringBuilder.outline
+        引用优化：
+
+        格式优化：
+        常量优化：
+
+    3.  业务优化
+    4.  总结
+
+三. 流畅度优化实践
+
+
+四. 性能防裂化
+
+
+五. 启动性能监控平台建设
+
+
+

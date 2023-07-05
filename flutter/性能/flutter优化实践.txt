@@ -70,3 +70,8 @@
 		点击右上角“Auto-refresh on GC”，实时更新gc
 		点击顶部的按钮 “ GC ” 来实现手动GC
 		Reset Accumulator 清空数据
+
+
+三. 其他性能分析命令
+    flutter run --profile --trace-widget-builds --trace-startup
+        【2.0以上废除】--trace-widget-builds选项用于启用性能分析工具中的widget构建分析功能，它可以帮助您识别耗时的widget，从而优化您的UI性能。
