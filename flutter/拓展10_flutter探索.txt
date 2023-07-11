@@ -41,3 +41,20 @@ flutter方案探索
     AspectD aop切面编程，https://github.com/alibaba-flutter/aspectd
         @Call不会修改原始方法的内部
         @Execute修改方法内部
+    性能指标监控
+        [ve_apm](https://pub.dev/packages/ve_apm/versions)
+            页面测速：
+                fp = 当前第一帧渲染时间 - didpush事件回调时间
+                fcp = 检测到当前渲染树子节点是有效子节点（文字，图片，视频） - didpush事件回调时间
+                fmp = 检测到当前渲染树中内容节点占用的Rect大小是都大于临界值时间 - didpush事件回调时间
+            fps/丢帧
+                SchedulerBinding.instance.addTimingsCallback 获取采样数据，页面push开始采集，pop结束。且计算丢帧表
+                丢帧表：key 丢了几帧，value 发生次数
+                列如：{ 0:12, 1:5, 2:10}
+                    共有12次绘制的间隔<16ms以内，没有发生丢帧。
+                    有5次绘制回调的间隔在 (1~2) * 16ms之间。
+                    有10次绘制回调的间隔在 (3~6) * 16ms*4之间。
+            异常/白屏率
+                ErrorWidget.builder统计异常次数，runZonedGuarded统计全局异常，在全局异常上报时添加页面是否异常参数uiError
+            channel耗时
+                hook channel通道数据handlePlatformMessage,send来获取通道数据，计算method耗时
