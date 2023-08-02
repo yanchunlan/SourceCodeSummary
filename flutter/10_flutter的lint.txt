@@ -1,0 +1,24 @@
+一.  lint
+    在工程目录下添加analysis_options.yaml文件：
+        include: package:pedantic/analysis_options.1.8.0.yaml
+
+        analyzer:
+          exclude: #忽略检测的文件配置
+            - lib/server/*.g.dart
+            - test/_data/**
+          strong-mode: #设置某些规则为严格模式
+            implicit-casts: false
+
+        linter:
+          rules: #开启或禁用某些规则
+            await_only_futures: true
+
+二.  Analyzer plugin简介
+
+
+三.  自定义 plugin
+    dart --fix
+    dart --apply
+
+四.  开源lint
+    custom lint 0.0.5

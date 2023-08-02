@@ -34,8 +34,34 @@ flutter方案探索
 
     应用内调试工具
         flutter_ume：https://github.com/bytedance/flutter_ume/blob/master/README_cn.md
-
-
+            1>  Widget 信息：查看当前选中 widget 的树层级及 renderObject 的详细 build 链
+                    获取build 链：InspectorSelection.currentElement，然后使用element.debugGetDiagnosticChain
+                    获取RenderObject信息：element.RenderObject.toString()
+            2>  ShowCode：查看到当前页面的页面代码
+                    获取当前页widget文件名：遍历当前renderObject，按照大小选出当前widget
+                                         WidgetInspectorService.getSelectedSummaryWidget获取到页面相关信息。提取creationLocation拿到当前 widget 文件地址
+                    找到并读取脚本：VMService.getScripts 获取当前线程下所有库文件id和文件名
+                                  比对上面文件名获取目标库id
+                                  VMService.getObject获取当前id对应的对象，读取对象的source属性就是源码了
+            3>  内存查看：查看当前Dart VM 对象所占用情况
+                    获取externalUsage/heapCapacity/heapUsage：vm_service.getMemoryUsage获取到当前isolate所占用的信息
+                    获取到每个类对象的内存信息：vm_service.getAllocationProfile拿到分配对象信息，通过members属性来获取到每个 class 所占用的堆信息
+            4>  对齐标尺：测量当前 widget 所在屏幕的一个坐标位置，并吸附最近 widget
+                    坐标显示：通过手势移动控件，根据屏幕的大小计算出当前距离
+                    自动吸附：通过globalKey获取当前页面RenderObject，通过它的debugDescribeChildren获取到所有子节点，通过describeApproximatePaintClip获取当前对象坐标系rect,比对RenderObject大小，得到最靠近的widget
+            5>  颜色吸附：查看当前页面任何像素的颜色
+                    获取图片像素及颜色值：
+                        截图：借助RepaintBoundary了，配合globalKey拿到截图
+                        根据坐标获取图片当前像素值：Image.getPixelSafe再转换为argb格式
+                    放大图片：
+                        通过手势获取坐标，加上scale得出矩阵参数，赋值给ImageFilter.matrix得到放大背景图
+            6>  网络调试：
+                    编译时插桩从而达到对特定 API 的 Hook，主要是package:http/src/base_client.dart中BaseClient类中的_sendUnstreamed
+            7>  Logger：展示debugPrint函数打印的日志
+                    日志拦截：runZoned里面的zoneSpecification.print
+                    通过hook的方式：仅hook debugPrint（即 package:flutter/src/foundation/print.dart 中 debugPrintThrottled 进行 hook ）
+            8>  Channel Monitor：查看所有的 channel 调用，包括方法名，时间，参数，返回结果
+                    hook package:flutter/src/services/platform_channel.dart中MethodChannel类的invokeMethod方法即可
 
 3.  其他黑科技
     AspectD aop切面编程，https://github.com/alibaba-flutter/aspectd

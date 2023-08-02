@@ -4,35 +4,31 @@
     EventChannel: 用于数据流（event streams）的通信
 
     1. BasicMessageChannel
-    flutter层：
-        //初始化
-        BasicMessageChannel<String> _basicMessageChannel = BasicMessageChannel('BasicMessageChannelPlugin', StringCodec());
+        flutter层：
+            BasicMessageChannel<String> _basicMessageChannel = BasicMessageChannel('BasicMessageChannelPlugin', StringCodec());
+            _basicMessageChannel
+                .setMessageHandler((String message) => Future<String>(() {
+                      setState(() {
+                        showMessage = 'BasicMessageChannel:'+message;
+                      });
+                      return "收到Native的消息ab：" + message;
+                    }));
+            response = await _basicMessageChannel.send(value);
 
-        //设置监听函数
-        _basicMessageChannel
-            .setMessageHandler((String message) => Future<String>(() {
-                  setState(() {
-                    showMessage = 'BasicMessageChannel:'+message;
-                  });
-                  return "收到Native的消息ab：" + message;
-                }));
-
-
-        //向Native端发送消息
-        response = await _basicMessageChannel.send(value);
-    android层：
-        //初始化
-        this.messageChannel = new BasicMessageChannel<>(messenger, "BasicMessageChannelPlugin", StringCodec.INSTANCE);
-
-        //设置监听函数
-        @Override
-        public void onMessage(String s, BasicMessageChannel.Reply<String> reply) {//处理Dart发来的消息
-            reply.reply("BasicMessageChannel收到：" + s);//可以通过reply进行回复
-            if (activity instanceof IShowMessage) {
-                ((IShowMessage) activity).onShowMessage(s);
+        android层：
+            this.messageChannel = new BasicMessageChannel<>(messenger, "BasicMessageChannelPlugin", StringCodec.INSTANCE);
+            @Override
+            public void onMessage(String s, BasicMessageChannel.Reply<String> reply) {//处理Dart发来的消息
+                reply.reply("BasicMessageChannel收到：" + s);//可以通过reply进行回复
+                if (activity instance of IShowMessage) {
+                    ((IShowMessage) activity).onShowMessage(s);
+                }
+                Toast.makeText(activity, s, Toast.LENGTH_SHORT).show();
             }
-            Toast.makeText(activity, s, Toast.LENGTH_SHORT).show();
-        }
+            messageChannel.send(message, callback);
 
-        //向Dart端发送消息
-        messageChannel.send(message, callback);
+        核心参数：
+            name: String类型，唯一标识符
+            messager: BinaryMessenger类型，是消息信使，用于消息的发送与接收的工具
+                    dart层是_DefaultBinaryMessenger，android层是DartExecutor
+            codec: MessageCodec/MethodCodec类型，是消息的编解码器

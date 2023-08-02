@@ -913,25 +913,25 @@
 			flutter标准工作流命令：
 			阶段 			子任务 							命令
 			工程初始化 	App工程 			flutter create —template=app hello
-								Dart包工程		flutter create —template=package hello
-								插件工程 			flutter create —template=plugin hello
+								Dart包工程		flutter create --template=package hello
+								插件工程 			flutter create --template=plugin hello
 			开发/调试 	IDE Debugger 		N/A
 								Flutter Inspector 	N/A
 								性能调试 				N/A
-			构建 			Debug构建 			flutter build apk —debug 
-															flutter build ios —debug
-								Release 构建 		flutter build apk —release
-															flutter build ios —release
-								Profile 构建			flutter build apk —profile 
-															flutter build ios —profile
+			构建 			Debug构建 			flutter build apk --debug
+															flutter build ios --debug
+								Release 构建 		flutter build apk --release
+															flutter build ios --release
+								Profile 构建			flutter build apk --profile
+															flutter build ios --profile
 			测试 			Dart分析 				flutter analyze
 								单元测试 				flutter test
 								UI测试 					flutter test
 			发布 			Package 发布		flutter packages pub publish
-			集成原生工程 独立App打包		flutter build apk —release
-															flutter build ios —release
-								Pod/AAR 打包		flutter build apk —release
-															flutter build ios —release
+			集成原生工程 独立App打包		flutter build apk --release
+															flutter build ios --release
+								Pod/AAR 打包		flutter build apk --release
+															flutter build ios --release
 		2>	实践
 		原生插件依赖管理原则
 			原生代码宿主提供的底层基础能力的原生插件给flutter

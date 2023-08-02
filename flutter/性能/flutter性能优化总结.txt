@@ -114,7 +114,7 @@
 		7>	列表优化
 				减少使用ListView(children: [],) 或 GridView(children: [],)，尽量使用ListView 和 GridView 的 builder方法，只会绘制可见内容
 			
-		8>	针对于长列表，记得在 ListView 中使用 itemExtent
+		8>	针对于长列表，记得在 ListView 中使用 itemExtent【重点】
 				其将计算 ListView 的滚动位置而不是计算每一个 Widget 的高度，对于滚动动画性能更好
 				
 		9>	减少可折叠 ListView 的构建时间
@@ -140,7 +140,7 @@
             Text
 
 		14> RepaintBinary隔离
-            Swiper、PageView、Lottie，动图等等均需要使用RepaintBinary隔离，独立layer绘制，防止影响到其他layer
+            Swiper、PageView、Lottie，动图，倒计时等等均需要使用RepaintBinary隔离，独立layer绘制，防止影响到其他layer
 
         15> isolate执行耗时计算
             列如：头部滑动计算透明度场景 - 使用isolate将滑动实时计算透明度及偏移量的逻辑进行隔离操作，计算成功后将结果返回
