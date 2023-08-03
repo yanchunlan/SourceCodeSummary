@@ -1,4 +1,4 @@
-一.  source_gen
+一.  apt (source_gen)
     1. 添加依赖
         dependencies:
             analyzer: '>=1.4.0 <3.0.0'
@@ -40,10 +40,45 @@
 
     原理阐释：
         flutter packages pub run build_runner build
-        ->
+        拆分为下面3个指令：
+        1. flutter packages pub
+            -> 环境变量sdk位置找到 flutter 指令对应的脚本程序
+            -> dart 执行 $FLUTTER_ROOT/bin/cache/flutter_tools.snapshot 【flutter_tools编译产物，等价于 tools/bin 目录下的 flutter_tools.dart】
+            -> tools/bin 目录 flutter_tools.dart
+            -> 执行到其中一个command，PackagesPassthroughCommand
+            -> 开启新进程，将剩余的参数传递执行，执行 dart-sdk 目录 bin/pub 程序，进程间socket通信
 
+        2. run build_runner build
+            -> bin/cache/dart-sdk/bin/pub 内部通过dart命令执行 exec "pub.dart.snapshot"
+            -> build_runner.dart 执行程序
+            -> generateAndRun
+                1> findBuildScriptOptions 查找项目依赖中的所有包含 build.yaml 的库
+                2> 在项目生成文件.dart_tools/build/entrypoint/build.dart，引入所有脚本
+                3> 创建 isolate 执行 build.dart
+
+        3. source_gen 实际执行到 json_serializable 文件
+            -> build(BuildStep buildStep)
+            -> generateForLibrary(lib, buildStep)
+            -> _generate(
+            -> 遍历执行 gen.generate(libraryReader, buildStep)
+                generators 配置的所有脚本程序
+                libraryReader 当前项目代码的集合，包含了所有的代码信息
+            ->  writeAsString(AssetId
 二.  aop
-
-
+    面向切面编程。指aspected，任意地方，通过 PointCut 在 Flutter 产物构建阶段 插入指定的代码
+    原理：
+        产物构建过程，当 font_server 编译结束后会生成一个 dill 文件，通过修改 flutter_tools 执行 AspectD 中的代码对原有的产物处理并进行替换
+        aopManager.hookBuildAotCommand
+            1>  读取 dill 文件
+                dillOps.readComponentFromDill
+            2>  解析项目所有依赖中包含 Aspect 注解的程序
+                _resolveAopProcedures
+                遍历所有的文件,字符匹配@Execute @Inject 注解对应代码,存入集合执行
+            3>  根据上一步检索的结果执行 Execute/Inject 等注解的代码生成
+                AopExecuteImplTransformer
+            4>  aop inject transformer
+                AopInjectImplTransformer
+            5>  将处理过的 component 对象重新写入到之前的 dill 路径
+                dillOps.writeDillFile
 三.  总结
-
+    APT
