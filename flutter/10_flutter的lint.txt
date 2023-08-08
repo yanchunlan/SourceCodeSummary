@@ -14,11 +14,39 @@
             await_only_futures: true
 
 二.  Analyzer plugin简介
+    https://github.com/dart-lang/sdk/blob/master/pkg/analyzer_plugin/doc/tutorial/tutorial.md
+    代码参考：dart-lang 的pkg下的 analysis_server、analysis_cli、analysis_plugin 或者flutter sdk的 flutter/bin/cache/dart-sdk/bin/dartanalyzer 语法分析和检查服务
+    1.  VSCode 或AndroidStudio安装Dart插件会自动开启dartanalyzer服务
+    2.  dartanalyzer启动后，寻找项目analysis_options.yaml文件，以此内容作为analyzer配置信息，
 
+    查看当前加载的Analyzer plugin：
+        底部拦dart analysis -> 左侧设置 -> View analyzer diagnostics -> plugin
 
-三.  自定义 plugin
-    dart --fix
-    dart --apply
+三.  自定义 plugin [test_lint_plugin](https://github.com/yanchunlan/fluttersample/plugin/test_lint_plugin)
+    1.  建立test_lint_plugin 工程，并添加依赖
+    2.  建立启动入口
+        在test_lint_plugin 工程下，建立2个文件
+        1>  ./tools/analyzer_plugin/pubspec.yaml
+        2>  ./tools/analyzer_plugin/bin/plugin.dart
+
+        在test_lint_plugin 工程下配置 analysis_options.yaml文件
+    3.  其他项目依赖此test_lint_plugin 插件
+
+    加载流程：
+        1>  analysis_options.yaml改变，as通知dartanalyzer服务
+        2>  dartanalyzer通过pubspec.lock寻找test_lint_plugin插件
+        3>  检测tools/analyzer_plugin/pubspec.yaml和tools/analyzer_plugin/bin/plugin.dart，并将test_lint_plugin复制到
+            dartServer缓冲区
+        4>  dartanalyzer启动当前analyzer_plugin/bin/plugin.dart中的main函数，加载插件
+
+    代码编写完成，执行 restart analysis server
+    断点调试：test/analyzer_test.dart
+    工程日志调试：通过 mirrorLog.info(“xxxxxx”); 写入output.log文件，
+    实时日志调试：tail -f ~/Desktop/output.log
 
 四.  开源lint
     custom lint 0.0.5
+
+    好的命令：
+    dart --dry-run
+    dart --apply
