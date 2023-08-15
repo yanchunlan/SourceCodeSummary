@@ -1,0 +1,72 @@
+一.  中间文件
+    Dart编译官方文档：https://dart.dev/tools/dart-compile#subcommands
+    kernel产物：
+        dart compile kernel bin/myapp.dart // 创建内核
+        dart run bin/myapp.dill // 运行内核
+    dill文件：位于 .dart_tool/flutter_build/xxx/app.dill
+
+二.  dill文件生成
+    文件生成：dart compile kernel bin/myapp.dart --output /user/xxx
+
+三.  dill文件序列化为可读文本
+    < dart 2.17.7版本：
+        1. git clone https://github.com/dart-lang/sdk.git
+        2. git checkout xxx  // 切换到flutter sdk对应版本(版本在flutter sdk/bin/cache/dart-sdk/revision)
+        3. flutter sdk/bin/cache/dart-sdk/bin/dart /xxx/sdk/pkg/vm/bin/dump_kernel.dart app.dill output.txt
+        高版本会异常，原因是：pkg/vm/pubspec.yaml 里面的引用全是any未指定版本号（低版本是相对路径）
+    > dart 2.17.7版本：
+        1. brew install python // python安装
+        2. git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git // 安装depot_tools（Chromium的源码管理工具）
+           并配置环境变量到.bash_profile或~/.zshrc，再source ~/.bash_profile
+                export PATH=[存放的路径]/depot_tools:$PATH
+        3. 执行<dart2.17.7版本的1，2步骤（下载dart-sdk，并git checkout到对应版本）
+           执行命令同步依赖项：gclient sync 或者 gclient sync -D（未使用的第三方库会被删减）
+
+           问题1：Error: client not configured; see 'gclient config'
+           解决办法：https://zhuanlan.zhihu.com/p/70879583
+           问题2：Updating depot_tools... （耗时太久）
+           解决办法：
+               1. .bash_profile或~/.zshrc 加上 export DEPOT_TOOLS_UPDATE=0
+               2. depot_tools 版本切换到 d0b85e47dc0a142bb7f2c3c40f5c4956e6f87227
+
+        4. flutter sdk/bin/cache/dart-sdk/bin/dart /xxx/sdk/pkg/vm/bin/dump_kernel.dart app.dill output.txt
+
+四.  抽象语法树（AST）
+    打开dump_kernel.dart文件源码
+    流程：
+        1.  读取dill文件
+            List<int> bytes = new File(input).readAsBytesSync()
+        2.  将dill文件反序列化为内存中的抽象语法树
+            new BinaryBuilderWithMetadata(bytes).readComponent(component) // readComponent -> pkg/kernel/lib/binary/ast_from_binary.dart
+        3.  将内存中的抽象语法树序列化为文本
+            writeComponentToText(component, path: output, showMetadata: true) // writeComponentToText -> pkg/kernel/lib/text/ast_to_text.dart
+    1>  Android Studio调试
+        打开dart-sdk/sdk项目，配置run configuration:
+            1.  创建dart command line app 并新建文件，命名 dump_kernel.dart
+            2.  dart file：.../dump_kernel.dart
+                Program arguments: "xxx/app.dill" "xxx/main.dart"
+                working directory：.../dart-sdk/pkg/vm
+    2>  Dart命令调试
+        // --pause-isolates-on-start --observe  断点调试开关
+        dart --pause-isolates-on-start --observe /xxx/dart-sdk/sdk/pkg/vm/bin/dump_kernel.dart xxx.dill xxx.txt
+
+五.  更便捷的方式（dump_kernel.snapshot）
+    快照生成：
+        在sdk/pkg/vm/bin目录，执行 dart --snapshot=dump_kernel.snapshot dump_kernel.dart
+        如果出现版本不一致导致的异常，可以添加--no-verify-sdk-hash
+    已有快照：（已存个人百度网盘）
+        dump_kernel_2.19.6_89.snapshot
+        dump_kernel_3.0.0_101.snapshot
+        dump_kernel_3.0.5_101.snapshot
+        dump_kernel_3.0.6_101.snapshot
+    根据已有快照，执行命令：dart /xxx/dump_kernel_xxx_xxx.snapshot xxx.dill xxx.txt
+
+六.  更好的命令参数-dill文件序列化为可读文本
+    flutter run -v 后，发现主要用的快照是：frontend_server.dart.snapshot，所以可以添加--sdk-root，--target
+    所以命令改为：
+        dart /xxx/flutter/bin/cache/dart-sdk/bin/snapshots/frontend_server.dart.snapshot --sdk-root /xxx/flutter/bin/cache/artifacts/engine/common/flutter_patched_sdk/ --target=flutter xxx.dart --output-dill xxx.dill
+
+七.  DEPS文件
+    dart sdk/DEPS 文件的hook代码位置，当前面执行gclient sync后，就会调用这的hook, 用于在项目中生成.dart_tool/package_config.json文件
+    执行流程是：
+        ->generate_package_config.py -> generate_package_config.dart
