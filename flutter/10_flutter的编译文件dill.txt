@@ -55,6 +55,7 @@
         在sdk/pkg/vm/bin目录，执行 dart --snapshot=dump_kernel.snapshot dump_kernel.dart
         如果出现版本不一致导致的异常，可以添加--no-verify-sdk-hash
     已有快照：（已存个人百度网盘）
+        dump_kernel_2.18.1_82.snapshot
         dump_kernel_2.19.6_89.snapshot
         dump_kernel_3.0.0_101.snapshot
         dump_kernel_3.0.5_101.snapshot

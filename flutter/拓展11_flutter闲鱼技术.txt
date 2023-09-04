@@ -1,0 +1,32 @@
+flutter闲鱼技术
+1.  一个方案提升Flutter内存利用率
+    问题：flutter使用外接纹理方式显示图片，纹理未缓存
+    解决方案：自定义ImageCache解决
+5.  flutter动态话方案
+    页面动态组件框架，参考flutter analyzer解析dart 源码(dart sdk的package:analyzer)，拿到ASTNode
+7.  路由管理代码长解决方案
+    sourceGen注解方式动态生成映射文件
+11. 录制回放技术 - 回溯用户事故现场
+    用户点击开始录制，结束录制，上报事故即可，等待开发解决
+    模拟触摸事件，统一拦截器实现，统一hook block
+    1>  事件记录
+        事件分发流程：
+            _handlePointerDataPacket -> 手势碰撞测试 -> 手势竞争场，赢家胜利renderObject
+            列如：有个点，包裹在A，C ，K，G中
+                1> hitTest碰撞测试，遍历出视图路径：WidgetsFlutterBinding <— A <— C <— K <— G (其中GKCA是renderObject)
+                2> entry.target.handleEvent手势竞技场比赛，顺序调用handleEvent函数 G->K->C->A->WidgetsFlutterBinding
+        在手势识别器回调上包装回调方法，记录树上的节点相关属性和手势类型
+    2>  事件回溯
+12. UI2CODE智能生成Flutter代码
+    设计给ui图形
+    1.通过机器视觉技术，从视觉稿提取GUI元素
+    2.通过深度学习技术，识别GUI元素类型
+    3.通过递归神经网络技术，生成DSL
+    4.通过语法树模板匹配，生成flutter代码
+13. flutter动态化
+    1> 数据采集
+       参考Dart的 Analyzer库，通过parseCompilationUnit把dart源码解析成CompilationUnit为Root节点的AST树，只需要在此把其转化为json
+       编译时，自动上传cdn
+    2> widget创建
+       app启动下载json，在使用位置解析出 ConstructorNode树，然后递归创建Widget
+

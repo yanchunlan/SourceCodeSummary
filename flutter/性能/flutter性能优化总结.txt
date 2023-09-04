@@ -189,6 +189,11 @@
 四.	启动速度优化	
 	1.	Flutter 引擎预加载
 		Looper.myQueue().addIdleHandler() 中初始化FlutterEngine，并将其缓存到集合中，后续需要时从集合中拿到它
+		注意点：
+		    1.  不能子线程执行，会异常
+		    2.  初始化FlutterEngine的参数dartVmArgs，release包无参数，debug包可传入，--start-paused，--enable-dart-profiling
+		        1> --start-paused 启动时将Dart代码的执行暂停，想恢复可点击Flutter DevTools的"Resume"继续执行
+		        2> --enable-dart-profiling 启用Dart代码的性能分析功能，如函数执行时间、内存使用情况等
 	2.	Dart VM 预热
 		public void preLoadDartVV() {
         	FlutterLoader.getInstance().startInitialization(context);

@@ -158,5 +158,9 @@
                 具体参考腾讯tinker(https://github.com/Tencent/tinker/blob/610dcaa4202df4db85b4b5e412c57d8a2c256dd4/tinker-android/tinker-android-lib/src/main/java/com/tencent/tinker/lib/library/TinkerLoadLibrary.java#L275)
 	        Android N（7.0）dlopen failed 的问题：
 	            需要把 SO 库拷贝到应用的沙盒目录ld_library_paths，default_library_paths，permitted_paths中即可
+	    assets/so编译处理：
+	        在mergeTask之后，删除文件，并复制文件到指定目录，并生成md5信息，打包压缩成zip上传（so在stripDebugDebugSymbols之前）
+	    查看so依赖分析工具：
+	        android-classyshark
 	5.	监控
 		appChecker：包大小监控，结合CI平台
