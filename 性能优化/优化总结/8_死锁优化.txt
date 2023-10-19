@@ -1,0 +1,53 @@
+一.  方案探讨 - native方式
+    1. 获取当前blocked状态的线程
+        java层getAllThreads，遍历单个线程反射获取nativePeer，拿到native地址
+            Thread[] threads = getAllThreads();
+            for (Thread thread : threads) {
+                if (thread.getState() == Thread.State.BLOCKED)
+                long threadAddress = (long) ReflectUtil.getField(thread, "nativePeer");
+                if (threadAddress <= 0) continue;
+            }
+        通过地址找到native线程，
+
+    2. 获取该线程想要竞争的锁
+        打开动态库libart.so，通过ndk_dlopen获取函数的符号地址
+        再通过dlsym获取GetContendedMonitor这个函数的符号地址
+                ndk_init(env);
+                // 打开动态库libart.so
+                void *so_addr = ndk_dlopen("libart.so", RTLD_NOLOAD);
+                // 获取Monitor::GetContendedMonitor函数符号地址
+                get_contended_monitor = ndk_dlsym(so_addr, "_ZN3art7Monitor19GetContendedMonitorEPNS_6ThreadE");
+
+    3. 获取该锁被哪个线程持有
+        获取这个函数符号地址
+                //这个函数是用来获取 Monitor的持有者,会返回线程id（Monitor::GetLockOwnerThreadId）
+                get_lock_owner_thread = ndk_dlsym(so_addr, get_lock_owner_symbol_name(api_level));
+
+                const char *get_lock_owner_symbol_name(jint level) {
+                    if (level <= 29) {
+                        //android 9.0 之前
+                        //http://androidxref.com/9.0.0_r3/xref/system/core/libbacktrace/testdata/arm/libart.so 搜索 GetLockOwnerThreadId
+                        return "_ZN3art7Monitor20GetLockOwnerThreadIdEPNS_6mirror6ObjectE";
+                    } else {
+                        //android 10.0
+                        return "_ZN3art7Monitor20GetLockOwnerThreadIdEPNS_6mirror6ObjectE";
+                    }
+                }
+
+    4. 找到一直不释放锁的线程id
+        跟进当前线程id，调用get_contended_monitor拿到其想要竞争的monitor
+                int monitorObj = ((int (*)(long)) get_contended_monitor)(native_thread);
+        获取这个monitor被哪个线程持有，返回该线程id
+                 monitor_thread_id = ((int (*)(int)) get_lock_owner_thread)(monitorObj);
+
+    5. 通过关系链，判断死锁的线程，输出堆栈信息
+        用Map来保存对应关系，列如：map[A]=B 等于A等待B
+        通过互斥条件判断出死锁线程，并打印死锁线程堆栈信息，toast或者上报
+
+二.  闭环
+    发生ANR
+    获取主线程堆栈信息
+    检测死锁
+    获取死锁对应线程堆栈信息
+    上报到服务器
+    结合git，定位到最后修改代码的同学，给他提一个线上问题单

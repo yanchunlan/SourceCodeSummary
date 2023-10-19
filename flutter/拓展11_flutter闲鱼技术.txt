@@ -29,4 +29,10 @@ flutter闲鱼技术
        编译时，自动上传cdn
     2> widget创建
        app启动下载json，在使用位置解析出 ConstructorNode树，然后递归创建Widget
+33. android flutter内存初探
+    1>  Dart RunTime简介
+    2>  Image内存初探
+        flutter 使用的内存是Graphics内存（不是Java虚拟机内存，或Native内存）
+    3>  FlutterView内存初探
+        主要是native内存增加，解决方式：flutterView的复用（建立一个1像素的窗口，在窗口里完成FlutterView首帧渲染）
 

@@ -1,3 +1,5 @@
+监控message队列，在卡顿时候获取堆栈（堆栈是需要先对所有函数插装加入trace start/end标签，通过获取线上trace）
+
 头条Rhea
-线上trace: 通过Trace 的获取函数，对生成的.trace文件进行裁剪，只部分信息生成该文件
-后续：基于 Android atrace 的实现原理，我们同步参考了 Facebook 的 profilo
+    线上trace: 通过Trace 的获取函数，对生成的.trace文件进行裁剪，只部分信息生成该文件
+    后续：基于 Android atrace 的实现原理，我们同步参考了 Facebook 的 profilo

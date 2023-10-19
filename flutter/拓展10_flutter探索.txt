@@ -68,6 +68,10 @@ flutter方案探索
         @Call不会修改原始方法的内部
         @Execute修改方法内部
     兼容3.3.2的有：https://github.com/LianjiaTech/Beike_AspectD/blob/3.10.5/README-CN.md
+        原理：
+            1. 编译后的中间产物dill中既包含了原始项目代码，也包含了AOP代码后（@Aspect注解的代码）
+            2. 对编译文件dill，递归式AST遍历，实现对dill的变换（Kernel to Kernel Transform的方式【本身支持】）
+
 
     性能指标监控
         [ve_apm](https://pub.dev/packages/ve_apm/versions)
@@ -86,3 +90,15 @@ flutter方案探索
                 ErrorWidget.builder统计异常次数，runZonedGuarded统计全局异常，在全局异常上报时添加页面是否异常参数uiError
             channel耗时
                 hook channel通道数据handlePlatformMessage,send来获取通道数据，计算method耗时
+
+4.  flutter FVM版本管理
+    安装：
+        brew tap leoafarias/fvm
+        brew install fvm
+    卸载：
+        brew uninstall fvm
+        brew untap leoafarias/fvm
+    使用：
+        flutter sdk 位置配置：fvm config --cache-path .../flutter-3.3.2
+        局部使用：fvm use 3.0.5 且修改项目flutter sdk的路径为.fvm/flutter_sdk，重启AS
+        全局使用：fvm global 3.0.5

@@ -44,6 +44,7 @@
 			方法
 			源码
 	4. 内存视图（Memory view）
+	    https://flutter.cn/docs/development/tools/devtools/memory#memory-view-guide
 	5. 网格视图
 		HTTP, HTTPS，web socket
 	6. 调试器
