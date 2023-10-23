@@ -1,5 +1,26 @@
-监控message队列，在卡顿时候获取堆栈（堆栈是需要先对所有函数插装加入trace start/end标签，通过获取线上trace）
+ANR优化
+    字节Raster监控
+        监控message队列，在卡顿时候获取堆栈（堆栈是需要先对所有函数插装加入trace start/end标签，通过获取线上trace）
+        头条Rhea
+            线上trace: 通过Trace 的获取函数，对生成的.trace文件进行裁剪，只部分信息生成该文件
+            后续：基于 Android atrace 的实现原理，我们同步参考了 Facebook 的 profilo
+    Sliver 监控
 
-头条Rhea
-    线上trace: 通过Trace 的获取函数，对生成的.trace文件进行裁剪，只部分信息生成该文件
-    后续：基于 Android atrace 的实现原理，我们同步参考了 Facebook 的 profilo
+case:
+    Barrier 导致主线程假死
+        java hook其MessageQueue 的 postSyncBarrier 和 removeSyncBarrier 接口
+    告别 SharedPreference 等待
+        问题1：首次访问sp内容时，UI 线程block，等待SP 文件被完全加载到内存中，才会执行、
+        问题2：apply提交会在，pause -> waitToFinish等待执行，
+            解决方式：sp大小减少，asm替换sp为其他方式写入，mmkv或者DataStore
+
+ANR分析步骤：
+    Trace 日志
+        线程堆栈trace，状态，耗时，
+    AnrInfo
+        ANR 类型，系统负载(Load)，进程 CPU 使用率，
+    Kernel 日志
+        dmesg 日志，主要分析的是 lowmemkiller 相关信息
+    Logcat 日志
+    Meminfo 日志
+    Raster 监控工具
