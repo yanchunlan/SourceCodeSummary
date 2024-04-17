@@ -35,4 +35,25 @@ flutter闲鱼技术
         flutter 使用的内存是Graphics内存（不是Java虚拟机内存，或Native内存）
     3>  FlutterView内存初探
         主要是native内存增加，解决方式：flutterView的复用（建立一个1像素的窗口，在窗口里完成FlutterView首帧渲染）
+45. 万万没想到-Flutter这样外接纹理
+    传统外接纹理，播放视频,数据流程：GPU->CPU->GPU
+    优化后：
+        共享GLContext, 数据流程：GPU->GPU
+50. Flutter之禅 内存优化篇
+    Xcode Instruments 排查IOKit较大，Dart Observatory看Dart Image较多，怀疑泄漏但测试未泄漏
+    1. Flutter Engine的Task Runner加入了任务数量和C++ image对象的监控代码，发现有100+io操作
+        测试发现是不可见widget还在不停的Resolve Image，优化后解决图片内存问题
+    2. 页面切换
+        截图过渡为预加载+缓存的策略
+    3. FlutterViewController
+        析构未释放，
+51. 揭秘Flutter Hot Reload（基础篇）
+    1. 点击运行
+    ->  flutter_tools 的 HotRunner.restart(fullRestart: false)
+    ->  _reloadSources(pause: pauseAfterRestart)
+        1. 文件遍历，生成kernel files，重命名app.dill.incremental.dill，通过HTTP端口发送给DartVM
+        2. 扫描.dill文件，通过RPC调用_reloadSources，进行资源加载
+        3. 确认VM资源重载成功，将FlutterDevice UI线程重置，通过RPC接口，触发flutter widgets树重建、重绘
 
+52. Flutter线上代码覆盖率解决方案——FlutterCodeX
+    利用aspectd编译时代码插桩插件，运行时数据采集缓存，切后台数据压缩上传到oss，根据看板得到线上代码覆盖率数据

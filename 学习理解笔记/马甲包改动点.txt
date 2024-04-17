@@ -1,0 +1,23 @@
+马甲包改动点
+1.  Flutter无用模块删除
+
+2.  Flutter一期改动
+    一期Ui
+    启动图/logo
+    主题色
+    充值内购参数
+    隐私协议/用户协议/官网
+    app name/包名全局替换
+    Flutter所有图片资源重命名
+    Flutter所有图片资源75%压缩
+
+3.  Android原生改动
+    bugly的appId替换
+    包名替换
+    新建签名文件
+    新增渠道
+    原生manifest无用静态注册删减
+    Google play改动（google-services.json文件替换）
+    aabresguard资源混淆
+    原生所有文件名替换（增加AAxxx前缀）
+    新增无用代码（ASM插装新增无用代码）【比android-junk-code效果更好】
