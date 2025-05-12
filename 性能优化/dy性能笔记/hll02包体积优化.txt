@@ -1,0 +1,20 @@
+一. 包体积优化
+    动态资源管理系统：管理离线so、动画资源、字体文件
+
+    ...
+    1. so资源动态化方案
+        1>  移除并收集soApk中的so文件
+            mergeDebugNativeLibs        合并所有依赖的 native 库
+            stripDebugDebugSymbols      从 Native 库中移除 Debug 符号
+            一般在mergeDebugNativeLibs之后删除so，存储md5信息并压缩成zip文件上传，存储的md5信息通过javapoet生成新文件，打包到apk中，后续通过它下载
+        2>  加载so不崩溃
+            使用ASM方式替换System.loadLibrary函数，新的函数使用 Relinker替代System.loadLibrary，并catch异常。
+            加载so时，如果未下载成功，则加入等待队列，保证下发成功后继续加载此函数
+    2. so资源加载和应用解决方案
+        1>  判断系统架构
+            读取SUPPORTED_ABIS
+        2>  怎么加载到系统中
+            下载完成资源后，需要反射加入到 nativeLibraryPathElements 目录中，
+            后续就可以通过调用System.loadLibrary调用成功了
+    3. so依赖分析工具
+        android-classyshark

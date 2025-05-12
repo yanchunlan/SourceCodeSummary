@@ -1,0 +1,43 @@
+一. 网络优化
+    1>  应用层协议优化
+        1. http2升级
+            多路复用，流量减少，网络提速
+        2. httpDNS（腾讯云）
+        3. http压缩算法brotli
+            接入基于cronet二次开发的统一网络库（okHttp不支持），使用压缩等级是Brotli 7
+        4. http3
+            接入谷歌cronet网络库，支持QUIC
+     2> TLS层优化
+        1.  TLS1.3升级
+            基于google cronet开发了统一网络库Gnet替换OKHTTP和NSURLSession
+            服务端支持TLS1.3需要修改接入网关
+        2.  mTLS+SSLpinning
+            mTLS（mutal TLS）技术是基于SSL基础上再添加一个本地证书，用来和服务端双向验证，提高中间人攻击的门槛和难度，进而提高安全性
+            SSLpininng即证书锁定，通过锁定证书的公钥，进一步提高安全性
+
+            本地证书文件加密解密使用c语言来实现，提高安全性, 并且对输出的so文件进行加固
+      3>  TCP优化
+        1.  备用TCP连接
+            基于cronet二次开发
+      4>  IPv6改造
+      5>  业务层优化
+        1.  减少网络请求次数
+            1>  连接复用
+            2>  断点续传（离线包，动态化框架资源）
+            3>  使用缓存
+        2.  数据压缩
+            图片压缩
+                JPEG压缩工具：guetzli mozjpeg
+                Png压缩工具：pngquant转成压缩更高格式：webp、heif、avif。
+            二进制编码
+                Proto buffer: 日志库Argus中有应用
+                Flat buffer：地图模块中有应用
+            增量压缩
+                APK或者H5离线包增量升级：Bsdiff日志文件增量压缩
+        3. 统一网络库
+            OKHTTP: HTTP3、brotli压缩算法不支持，TLS1.3支持率不高
+            更改为使用基于谷歌cronet二次开发的移动端统一网络库Gnet，可以对HTTP2、QUIC、TLS1.3、brotli压缩算法等协议支持
+
+
+后续拓展：
+    okHttp对brotli的支持：https://github.com/square/okhttp/blob/master/okhttp-brotli/README.md

@@ -14,19 +14,20 @@
 	有道云：
 	github:
 	gitlab:
-
+    飞书文档：
+    tapd:
 
 
 4.	项目管理
 	tapd:	https://www.tapd.cn/
-
+    github：
 
 
 5.	bug
 	jare:
 	tapd:
 	github:
-
+    tapd:
 
 6.  常用文档记录工具
     obsidian:
@@ -39,5 +40,8 @@
     codEditor:
     bbEdit:
 
+
+7. 其他工具
+    github网站描述：github.com 替换为： deepwiki.com
 
 

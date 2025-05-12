@@ -1,0 +1,28 @@
+一.  海外直播房项目关键点
+	1. 	业务
+	    1>  语音房：聊天室（1v1，1vN），k歌房，游戏房
+	           顶部区：个人信息，设置，在线人数
+	           内容区：上下麦，切麦，开闭麦，邀请上麦，封麦
+	           底部区：评论，送礼，更多功能
+	    2>  视频房：
+	        开关播，美颜，贴纸，禁音，耳返，背景音乐
+	        连麦，PK，红包
+	2.	技术
+        1>  app：
+            网络：RPC，ip直连，域名动态替换
+            日志：xLog统计并上报（接口主动上报，socket下发消息控制上报）
+            异常：Firebase统计
+            埋点：数数，友盟...
+            推送：Google推送
+            登录：Google，FaceBook，手机
+            动画：礼物（Vap动画，AlphaPlayer），lottie动画
+            长连接：OkHttp，WebSocket
+            打包编译：jenkins，局域网，python图片压缩（png,jpg,webp）
+
+        2>  房间内：
+            RTC：既构，声网
+            长连接：...
+
+        3>  优化：
+            flutter: ume
+            原生：leakcanery , koom ,  dokit , booster ， bytex

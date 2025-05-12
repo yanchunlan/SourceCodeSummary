@@ -1,0 +1,12 @@
+1.	2个apk合并成一个apk
+    1>  解压apk
+        /path/apktool d build_5636.apk
+    2>  合并资源
+        cp build_src/lib/armeabi-v7a/libflutter.so build_dsc/lib/armeabi-v7a/libflutter.so
+    3>  重建apk
+        /path/apktool b build_dsc -o build_dsc_merge.apk
+    4>  签名
+        .../sdk/build-tools/34.0.0/apksigner sign --ks .../app.jks --out build_dsc_merge_signed.apk build_dsc_merge.apk
+
+
+
