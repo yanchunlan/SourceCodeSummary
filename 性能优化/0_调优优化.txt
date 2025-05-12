@@ -1,0 +1,45 @@
+1.	类预加载
+    application.attachBaseContext 启动线程调用 Class.forName(xxx)
+
+2.	通用优化
+    1> 消息调度优化
+        反射mQueue 拿到所有消息，判断不同的场景，根据优先级调整消息时序
+        列入：startActicity，doFrame绘制消息
+
+    2> CPU提频、线程 绑定CPU、线程优先级提升管理
+        cpu最小频率：文件 cpufreq/scaling_min_freq 的 /sys/devices/system/cpu/cpu$i
+        cpu最大频率：文件 cpufreq/scaling_max_freq 的 /sys/devices/system/cpu/cpu$i
+        cpu当前频率：文件 cpufreq/scaling_cur_freq 的 /sys/devices/system/cpu/cpu$i
+        cpu提频（高通）：反射 android.util.BoostFramework，调用 perfLockAcquire 函数
+        取消所有cpu提频加速： 反射 android.util.BoostFramework，调用 perfLockReleaseHandler 函数
+
+        线程绑定CPU(CPU亲和性): sched.h 调用 CPU_SET 函数
+        线程优先级: thread.priority=Thread.MAX_PRIORITY
+
+3.  SDK 优化
+    1> Retrofit Service 预加载
+    反射Retrofit的 serviceMethodCache，添加 新的Service进去就行
+
+4.  UI流程优化
+    Layout2Code 布局耗时优化
+    Vsync 控制
+
+5.  虚拟机控制
+    1> GC 抑制支持
+        // 通过JNI调用ART虚拟机接口
+        extern "C" JNIEXPORT void JNICALL Java_com_example_GCSuppressor_disableGc(JNIEnv* env, jobject) {
+            art::gc::Heap* heap = art::Runtime::Current()->GetHeap();
+            heap->DisableGcForShutdown();
+        }
+
+    2> Class Verify 模式控制
+        // 通过JNI调用ART虚拟机接口
+        Get()->DisableClassVerify()
+
+    3> ART disable dex2OAT
+
+    4> ART JIT 函数编译、临时禁用JIT支持
+        // 通过反射访问隐藏API
+        VMRuntime.getRuntime().disableJitCompilation();
+
+    5> JNI FastNative 支持
