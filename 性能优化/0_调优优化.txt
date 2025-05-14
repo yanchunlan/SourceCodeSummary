@@ -1,45 +1,68 @@
-1.	类预加载
-    application.attachBaseContext 启动线程调用 Class.forName(xxx)
+一. 黑科技
+    1.	类预加载
+        application.attachBaseContext 启动线程调用 Class.forName(xxx)
 
-2.	通用优化
-    1> 消息调度优化
-        反射mQueue 拿到所有消息，判断不同的场景，根据优先级调整消息时序
-        列入：startActicity，doFrame绘制消息
+    2.	通用优化
+        1> 消息调度优化
+            反射mQueue 拿到所有消息，判断不同的场景，根据优先级调整消息时序
+            列入：startActicity，doFrame绘制消息
 
-    2> CPU提频、线程 绑定CPU、线程优先级提升管理
-        cpu最小频率：文件 cpufreq/scaling_min_freq 的 /sys/devices/system/cpu/cpu$i
-        cpu最大频率：文件 cpufreq/scaling_max_freq 的 /sys/devices/system/cpu/cpu$i
-        cpu当前频率：文件 cpufreq/scaling_cur_freq 的 /sys/devices/system/cpu/cpu$i
-        cpu提频（高通）：反射 android.util.BoostFramework，调用 perfLockAcquire 函数
-        取消所有cpu提频加速： 反射 android.util.BoostFramework，调用 perfLockReleaseHandler 函数
+        2> CPU提频、线程 绑定CPU、线程优先级提升管理
+            cpu最小频率：文件 cpufreq/scaling_min_freq 的 /sys/devices/system/cpu/cpu$i
+            cpu最大频率：文件 cpufreq/scaling_max_freq 的 /sys/devices/system/cpu/cpu$i
+            cpu当前频率：文件 cpufreq/scaling_cur_freq 的 /sys/devices/system/cpu/cpu$i
+            cpu提频（高通）：反射 android.util.BoostFramework，调用 perfLockAcquire 函数
+            取消所有cpu提频加速： 反射 android.util.BoostFramework，调用 perfLockReleaseHandler 函数
 
-        线程绑定CPU(CPU亲和性): sched.h 调用 CPU_SET 函数
-        线程优先级: thread.priority=Thread.MAX_PRIORITY
+            线程绑定CPU(CPU亲和性): sched.h 调用 CPU_SET 函数
+            线程优先级: thread.priority=Thread.MAX_PRIORITY
 
-3.  SDK 优化
-    1> Retrofit Service 预加载
-    反射Retrofit的 serviceMethodCache，添加 新的Service进去就行
+    3.  SDK 优化
+        1> Retrofit Service 预加载
+        反射Retrofit的 serviceMethodCache，添加 新的Service进去就行
 
-4.  UI流程优化
-    Layout2Code 布局耗时优化
-    Vsync 控制
+    4.  UI流程优化
+        Layout2Code 布局耗时优化
+        Vsync 控制
 
-5.  虚拟机控制
-    1> GC 抑制支持
-        // 通过JNI调用ART虚拟机接口
-        extern "C" JNIEXPORT void JNICALL Java_com_example_GCSuppressor_disableGc(JNIEnv* env, jobject) {
-            art::gc::Heap* heap = art::Runtime::Current()->GetHeap();
-            heap->DisableGcForShutdown();
-        }
+    5.  虚拟机控制
+        1> GC 抑制支持
+            // 通过JNI调用ART虚拟机接口
+            extern "C" JNIEXPORT void JNICALL Java_com_example_GCSuppressor_disableGc(JNIEnv* env, jobject) {
+                art::gc::Heap* heap = art::Runtime::Current()->GetHeap();
+                heap->DisableGcForShutdown();
+            }
 
-    2> Class Verify 模式控制
-        // 通过JNI调用ART虚拟机接口
-        Get()->DisableClassVerify()
+        2> Class Verify 模式控制
+            // 通过JNI调用ART虚拟机接口
+            Get()->DisableClassVerify()
 
-    3> ART disable dex2OAT
+        3> ART disable dex2OAT
 
-    4> ART JIT 函数编译、临时禁用JIT支持
-        // 通过反射访问隐藏API
-        VMRuntime.getRuntime().disableJitCompilation();
+        4> ART JIT 函数编译、临时禁用JIT支持
+            // 通过反射访问隐藏API
+            VMRuntime.getRuntime().disableJitCompilation();
 
-    5> JNI FastNative 支持
+        5> JNI FastNative 支持
+二.  SP阻塞问题
+    1. 通过字节码插桩改为MMKV或其他更高效键值存储库
+    2. 通过代理替换Queuework类内部的sFinishers对象，保证执行 waitToFinish时(ActivityThread.handleStopActivity) 队列长度为空实现
+       但是原有sFinishers对象的Runnable数据，通过handler重新post执行
+        1>  反射替换sFinishers对象，让其poll返回null
+            < 8.0，ConcurrentLinkedQueue
+            >=8.0，LinkedList
+        2>  解决processPendingWork调用
+            阻塞点：
+                sWork.clone
+                遍历 Work 的runnable.run
+            修改方式：
+                clone函数返回空队列
+                原来队列里的runnable，提交到一个新的Handler执行（通过反射获取QueuedWork的mHandler的Looper对象）
+            解决方式：
+                因为 QueuedWork 是hide API
+                    使用 'org.lsposed.hiddenapibypass:hiddenapibypass:6.1'
+
+                    if (SDK_INT < Build.VERSION_CODES.P) return
+                    HiddenApiBypass.addHiddenApiExemptions("Landroid/app/QueuedWork;");
+                    if ( < Android 31) 替换 sWork的引用 else 使用 clone 和 clear的方式
+
