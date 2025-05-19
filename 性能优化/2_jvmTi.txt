@@ -1,0 +1,59 @@
+一. JvmTi 在 Android中的实现
+    8.0系统开始才实现了 JVMTI 1.2，名称为ART Ti，但有限制：
+        1. 提供代理接口 JVMTI 的代码作为运行时插件（不是运行时的核心组件）
+        2. ActivityManager 类和运行时进程只允许代理连接到可调试的应用
+    在Android中 使用JVMTI有两种方式：
+        1. 虚拟机启动时连接代理
+        2. 运行时。将代理加载到当前进程中
+    编译后libopenjdkjvmti.so，在目录： /system/lib64/libopenjdkjvmti.so
+
+二.  实际案例
+    基于JVMTI （重定义类功能）实现 Apply Changes功能
+    Android Studio Profiler 的部分功能
+        内存分配监控
+        GC监控
+        通过替换dex 中的class 实现对系统类的各种监控 （ClassTransform）
+    JVMTI 是JDI 体系的后端实现
+    汇总，我们应该可以实现的有：
+        基于获取所有线程堆栈的能力，使用采样的方式 生成函数调用火焰图
+        基于 对象内存分配、释放函数实现 内存监控
+        基于 MonitorContended 实现 锁等待监控
+        基于 GarbageCollection 实现GC时长的监控
+
+三.  在release 包(debugger =false)中使用 JVMTI
+    attachJvmtiAgent
+    -> VMDebug.attachAgent
+    -> nativeAttatchAgent // art/runtime/native/dalvik_system_VMDebug.cc
+       if (Dbg::IsJdwpAllowed()) return  // // 判断是否允许Jdwp
+       Runtime::Current()->AttachAgent
+    -> IsJdwpAllowed // gJdwpAllowed
+
+    -> ZygoteHooks_nativePostForkChild // gJdwpAllowed变量在zygote进程进行fork时配置的
+    -> Dbg::SetJdwpAllowed((runtime_flags & DEBUG_ENABLE_JDWP) != 0)
+       如果为非debug包，gJdwpAllowed变量被置为false
+
+    突破限制：
+        使用了 SandHook库，Dbg::setJdwoAllowed 设置gJdwpAllowed为 true
+            if (sizeof(size_t) == 8) {
+                if (fileExits("/apex/com.android.runtime/lib64/libart.so")) {
+                    ArtLibPath = "/apex/com.android.runtime/lib64/libart.so";
+                } else {
+                    ArtLibPath = "/system/lib64/libart.so";
+                }
+                auto (*SetJdwpAllowed)(bool) = reinterpret_cast<void (*)(bool)>(SandGetSym(ArtLibPath,
+                if (SetJdwpAllowed != nullptr) {
+                    SetJdwpAllowed(true);
+                }
+                auto (*setJavaDebuggable)(void *, bool) = reinterpret_cast<void (*)(void *, bool)>(SandGetSym(
+                        ArtLibPath,
+                        "_ZN3art7Runtime17SetJavaDebuggableEb"));  // 1. SandGetSym 设置gJdwpAllowed变量
+                if (setJavaDebuggable != nullptr) {
+                    setJavaDebuggable(ArtHelper::getRuntimeInstance(), true); // 2. 修改Runtime对象的该变量，
+                    ALOGE("zxw %s", "setJavaDebuggable true");
+                }
+            }
+四.  线上 使用 JVMTI的问题
+    1. 兼容性
+        只能在8.0及以上系统使用
+        依赖于 dlsym 调用系统函数，可能第三方厂商有改动
+    2.  开启JVMTI后，性能不好

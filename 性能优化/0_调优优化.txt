@@ -65,4 +65,51 @@
                     if (SDK_INT < Build.VERSION_CODES.P) return
                     HiddenApiBypass.addHiddenApiExemptions("Landroid/app/QueuedWork;");
                     if ( < Android 31) 替换 sWork的引用 else 使用 clone 和 clear的方式
+三.  BlockCanaryX
+    通过stack采样，统计分析方法的开始，结束，从而统计出方法耗时
+    1. 耗时监测
+        looper.setMessageLogging  // 监听message开始，结束
 
+        // 发送耗时消息
+        override fun onDispatchStart(x: String?) {
+                ...
+                handler.postDelayed(SlowMessageWatchdog(messageInfo), blockCanaryConfig.blockMaxThresholdTime.toLong())
+            }
+
+            override fun onDispatchEnd(x: String?) {
+                ...
+                handler.removeCallbacksAndMessages(null)
+                ...
+            }
+    2. 堆栈采样
+        启动定时器，每隔50ms采集主线程栈，并记录在链表中，如果记录时间大于20s的个数，就poll
+        public void run() {
+            ...
+            StackTraceElement[] stackTraceElements = targetThread.getStackTrace();
+            ...
+                if (stackTraceSampleQueue.size()>maxCacheCount){ // 大于20s的个数
+                    stackTraceSampleQueue.poll();
+                }
+                stackTraceSampleQueue.offer(stackTraceSample);
+        }
+
+        当检测到耗时方法时，获取耗时时间区间的采样数据，保存成json文件
+        // looper.setMessageLogging  结束-开始time > 16*15, 就执行 onBlockDetect
+        private fun onBlockDetect(blockInfo: BlockInfo) {
+            ...
+            CanaryExecutors.workExecutor
+                .execute {
+                    val dispatchStartTime = blockInfo.startTime
+                    val stackSamples = stackSampler.getStackSamplesBetweenWallTime(dispatchStartTime, blockInfo.endTime)
+                    blockInfo.stackTraceSamples.addAll(stackSamples)
+                    blockInfoRepository.insertBlockInfo(blockInfo)
+                    ...
+                }
+        }
+
+        将栈采样json文件转成perfetto格式
+        // 存储文件： /data/data/package/cacha/xxx.blockinfo ，并发送 Notifications
+        // 读取文件，转成perfetto格式，并保存到 /data/data/package/cacha/xxx.flameGraph
+
+        通知详情点击，显示UI：
+        打开webView，访问 “file:android_asset/flame-graph.html?interval=50”，h5页面访问 loadFlameGraph 函数获取到本地文件

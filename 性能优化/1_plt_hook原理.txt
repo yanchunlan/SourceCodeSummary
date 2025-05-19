@@ -1,0 +1,26 @@
+一. 简述
+    PLT表：记录着外部函数地址
+    GOT表：记录着函数实际地址
+    Hook： 修改地址为新地址，类似于转接
+
+    案例：
+        void *hndl = dlopen(filename, RTLD_LAZY | RTLD_NOLOAD); // dlopen加载动态库，获得句柄
+        char *addr = dlsym(hndl, symbols[i]) // dlsym获取动态库相对地址
+
+        //遍历共享库，获取address实际的内存地址
+        dl_iterate_phdr(..., &data)
+
+        // 替换函数地址
+        plthook_replace(..., ) {
+            ...
+            *addr = funcaddr;//替换plt中的地址值
+            ...
+        }
+
+二. 总结
+    native hook 还有 InlineHook,TrapHook。
+    TrapHook： 使用系统的SIGTRAP信号中断的机制，性能并不好，在生产环境中使用较少
+    InlineHook： 实现的是指令级别的替换机制　实现难度大。
+    因此在生产环境中使用较多的还是 GOT/PLT　的实现方案。列入：xHook，bHook, faceBook的 profilo
+    Android环境中，plt的加载机制为非懒加载模式（即当共享库被首次加载时，就会完成所有的重定位操作）
+
