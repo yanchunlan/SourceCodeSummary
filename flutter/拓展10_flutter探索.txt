@@ -15,6 +15,9 @@ flutter方案探索
     组件库：
         https://github.com/LianjiaTech/bruno
 
+    热更新
+        shorebird：魔改Engine 和 VM
+
 2.  性能优化
     图片优化
         https://github.com/LianjiaTech/bk_flutter_image 【flutter通过纹理texture调用原生，安卓glide，ios用SDWebImage】

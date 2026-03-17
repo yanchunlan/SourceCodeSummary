@@ -113,3 +113,63 @@
 
         通知详情点击，显示UI：
         打开webView，访问 “file:android_asset/flame-graph.html?interval=50”，h5页面访问 loadFlameGraph 函数获取到本地文件
+
+四.  CPU
+    1. 计算系统CPU使用率
+        /proc/cpuinfo 每个cpu的相关信息(型号、缓存大小等)
+        /proc/stat    所有CPU的活动信息
+        /proc/${pid}/  获取单个进程的一些统计信息
+
+        除了procfs，还有sysfs，是在procfs之后引入：
+        /sys/devices/system/cpu/  提供cpu的一些详细配置及活动信息。如 cpu最小、最大频率、cpu各频率活动时间、cpu idle累计时间
+            eg: cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq  // 获取某个cpu当前的工作频率
+
+        低版本获取CPUTime:（8.0以下）
+           private float getCPUTime() {
+                long cpuTime=0;
+                try {
+                    if (mProcStatFile == null) {
+                        mProcStatFile = new RandomAccessFile("/proc/stat", "r");
+                    } else {
+                        mProcStatFile.seek(0L);
+                    }
+                    String procStatString = mProcStatFile.readLine();
+                    String procStats[] = procStatString.split(" ");
+                    cpuTime = Long.parseLong(procStats[2]) + Long.parseLong(procStats[3])
+                            + Long.parseLong(procStats[4]) + Long.parseLong(procStats[5])
+                            + Long.parseLong(procStats[6]) + Long.parseLong(procStats[7])
+                            + Long.parseLong(procStats[8]);
+                    return cpuTime
+                } catch (Exception e) {
+                }
+                return cpuTime;
+            }
+          高版本获取CPUTime:（8.0以上）
+                Dokit：执行shell 命令 top -n 1 来直接获取某个进程CPU使用率信息，在高版本已失效
+
+              新的方式：读取 /sys/devices/system/cpu/cpu[X]/cpufreq/stats/time_in_state 文件 或
+                    /sys/devices/system/cpu/cpufreq/policy[X]/stats/time_in_state（其中频率scaling_max_freq、scaling_min_freq、scaling_cur_freq）
+
+          获取 idleTime：
+            /sys/devices/system/cpu/cpu[X]/cpuidle  每个cpu 在idle状态下运行相关的统计信息
+                其子目录通常包含 driver 、以及多个 state[x]文件夹 - state[x] 表示idle状态 休眠的深度，x值越大表示休眠状态越深，功耗越小
+          ...
+    2. 计算 CPU SPEED
+        cpu利用率百分比 = scaling_cur_freq/cpuinfo_max_freq
+            fun cpuinfoMaxFreq(): Long {
+                return File(policyFile, "cpuinfo_max_freq").readLong()
+            }
+            fun scalingCurFreq(): Long {
+                return File(policyFile, "scaling_cur_freq").readLong()
+            }
+    3. 计算进/线程CPU使用率
+        获取pid: Process.myPid()
+        获取其他信息: /proc/${pid}/stat ， 获取到 utime stime
+            进程CPU使用率 = (utime+stime)/cputime
+
+        子线程相关的信息： /proc/[pId]/task
+           线程统计信息： /proc/[pId]/task/[ThreadId]/stat
+五.  Thread
+    1. 获取 tid
+        long nativePeer = ThreadUtil.getNativePeer(t) //  反射 thread 的 nativePeer
+        int tid = new UnsafeAndroid().getInt(nativePeer+12)
