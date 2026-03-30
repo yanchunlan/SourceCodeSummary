@@ -1,3 +1,6 @@
 1. google-gemini
     https://github.com/google-gemini/gemini-cli/tree/main/.gemini/skills/code-reviewer  代码审查
     https://github.com/google-gemini/gemini-cli/tree/main/.gemini/skills/pr-creator PR 创建
+
+2. claude code
+    https://claude.ai/  代码生成、代码审查、自动化任务执行

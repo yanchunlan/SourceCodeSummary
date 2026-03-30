@@ -1,0 +1,208 @@
+一、token
+
+
+一、命令
+    /help 显示所有可用命令。
+
+    /resume 恢复到上一个对话
+
+    /clear 清除对话上下文，开始新对话。
+
+    /compact 压缩对话历史，减少 token 占用。
+
+    /model [模型名]
+        查看或切换 AI 模型。
+        示例：/model claude-opus-4-6 / claude-sonnet-4-6 / claude-haiku-4-5
+
+    /cost 查看本次对话的 token 用量和费用。
+
+    /login / /logout 登录/退出 Anthropic 账号。
+
+    /status 查看当前运行状态（模型、权限、上下文大小等）。
+
+    /doctor 诊断 Claude Code 安装和环境问题。
+
+    /init 初始化项目，生成 CLAUDE.md 文件（定义项目级 AI 行为指令）。
+
+    /config [key] [value]
+        查看或修改配置项。
+        常用：theme（dark/light）、model
+        示例：/config theme dark
+
+    /memory 查看和管理持久化记忆文件（~/.claude/projects/<project>/memory/）。
+
+    /permissions 查看和管理工具权限。
+
+    /rewind 回退到上一步操作，撤销 Claude 的上一个动作,（或者按2次esc）
+
+    /review-pr [PR号] 对指定 GitHub PR 进行 AI 代码审查。
+
+    /commit 分析 git 变更，生成规范 commit message 并提交。
+
+    /pr 基于当前分支变更，自动创建 Pull Request。
+
+    /bug 向 Anthropic 上报 Claude Code 的 bug。
+
+二、工作模式
+
+    auto edit（默认）
+        自动分析需求、读写文件、执行命令，每步需用户审批。
+
+    plan 模式
+        先输出完整执行计划，用户审批后再执行。适合复杂任务。
+        启用：说"先规划"或使用 /plan。
+
+    yolo 模式
+        自动批准所有操作，全程无需确认。风险较高。
+        启用：--dangerously-skip-permissions 参数。
+
+
+三、配置与设置
+
+    全局设置：~/.claude/settings.json（对所有项目生效）
+
+    项目设置：.claude/settings.json（优先级高于全局）
+
+    CLAUDE.md：项目级 AI 指令文件，定义代码规范、目录结构、禁止操作等，每次对话自动读取。
+
+    常用配置项：
+        model           默认模型
+        theme           主题（dark / light）
+        autoApprove     自动批准的操作类型
+        permissions     工具权限配置
+
+
+四、Hooks 系统
+
+    在特定事件触发时自动执行自定义 shell 命令。
+
+    配置位置：settings.json 的 "hooks" 字段
+
+    事件类型：
+        PreToolUse      工具调用前
+        PostToolUse     工具调用后
+        Stop            Claude 停止响应时
+
+    常见用途：
+        - 文件保存后自动格式化（prettier / ktlint）
+        - 代码修改后自动运行测试
+        - 操作日志记录
+        - 自动提交 git
+
+    示例配置（settings.json）：
+        {
+          "hooks": {
+            "PostToolUse": [
+              {
+                "matcher": "Write|Edit",
+                "hooks": [{ "type": "command", "command": "ktlint --format" }]
+              }
+            ]
+          }
+        }
+
+
+五、Memory 记忆系统
+
+    支持跨对话持久化记忆，避免重复说明上下文。
+
+    存储位置：~/.claude/projects/<project-path>/memory/（MEMORY.md 为索引，自动加载）
+
+    记忆类型：
+        user        用户偏好、技术背景
+        feedback    行为纠正或确认
+        project     项目上下文、当前目标、截止日期、决策背景
+        reference   外部资源指针（Linear、Slack、监控 URL 等）
+
+    使用方式：
+        - 让 Claude 记住：直接说"记住：..."
+        - 让 Claude 忘记：直接说"忘记关于...的记忆"
+        - 查看记忆：/memory 命令
+
+
+六、MCP（Model Context Protocol）
+
+    扩展 Claude 可调用工具和资源的协议，类似插件系统。
+
+    配置位置：settings.json 的 "mcpServers" 字段
+
+    常见 MCP 服务：
+        文件系统    读写本地文件（范围可控）
+        数据库      查询 PostgreSQL / SQLite 等
+        GitHub      操作 PR、Issue、仓库
+        Slack       读取/发送消息
+        自定义      任何实现了 MCP 协议的服务
+
+    示例配置：
+        {
+          "mcpServers": {
+            "github": {
+              "command": "npx",
+              "args": ["-y", "@modelcontextprotocol/server-github"],
+              "env": { "GITHUB_TOKEN": "xxx" }
+            }
+          }
+        }
+
+
+七、快捷键
+
+    Ctrl+TAB    工作模式切换（auto / plan / yolo）
+    Ctrl+C      中断当前操作
+    Ctrl+R      搜索历史命令
+    Tab         自动补全
+    Ctrl+Escape 清空输入框
+    ↑ / ↓       浏览历史输入
+
+    其他命令：
+        claude -c 恢复到上一个对话
+        claude --dangerously-skip-permissions 启用 yolo 模式（全自动，无需审批）
+
+    ! 使用bash命令时
+    @ 使用shell命令时
+    # 使用python命令时
+    > 使用markdown代码块时
+
+八、Agent 与子 Agent
+
+    支持启动子 Agent 并行执行独立任务。
+    /agent [类型] 启动子 Agent
+
+    主要类型：
+        general-purpose     通用任务（搜索、研究、多步骤执行）
+        Explore             快速探索代码库
+        Plan                架构规划，生成实施方案
+        go-reviewer         Go 代码审查
+        python-reviewer     Python 代码审查
+        kotlin-reviewer     Kotlin/Android 代码审查
+        build-error-resolver    构建/类型错误修复
+        security-reviewer   安全漏洞检测
+        tdd-guide           测试驱动开发
+
+    使用场景：
+        - 并行搜索多个模块
+        - 隔离大量搜索结果，避免污染主上下文
+        - 专项任务委托（代码审查、构建修复等）
+
+    SubAgent vs Skill 区别:
+        SubAgent：在独立房间工作的专家，然后返回结果
+        Skill：手边的参考手册，需要时自动查阅
+
+九、plugin
+    /plugin [插件名] 启用插件
+
+
+九、常用工作流
+
+    日常开发：
+        1. 进入项目目录，运行 claude
+        2. 描述需求，Claude 自动读文件、写代码、执行命令
+        3. 审批操作，或用 yolo 模式全自动
+
+    代码审查：/review-pr 123
+
+    提交代码：/commit（自动生成 message）/ /pr（自动创建 PR）
+
+    大型重构：用 plan 模式输出完整计划，确认后再执行
+
+    调试环境：/doctor 检测安装 / /status 查看配置

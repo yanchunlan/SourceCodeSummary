@@ -1,0 +1,45 @@
+一. Token & Thinking
+    1. Token：模型处理的基本单位。文本经过编码转换为 Token，用于模型理解与计算。
+    2. Thinking (Reasoning)：模型在输出结果前的逻辑推理过程。Claude 3.5/3.7 会显式展示 Thinking Block，用于处理复杂决策。
+
+二. Context & Memory
+    1. Context Window：上下文窗口。模型单次对话能处理的最大 Token 数量。
+    2. Context Engineering：精心设计给模型的输入内容，节约成本。
+    3. context engineering 策略：
+        - context缓存：本地文件或 Prompt 缓存（Prompt Caching）。
+        - context检索：通过 RAG (检索增强生成)、CLAUDE.md 或cursor rules，项目规则筛选关键上下文。
+        - context压缩：Claude Code 95%自动压缩代码。
+        - context隔离：通过 Sub-Agents 或 Multi-Agent 拆分任务，避免context污染。
+
+三. Agents & Tool Use
+    1. 定义：具备特定角色、特定能力的智能体。
+    2. 运行模式：
+        - ReAct (Reasoning and Acting)：[思考Thought -> 行动Action -> 观察] 的闭环执行模式。
+    3. Tool Use：模型根据意图自动调用外部功能（读写、测试、搜索）的能力。
+    3. Sub-Agents：任务拆分，实现职责单一化。
+
+四. Skills
+    1. 定义：Claude Code 的功能扩展单元，可复用的操作集合。
+    2. 核心概念：
+        - Reference：里面可以再按需加载，读取其他skills
+        - Script：里面可以再按需加载，运行其他skills
+    3. 渐进式披露 (Progressive Disclosure)：
+        - 元数据 (Metadata)：名称/描述，始终加载。
+        - 指令层 (Instructions)：具体执行逻辑（SKILL.md），按需加载。
+        - 资源层 (Resources)：脚本执行或关联引用，深层按需加载。
+    4. 与 MCP 区别：
+        - Skills：类似“文档/说明书”，教模型如何处理数据或执行逻辑。
+        - MCP：类似“数据线/接口”，为模型提供访问外部系统数据的标准化协议。
+
+五. Model Context Protocol (MCP)
+    开放标准协议。允许模型通过统一接口访问本地/远程工具、文件系统、数据库等外部能力。
+    可以理解为函数/服务器，提供给外部调用的能力
+
+六. Hooks
+    生命周期钩子。在关键节点引入自动校验或人工审核，确保执行安全可靠。
+
+七. Headless
+    非交互模式。允许将 Claude Code 集成到 CI/CD 自动化流水线中。
+
+八. Agent SDK
+    编排框架。允许开发者通过代码构建复杂、可预测的 Agent 工作流。
