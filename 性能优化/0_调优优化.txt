@@ -6,6 +6,8 @@
         1> 消息调度优化
             反射mQueue 拿到所有消息，判断不同的场景，根据优先级调整消息时序
             列入：startActicity，doFrame绘制消息
+            列入：> android 10，绕过Hidden API限制，反射Looper.setObserver获取message对象，拿到message
+                <= android 9，Looper.setMessageLogging(Printer)，解析字符串去争取拿到耗时的message
 
         2> CPU提频、线程 绑定CPU、线程优先级提升管理
             cpu最小频率：文件 cpufreq/scaling_min_freq 的 /sys/devices/system/cpu/cpu$i

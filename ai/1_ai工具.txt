@@ -4,3 +4,18 @@
 
 2. claude code
     https://claude.ai/  代码生成、代码审查、自动化任务执行
+
+3. codex
+    https://openai.com/blog/openai-codex  代码生成、代码补全、代码解释
+
+
+4. skills 搜索
+    https://claude.ai/skills  各类技能（代码审查、测试生成、文档生成等）
+    https://skills.sh/
+    https://skillsmp.com/
+
+
+5. skills 搜索
+    find-skills： https://skillsmp.com/skills/bytedance-deer-flow-skills-public-find-skills-skill-md
+    github-repo-search： https://github.com/yunshu0909/yunshu_skillshub/tree/master/github-repo-search
+
