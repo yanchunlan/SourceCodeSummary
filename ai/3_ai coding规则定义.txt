@@ -1,0 +1,51 @@
+一：三层约束方案
+ai coding 规则设计
+    1. 三层规则体系架构
+        agents.md 第一入口：
+            充当路由，定义各个规则的 触发条件 和 跳过条件，其余按需加载
+        rules/约束层：
+            project_rule 项目主约束（多个维度）
+            pay_rule 支付约束
+        reference/ 模块层描述：
+            每模块一份文档：包名/依赖/目录结构/核心类/注意事项
+            dependencies 依赖关系描述
+            crash_patterns 历史crash/anr识别,分析，修复
+            conventions 代码规范：反模式教学（错误vs正确示例）
+                ❌ 业务模块直接import → ✅ ARouterManager/ServiceManager
+                ❌ Gson().fromJson() → ✅ GsonUtil.jsonToBean() + try-catch
+                ❌ 主线程网络请求 → ✅ Observable/HttpCallback
+
+        举个类：
+             common模块下面有个reference/，里面有application/ 、 arouter/ 、 data/ 、 amber/ 、 widget/ 、 utils/ 所有子目录，以及每个目录下的关键类名和职责
+
+        skills 技能：
+            amber_skill 全链路埋点，初始化，登录，所有页面
+            performance_skill 内存泄漏，启动速度，anr,网络，渲染，检测流程
+
+    2. 实践策略
+        否定词过滤：xxx，跳过
+            n种否定场景：否定语境、类比语境、已关闭语境等
+            语义二次判断：关键词匹配只是初筛，需结合用户意图
+        先查后写（抑制幻觉）：
+            先查后写、禁止虚构、禁止引入新依赖
+        自查清单（Checklist）闭环：
+            n项通用 + m项TV + k项性能
+            原则：可验证、可搜索、分层次
+            JSON 解析是否使用了 GsonUtil
+            生成代码后强制自检
+        Git Hook 追踪：
+            post-commit 记录 AI 的参与情况
+            三个目的：追踪AI参与度、知识反哺、规则效果评估
+
+    4. 待优化点
+        References自动生成、规则冲突检测、自动化测试、规则版本管理、效果度量体系
+
+二：Harness 方案
+    Prompt Engineering 管"说了什么内容"
+    Context Engineering 管"记住了什么"
+    Harness Engineering 管"在一定约束下执行"
+
+    https://github.com/Jorgejie/ai_scaffold： 可用的一套Harness方案
+
+
+
