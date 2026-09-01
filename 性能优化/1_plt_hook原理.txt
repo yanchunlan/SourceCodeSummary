@@ -24,3 +24,39 @@
     因此在生产环境中使用较多的还是 GOT/PLT　的实现方案。列入：xHook，bHook, faceBook的 profilo
     Android环境中，plt的加载机制为非懒加载模式（即当共享库被首次加载时，就会完成所有的重定位操作）
 
+
+三. plt hook流程
+    1， Hook 函数
+        通过 bhook 库来实现对 malloc, free 函数的 hook
+
+        打印申请/释放内存的大小
+    2.  获取 native 堆栈
+        malloc 大于80MB，通过unwind，获取 native 堆栈
+
+    3.  还原堆栈
+        1>  确认相关的 so 文件名称
+            通过 dladdr 函数来查询 so 文件名（可以获取到 so 名与函数名，基地址）
+
+                int  dladdr ( void * addr , Dl_info * info ) ;
+                typedef struct {
+                    const char *dli_fname;   //地址对应的 so 名
+                    void       *dli_fbase;   //对应so库的基地址
+                    const char *dli_sname;   //如果so库有符号表，这会显示离地址最近的函数名
+                    void       *dli_saddr;   //符号表中，离地址最近的函数的地址
+                } Dl_info;
+
+        2>  计算相应的偏移地址（so 必须是带符号表的）
+            注意：偏移地址 = 函数的绝对地址 - 库文件的基地址
+
+                // 计算偏移地址
+                const uintptr_t address_relative = (uintptr_t) addr - (uintptr_t) info.dli_fbase;
+
+        3>  基于带符号表（ELF文件的表）的so文件，还原指针对应的函数名和行数
+            通过 NDK 的 addr2line 工具，根据函数偏移地址，获取地址对应的函数名、行号等信息
+
+                addr2line -C -f -e xxx.so 函数偏移地址
+                -C:将低级别的符号名解码为用户级别的名字。
+                -e:指定需要转换地址的可执行文件名
+                -f:在显示文件名、行号信息的同时显示函数名。
+
+     适用性：内存优化、启动优化等方面，如 bitmap hook、pthread hook、GC 抑制
