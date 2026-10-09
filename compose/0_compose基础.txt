@@ -1,0 +1,150 @@
+1. 基础组件
+    AlertDialog(onDismissRequest, confirmButton, )
+        Dialog
+    Button(onClick, )
+        // 获取按钮的状态
+        val interactionState = remember { MutableInteractionSource() }
+        // 使用 Kotlin 的解构方法
+        val (text, textColor, buttonColor) = when {
+            interactionState.collectIsPressedAsState().value  -> ButtonState("Just Pressed", Color.Red, Color.Black)
+            else -> ButtonState( "Just Button", Color.White, Color.Red)
+        }
+    Card
+        buildAnnotatedString {
+            append("append 1 ")
+            withStyle(...) {
+                append("append 1 ")
+            }
+        }
+    FloatingActionButton
+        FloatingActionButton(onClick = {  }) {
+            Icon(Icons.Filled.Favorite, contentDescription = "Localized description")
+        }
+        ExtendedFloatingActionButton()
+    Icon
+        Icon(imageVector
+        Icon(bitmap
+        Icon(painter
+    IconButton
+        IconButton(
+        取消波纹：
+            modifier.clickable.indication == null 即可（rememberRipple 波纹组件）
+    Image
+        大小：Modifier.size(350.dp)
+        形状：Surface(shape = CircleShape) {
+            Image(contentScale = ContentScale.Crop), // 设置成 ContentScale.Crop
+        },
+        边框：Surface.border = BorderStroke(5.dp, Color.Gray)
+        Coil 加载图片：
+            val imageLoader = ImageLoader.Builder(context)
+                .componentRegistry {add(SvgDecoder(context))}
+                .build()
+            Image.painter.imageLoader = imageLoader
+        svg图片加载：
+            implementation "com.github.skydoves:landscapist-coil:1.3.2"
+            CoilImage.imageModel = url
+    Slider 进度条
+        var progress by remember{ mutableStateOf(0f)}
+
+        Slider.onValueChange = { progress = it },
+        Slider.value = progress,
+    Test
+        Text("xxx
+        Text(stringResource(
+        Text.style =
+        Column.horizontalAlignment = Alignment.CenterHorizontally { Text.style = }
+        Text.maxLines = 1
+        Text.overflow = TextOverflow.Ellipsis
+        Text.textAlign = TextAlign.Center
+        Text.lineHeight = 30.sp
+        Text.fontFamily = FontFamily.Serif
+        Text.modifier = Modifier.clickable(onClick = { }, indication = null)
+
+        AnnotatedString
+            buildAnnotatedString {
+                append()
+                withStyle() {
+                    append()
+                }
+            }
+        ClickableText 文字超链接
+        SelectionContainer { }
+        CompositionLocalProvider // 文字强调效果
+        Column.contentAlignment = Alignment.Center {  } // 文字水平位置
+    TestField
+        TextField.singleLine
+        TextField.label
+        TextField.leadingIcon
+        TextField.trailingIcon
+        TextField.colors = TextFieldDefaults.textFieldColors(...
+        TextField.visualTransformation
+
+        BasicTextField 自定义效果
+            decorationBox { innerTextField ->
+                Box.innerTextField
+            }
+2. 布局组件
+    Box: 堆叠的布局组件
+    Row：从左到右的方向水平排列
+    Column：从上到下的顺序垂直排列
+    Flow Layout：FlowRow/FlowColumn 流式布局
+    Scaffold：实现了 Material Design 的基本视图界面结构，TopAppBar	顶部导航栏， BottomNavigation	底部导航栏
+    Surface：平面容器，可以设置 边框，圆角，颜色
+    Spacer：空白的布局，允许填充
+    TopAppBar：顶部标题
+    BottomNavigation：底部导航tab
+    ModalBottomSheetLayout：底部弹出，背景暗化
+        BackHandler：处理返回键的逻辑
+    Pager：VerticalPager 和 HorizontalPager 滑动
+        eg:
+            TabRow.indicator = TabRowDefaults.Indicator {
+                pages.forEachIndexed { index, title ->
+                    Tab()
+                }
+            }
+            HorizontalPager()
+    下拉刷新：Modifier.pullRefresh(rememberPullRefreshState()) {
+                PullRefreshIndicator(...)
+            }
+    原理：Modifier.pullRefresh() {
+            = Modifier.nestedScroll(PullRefreshNestedScrollConnection(
+        }
+
+    自定义布局:
+
+        使用 Layout Modifier：
+
+    固有特性测量：允许子组件多测量一次
+        Modifier.height(IntrinsicSize.Min)
+
+    SubcomposeLayout
+    ParentData
+3. 设计
+    Animation
+        1. 高级动画api
+            AnimationVisibility	    显示/隐藏的过渡动画
+            Modifier.contentSize	内容大小的变化过渡动画
+            Crossfade	            在两个布局之间的过渡动画
+            updateTransition	    实现过渡动画的关键 API
+            animate*AsState	        指定类型的数据变化动画
+
+            EnterTransition:
+                fadeIn，slideIn，expandIn，expandHorizontally，expandVertically，slideInHorizontally
+            ExitTransition：
+                fadeOut，slideOut，shrinkOut，shrinkHorizontally，shrinkVertically，slideOutHorizontally，slideOutVertically
+
+            animateContentSize：可以对尺寸更改进行动画处理
+            Crossfade：在两个布局之间用交叉淡入淡出的动画
+
+        2.  低级动画api
+            animate***AsState
+            Animatable： 可以更精细的动画控制
+                LaunchedEffect 创建一个只针对指定键值的持续时间的作用域
+            updateTransition：
+
+
+    Theming
+    Gesture
+    Lists
+    Graphics
+4. 原理
