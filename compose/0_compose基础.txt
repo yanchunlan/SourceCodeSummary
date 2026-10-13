@@ -120,31 +120,122 @@
     SubcomposeLayout
     ParentData
 3. 设计
-    Animation
-        1. 高级动画api
-            AnimationVisibility	    显示/隐藏的过渡动画
-            Modifier.contentSize	内容大小的变化过渡动画
-            Crossfade	            在两个布局之间的过渡动画
-            updateTransition	    实现过渡动画的关键 API
-            animate*AsState	        指定类型的数据变化动画
+    动画
+        Animation
+            1. 高级动画api
+                AnimationVisibility	    显示/隐藏的过渡动画
+                Modifier.contentSize	内容大小的变化过渡动画
+                Crossfade	            在两个布局之间的过渡动画
+                updateTransition	    实现过渡动画的关键 API
+                animate*AsState	        指定类型的数据变化动画
 
-            EnterTransition:
-                fadeIn，slideIn，expandIn，expandHorizontally，expandVertically，slideInHorizontally
-            ExitTransition：
-                fadeOut，slideOut，shrinkOut，shrinkHorizontally，shrinkVertically，slideOutHorizontally，slideOutVertically
+                EnterTransition:
+                    fadeIn，slideIn，expandIn，expandHorizontally，expandVertically，slideInHorizontally
+                ExitTransition：
+                    fadeOut，slideOut，shrinkOut，shrinkHorizontally，shrinkVertically，slideOutHorizontally，slideOutVertically
 
-            animateContentSize：可以对尺寸更改进行动画处理
-            Crossfade：在两个布局之间用交叉淡入淡出的动画
+                animateContentSize：可以对尺寸更改进行动画处理
+                Crossfade：在两个布局之间用交叉淡入淡出的动画
 
-        2.  低级动画api
-            animate***AsState
-            Animatable： 可以更精细的动画控制
-                LaunchedEffect 创建一个只针对指定键值的持续时间的作用域
-            updateTransition：
+            2.  低级动画api
+                animate***AsState
+                Animatable： 可以更精细的动画控制
+                    LaunchedEffect 创建一个只针对指定键值的持续时间的作用域
+                updateTransition： 管理一个或多个动画作为它的子项，并在多个状态之间同时运行它们
+                rememberInfiniteTransition： 像 Transition 一样持有一个或多个子动画
+                TargetBasedAnimation：可以让你自己控制动画的播放时间
 
+            3. 自定义动画
+                AnimationSpec
+                    spring：基于物理学的动画
+                    tween：使用缓和曲线在开始和结束值之间进行动画
+                    keyframes：动画持续时间中不同时间戳指定的快照值
+                    repeatable/infiniteRepeatable：是否重复
+                    snap：延时
+                Easing：
+                AnimationVector：
 
-    Theming
-    Gesture
-    Lists
-    Graphics
-4. 原理
+             4. 手势与动画
+        AnimationVisibility：显隐动画
+        Animate*AsState：值变化动画
+        Animatable：初始值的基础 API
+        UpdateTranstion：过渡动画的关键 API
+
+    Theming 主题
+        MaterialTheme
+        CompositionLocal：用来完成 composable 树中共享数据方式
+    Gesture 手势
+        概述
+            1. 点击
+                Modifier.clickable 点击事件
+                detectTapGestures(onPress，onDoubleTap... 更多事件
+            2. 滚动
+                modifier.verticalScroll
+                rememberScrollState 修改滚动参数
+                Modifier.scrollable 可修改滚动偏移内容
+        点击 Clickable & CombinedClickable
+            Modifier.clickable( 点击
+            CombinedClickable 复合点击（长按点击、双击等复合类点击手势）
+        拖动 Draggable
+            Modifier.draggable(
+            rememberDraggableState 定义了滑块偏移量以及滑块的边长
+        滚动 Swipeable 用于开关等组件
+        多点触控 Transformer
+            允许开发者监听 UI 组件的双指拖动、缩放或旋转手势
+            Modifier.transformable(state = rememberTransformableState：双指拖动、缩放、旋转等手势信息
+        滚动 Scrollable
+            Modifier.horizontalScroll(
+        嵌套滑动 NestedScroll 处理嵌套滑动
+            Modifier.nestedScroll(connection：嵌套滑动手势处理的核心逻辑
+                dispatcher：调度器
+        自定义触摸反馈
+            Modifier.pointerInput(block：PointerInputScope
+                PointerInputScope.detectDragGestures( 拖动类型基础 API
+                PointerInputScope.detectTapGestures( 点击类型基础 API
+                PointerInputScope.detectTransformGestures( 变换类型基础 API
+                forEachGesture 协程一致性
+                    awaitPointerEventScope：手势事件作用域
+        实现惯性滑动
+            awaitTouchSlopOrCancellation 检测当前是否为有效拖动手势
+    Lists 列表
+        概述
+            LazyColumn/LazyRow
+                LazyListScope 的变体 item，itemsIndexed
+                contentPadding 内容填充
+                verticalArrangement 内容间距
+            Grids
+                LazyVerticalGrid / LazyHorizontalGrid
+                    GridCells.Adaptive 是一种自适应的策略
+                    Density.calculateCrossAxisCellSizes 自定义布局
+                LazyVerticalStaggeredGrid 瀑布流
+                LazyColumn(state = rememberLazyListState( it.sendScrolledPastFirstItemEvent) 对滚动位置反应
+                rememberLazyListState.animateScrollToItem 控制滚动位置
+            paging 大数据集
+                pager.flow.collectAsLazyPagingItems()
+            Items Key
+        列表点击事件
+    Graphics 图形
+        自定义绘制
+            Canvas
+            DrawModifier
+                drawWithContent 绘制在前面
+                drawBehind 绘制在后面
+                drawWithCache 绘制缓存
+4. 资源
+    官方依赖
+        Jetpack Compose 编译器
+        Jetpack Compose BOM
+        NavigationCompose
+        hint
+    库
+        Accompanist	Jetpack Compose 的一些功能补充库
+        Ucrop	可以完成图片的裁剪，对用户的图片上传功能有帮助(已知 Bilibili 在用)
+        Material Design	安卓应用的设计标准，内涵丰富的图标按钮资源
+        CMaterialColors	在 Jetpack Compose 中使用 Material Design Color
+        Material Dialog	含有颜色、时间选择对话框等等
+        Coil	Compose 额外的图像库，支持显示 Svg Gif，支持显示网络资源的图片
+        Landscapist	同样也是图像加载的库，支持使用 Glide, Coil, Fresco 等库
+        ComposeDataSaver	在 Jetpack Compose 中优雅完成数据持久化
+        ComposeViews	Compose 的一些开发常用控件补充库
+        load-the-image	Compose-desktop 的图像加载库,适用于桌面端
+5. 技术原理
