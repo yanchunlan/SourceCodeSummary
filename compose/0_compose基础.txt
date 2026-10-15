@@ -253,6 +253,82 @@
         ComposeViews	Compose 的一些开发常用控件补充库
         load-the-image	Compose-desktop 的图像加载库,适用于桌面端
 5. 技术原理
+    了解 Compose 的重组作用域
+        范围： 非 inline 且无返回值
+        最安全做法：写到 LaunchedEffect{}、DisposableEffect{}、SideEffect{} 中，并且使用 remeber{}、derivedStateOf{} 处理那些耗时的计算
+
+    透过Snapshot看重组
+    重组的工作流程
+    Compose 运行原理与 GapBuffer
+    探索SlotTable的系统及原理
+    图解 Modifier
+    Composeble 注解到底做了什么？
+        KCP（Kotlin Compiler Plugin）：kotlin 编译插件，类似kapt+transform 机制，生成/修改代码。
+                    类似的有Kotlin-android-extension，@Parcelize，data class
+                    其他：ksp（基于kcp的2次封装），kapt
+        kcp开发涉及依赖：
+            com.google.devtools.ksp:symbol-processing-api 获取类，函数等
+            com.squareup:kotlinpoet:1.8.0 控制代码生成
+        kcp涉及类：
+            Plugin：Gradle 插件用来读取 Gradle 配置传递给 KCP（Kotlin Plugin）
+            Subplugin：为 KCP 提供自定义 KP 的 maven 库地址等配置信息
+            CommandLineProcessor：负责将Plugin传过来的参数转换并校验
+            ComponentRegistrar：负责将用户自定义的各种Extension注册到KP中，并在合适时机调用
+                常用的Extension接口：
+                    IrGenerationExtension，用于增/删/改/查代码
+                    DiagnosticSuppressor，用于抑制语法错误，Jetpack Compose有使用
+                    StorageComponentContainerContributor，用于实现IOC
+            列入：
+            IrGenerationExtension：
+                调用流程：
+                    ComposePlugin（Compose 编译插件入口）
+                        ComposeComponentRegistrar（ComponentRegistrar 实现）在 registerProjectComponents 中执行 registerProjectExtensions
+                            IrGenerationExtension.registerExtension(project, ComposeIrGenerationExtension(...)) 完成注册
+                                KP 在 IR 生成阶段回调 ComposeIrGenerationExtension.generate(module, ...)
+                                    ComposerParamTransformer 遍历并改写 IR
+                                        IrFunction.withComposerParamIfNeeded() 先筛选
+                                            非 @Composable、非 Composable 内联 lambda 参数、expect 函数 直接返回
+                                            是 @Composable 则查缓存，未命中走 copyWithComposerParam()
+                                        IrFunction.copyWithComposerParam() copy() 出新 IrSimpleFunction 并注入参数
+                                            $composer: Composer 让组合树与更新所需信息贯穿整个子树
+                                            $changed[n]: Int 按位记录参数状态，支撑智能重组与跳过
+                                            $default[n]: Int 实现可组合函数默认参数（Kotlin 默认参数不适用）
+                                            同步改写函数体 $dirty 判断与 composer.changed()/skipToGroupEnd() 等跳过逻辑
+                涉及：
+                    入口与注册 ComposePlugin、ComposeComponentRegistrar、ComponentRegistrar
+                    改写主体 IrGenerationExtension、ComposeIrGenerationExtension、ComposerParamTransformer
+                    底层支撑 IR 体系（IrFunction/IrSimpleFunction/IrDeclarationOrigin、addValueParameter、copy）、Composer 运行时、ParamState 位掩码
+                主要完成：
+                    在 IR 阶段识别 @Composable 函数并改写签名与函数体，注入 $composer/$changed/$default
+                    把普通函数变成可组合函数，使运行时能构建组合、维持更新并做智能重组跳过
+                    开发者只需一个 @Composable 注解，复杂度全部由编译器插件承担
+
+    如何为Compose Image提供网络图片加载支持
+        结论：Image 类似 ImageView，只能加载本地资源；网络图需由 Picasso/Glide/Coil 等框架先载入。目前首选 Coil（官方支持 Compose）
+        背景：这些框架原本面向 View/ImageView，并非为 Compose 打造；Accompanist 曾做适配，现已被废弃、不再推荐
+        Picasso：Accompanist 0.3.0 支持、0.7.0 移除（PR #253），长期看不会支持 Compose Image
+        Glide：与 Picasso 同理，属被适配框架，现已不推荐走 Accompanist
+        Coil：推荐直接用官方 Compose 支持（AsyncImage 等）
+            旧版用法（Accompanist 0.6.2）：PicassoImage(data) / CoilImage(data, contentDescription, onRequestCompleted, contentScale, modifier) { imageLoadState -> ... }
+        统一加载流程（imageloader-core 的 ImageLoad）：
+            PicassoImage/CoilImage 等专用组件内部统一复用 imageloader-core 的泛型 ImageLoad
+                R：请求值（URL 的 String、resource id、Bitmap 等，故为泛型）
+                TR：各框架收集本次请求信息的实体类/Builder（Picasso 的 RequestCreator、Glide 的 RequestBuilder）
+                executeRequest：suspend (TR) -> ImageLoadState，把各框架的加载过程抽象成 lambda，用于糅合多框架
+            内部流程
+                三个 rememberUpdatedState 包装回调，避免回调变化引起重组
+                remember(requestKey) 缓存控件尺寸 requestSize（尺寸要等 constraints 才能确定）
+                produceState<ImageLoadState>(Loading, key1 = requestKey, key2 = requestSize) 把非 Compose 的加载过程转成 State
+                    requestSize 为空 → 保持 Loading
+                    requestSize 就绪 → transformRequestForSize(request, size) 得到 RequestBuilder 风格的请求
+                        try 调 executeRequest(transformedRequest)（可能挂起）
+                            CancellationException 直接抛出，避免被取消的旧协程把新的 Success 覆盖成 Error
+                            其余异常 → ImageLoadState.Error；完成后 also(onRequestCompleted) 回调
+                BoxWithConstraints(propagateMinConstraints = true) 由 constraints 算出 IntSize 回填 requestSize，并渲染 content(imageLoadState)
+            状态：ImageLoadState = Loading / Success / Empty / Error
+
+
+---------------------
 
     组合（Composition）：执行 Composable 并记录 UI 结构；状态读取建立依赖，相关状态改变时触发相应范围重组。
     Snapshot 状态系统：mutableStateOf 等状态可观察；写入状态会使读取它的组合范围失效并安排更新。
